@@ -136,6 +136,47 @@
   footer{padding:30px 0 50px;color:var(--muted);font-size:12.5px;text-align:center}
   footer code{font-family:"IBM Plex Mono";background:#eef1f7;padding:1px 5px;border-radius:4px}
 
+  /* next-opponent preview */
+  .oppcard{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:16px 18px;flex-wrap:wrap}
+  .oppcard img{width:42px;height:42px;object-fit:contain;flex:none}
+  .oppcard .who{flex:1;min-width:150px}
+  .oppcard .who .nm{font-family:"Archivo";font-weight:700;font-size:17px}
+  .oppcard .who .sub{font-size:12.5px;color:var(--muted);font-family:"IBM Plex Mono"}
+  .oppcard .metrics{display:flex;gap:22px;flex-wrap:wrap}
+  .oppcard .metric{text-align:center}
+  .oppcard .metric .v{font-family:"IBM Plex Mono";font-weight:600;font-size:16px}
+  .oppcard .metric .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .formdots{display:flex;gap:4px}
+  .formdots i{width:18px;height:18px;border-radius:4px;color:#fff;font-size:11px;font-weight:700;font-family:"Archivo";display:flex;align-items:center;justify-content:center}
+  .formdots i.W{background:var(--easy)}.formdots i.D{background:var(--mid)}.formdots i.L{background:var(--hard2)}
+
+  /* league-context rank bars */
+  .ranks{display:grid;grid-template-columns:1fr 1fr;gap:12px 26px}
+  .rankrow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+  .rankrow .top b{font-family:"IBM Plex Mono"}
+  .rankrow .top .pos{color:var(--muted);font-family:"IBM Plex Mono";font-size:12px}
+  .rankbar{height:8px;background:#edf1f8;border-radius:5px;overflow:hidden}
+  .rankbar span{display:block;height:100%;border-radius:5px;background:var(--blue-bright)}
+  .rankbar span.good{background:var(--easy)}.rankbar span.bad{background:var(--hard2)}
+
+  /* match report line */
+  .matchreport{display:flex;gap:18px;flex-wrap:wrap;align-items:center;background:#f7f9fd;border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px}
+  .matchreport .mr{display:flex;gap:7px;align-items:baseline}
+  .matchreport .mr .k{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .matchreport .mr .v{font-family:"IBM Plex Mono";font-weight:600}
+
+  /* per-90 toggle + profile */
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .toggle{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer}
+  .toggle input{appearance:none;width:38px;height:22px;background:#cfd8e6;border-radius:999px;position:relative;cursor:pointer;transition:.15s;flex:none}
+  .toggle input:checked{background:var(--blue-bright)}
+  .toggle input::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.15s}
+  .toggle input:checked::after{transform:translateX(16px)}
+  .profile-controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .profile-controls label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+  .profile-controls select{font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);min-width:170px}
+
+
   @media(max-width:760px){
     .stats{grid-template-columns:repeat(4,1fr)}
     .cols,.chartgrid{grid-template-columns:1fr}
@@ -187,6 +228,26 @@
       </div>
       {% else %}<div class="board empty"><div class="row">No upcoming fixtures scheduled yet.</div></div>{% endif %}
     </div>
+
+    {% if next_opponent and (next_opponent.position or next_opponent.xg_pg is not none) %}
+    <div class="block">
+      <p class="label">Next opponent</p>
+      <div class="oppcard">
+        {% if next_opponent.badge %}<img src="{{ next_opponent.badge }}" alt="">{% endif %}
+        <div class="who">
+          <div class="nm">{{ next_opponent.name }}</div>
+          <div class="sub">{% if next_opponent.position %}{{ next_opponent.position|ordinal }}{% if next_opponent.points is not none %} · {{ next_opponent.points }} pts{% endif %}{% if next_opponent.gd is not none %} · {{ '%+d'|format(next_opponent.gd) }} GD{% endif %}{% endif %}</div>
+        </div>
+        {% if next_opponent.form %}
+        <div class="metric"><div class="formdots">{% for f in next_opponent.form %}<i class="{{ f }}">{{ f }}</i>{% endfor %}</div><div class="k">Last 5</div></div>
+        {% endif %}
+        <div class="metrics">
+          {% if next_opponent.xg_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xg_pg) }}</div><div class="k">xG / game</div></div>{% endif %}
+          {% if next_opponent.xga_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xga_pg) }}</div><div class="k">xGA / game</div></div>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
     <div class="block">
       <p class="label">Season record</p>
@@ -288,11 +349,21 @@
         <div class="canvas-holder"><canvas id="c-finish"></canvas></div><div class="note" id="n-finish" hidden></div>
       </div>
       <div class="chartcard wide">
+        <h3>League: chance creation vs concession</h3><p class="sub">Every club — xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
+        <div class="canvas-holder" style="height:340px"><canvas id="c-scatter"></canvas></div><div class="note" id="n-scatter" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>How Ipswich compare</h3><p class="sub">Where Ipswich rank among the 20 clubs on each measure.</p>
+        <div class="ranks" id="ranks"></div>
+        <div class="note" id="n-ranks" hidden></div>
+      </div>
+      <div class="chartcard wide">
         <h3>Shot map</h3>
         <div class="shotbar">
           <select id="shot-select" aria-label="Choose match"></select>
           <span class="shotscore" id="shot-score"></span>
         </div>
+        <div class="matchreport" id="match-report" hidden></div>
         <div class="pitch-holder" id="pitch"></div>
         <div class="note" id="n-shot" hidden></div>
         <div class="shotkey">
@@ -313,6 +384,9 @@
   <!-- SQUAD -->
   <section class="panel" id="panel-squad" role="tabpanel" aria-labelledby="tab-squad" hidden>
     <p class="label">Squad · {{ squad|length }} players</p>
+    <div class="toolbar">
+      <label class="toggle"><input type="checkbox" id="per90-toggle" aria-label="Show per 90 minutes"> Per 90 minutes</label>
+    </div>
     <div class="tablewrap">
       <table id="squad">
         <thead><tr>
@@ -331,18 +405,34 @@
         </tr></thead>
         <tbody>
           {% for p in squad %}
-          <tr>
+          <tr data-min="{{ p.minutes }}">
             <td class="player" title="{{ p.full_name }}">{{ p.name }}</td>
             <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
             <td>{{ '%.1f'|format(p.price) }}</td><td>{{ p.points }}</td>
             <td>{{ '%.1f'|format(p.form) }}</td><td>{{ p.minutes }}</td>
-            <td>{{ p.goals }}</td><td>{{ p.assists }}</td>
-            <td>{{ '%.2f'|format(p.xg) }}</td><td>{{ '%.2f'|format(p.xa) }}</td>
-            <td>{{ '%.2f'|format(p.xgi) }}</td><td>{{ '%.1f'|format(p.selected) }}</td>
+            <td class="per90" data-raw="{{ p.goals }}" data-dec="0">{{ p.goals }}</td>
+            <td class="per90" data-raw="{{ p.assists }}" data-dec="0">{{ p.assists }}</td>
+            <td class="per90" data-raw="{{ p.xg }}" data-dec="2">{{ '%.2f'|format(p.xg) }}</td>
+            <td class="per90" data-raw="{{ p.xa }}" data-dec="2">{{ '%.2f'|format(p.xa) }}</td>
+            <td class="per90" data-raw="{{ p.xgi }}" data-dec="2">{{ '%.2f'|format(p.xgi) }}</td>
+            <td>{{ '%.1f'|format(p.selected) }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+    </div>
+
+    <div class="block" style="margin-top:30px">
+      <p class="label">Player profiles</p>
+      <div class="chartcard wide">
+        <p class="sub">Per-90 percentile ranks vs positional peers across the Premier League. Pick a second player to compare.</p>
+        <div class="profile-controls">
+          <label>Player<select id="prof-a"></select></label>
+          <label>Compare with<select id="prof-b"><option value="">— none —</option></select></label>
+        </div>
+        <div class="canvas-holder" style="height:360px"><canvas id="c-radar"></canvas></div>
+        <div class="note" id="n-radar" hidden></div>
+      </div>
     </div>
   </section>
 </main>
@@ -363,7 +453,7 @@
 
   // tabs
   var tabs = [].slice.call(document.querySelectorAll('[role="tab"]'));
-  var chartsBuilt = false;
+  var chartsBuilt = false, profilesBuilt = false;
   function select(tab){
     tabs.forEach(function(t){
       var on = t===tab;
@@ -372,6 +462,7 @@
       document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
     });
     if(tab.id==='tab-charts' && !chartsBuilt){ chartsBuilt = true; buildCharts(); }
+    if(tab.id==='tab-squad' && !profilesBuilt){ profilesBuilt = true; buildProfiles(); }
   }
   tabs.forEach(function(tab,i){
     tab.addEventListener('click', function(){ select(tab); });
@@ -459,6 +550,42 @@
         options:baseOpts({plugins:{legend:{display:false}},
           scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:5,ticks:{stepSize:1}}}})}); }
       else showNote('fdr','No upcoming fixtures scheduled.');
+
+      // League team scatter: xG vs xGA per game
+      var ts = DATA.team_scatter||[];
+      if(ts.length){
+        var lbl={id:'lbl',afterDatasetsDraw:function(chart){
+          var ctx=chart.ctx; ctx.save(); ctx.font='10px "IBM Plex Mono"';
+          chart.data.datasets.forEach(function(ds,di){
+            chart.getDatasetMeta(di).data.forEach(function(pt,i){
+              var d=ds.data[i]; if(!d||!d.label)return;
+              ctx.fillStyle=d.ips?C.red:C.muted; ctx.fillText(d.label, pt.x+5, pt.y+3);
+            });
+          }); ctx.restore();
+        }};
+        var pts=ts.map(function(t){return {x:t.xg_pg,y:t.xga_pg,label:t.short,ips:t.is_ipswich};});
+        new Chart(document.getElementById('c-scatter'),{type:'scatter',
+          data:{datasets:[
+            {label:'Clubs',data:pts.filter(function(p){return !p.ips;}),backgroundColor:'#9aa6b8',pointRadius:5},
+            {label:'Ipswich',data:pts.filter(function(p){return p.ips;}),backgroundColor:C.red,pointRadius:7}]},
+          options:baseOpts({
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){
+              return ctx.raw.label+': '+ctx.raw.x.toFixed(2)+' xG, '+ctx.raw.y.toFixed(2)+' xGA';}}}},
+            scales:{x:{title:{display:true,text:'xG per game'},grid:{color:C.line},beginAtZero:true},
+                    y:{title:{display:true,text:'xGA per game'},grid:{color:C.line},beginAtZero:true}}}),
+          plugins:[lbl]});
+      } else showNote('scatter','No league xG data yet.');
+
+      // League rank bars
+      var tr = DATA.team_ranks||[], rc=document.getElementById('ranks');
+      if(tr.length && rc){
+        rc.innerHTML = tr.map(function(r){
+          var frac=(r.total-r.rank+1)/r.total, cls=r.rank<=6?'good':r.rank>=15?'bad':'';
+          return '<div class="rankrow"><div class="top"><span>'+r.label+'</span>'+
+            '<span><b>'+fmtVal(r.value)+'</b> <span class="pos">'+ord(r.rank)+'/'+r.total+'</span></span></div>'+
+            '<div class="rankbar"><span class="'+cls+'" style="width:'+(frac*100).toFixed(0)+'%"></span></div></div>';
+        }).join('');
+      } else showNote('ranks','League comparison unavailable yet.');
     }
     setupShotMap();
   }
@@ -478,6 +605,14 @@
     function draw(i){
       var m=maps[i]; scoreEl.textContent=(m.home?'H ':'A ')+m.score;
       holder.innerHTML = pitchSVG(m.shots);
+      var mr=document.getElementById('match-report');
+      if(m.xg_for!=null){
+        var top=m.shots.slice().sort(function(a,b){return b.xg-a.xg;})[0];
+        mr.hidden=false;
+        mr.innerHTML='<div class="mr"><span class="k">xG</span><span class="v">'+m.xg_for.toFixed(2)+'–'+m.xg_against.toFixed(2)+'</span></div>'+
+          '<div class="mr"><span class="k">Shots</span><span class="v">'+m.shots.length+'</span></div>'+
+          (top?'<div class="mr"><span class="k">Top chance</span><span class="v">'+esc(top.player)+' '+top.xg.toFixed(2)+'</span></div>':'');
+      } else mr.hidden=true;
     }
     sel.addEventListener('change', function(){ draw(+sel.value); });
     draw(0);
@@ -516,6 +651,54 @@
       });
     });
   }
+  // per-90 toggle
+  var per90=document.getElementById('per90-toggle');
+  if(per90){
+    per90.addEventListener('change',function(){
+      var on=per90.checked;
+      [].forEach.call(document.querySelectorAll('#squad tbody tr'),function(tr){
+        var min=+tr.getAttribute('data-min')||0;
+        [].forEach.call(tr.querySelectorAll('td.per90'),function(td){
+          var raw=+td.getAttribute('data-raw'), dec=+td.getAttribute('data-dec');
+          td.textContent = on ? (min>0?(raw/(min/90)).toFixed(2):'–') : raw.toFixed(dec);
+        });
+      });
+    });
+  }
+
+  // player profile radar (percentiles vs positional peers)
+  function buildProfiles(){
+    var profs=DATA.player_profiles||[];
+    var a=document.getElementById('prof-a'), b=document.getElementById('prof-b');
+    if(!profs.length){ var pc=document.querySelector('.profile-controls'); if(pc)pc.style.display='none';
+      showNote('radar','No player minutes yet — profiles appear once games are played.'); return; }
+    if(!window.Chart){ showNote('radar','Charts library did not load.'); return; }
+    var M=[['goals','Goals'],['assists','Assists'],['npxg','npxG'],['xa','xA'],
+           ['shots','Shots'],['key_passes','Key passes'],['xgchain','xGChain'],['xgbuildup','xGBuildup']];
+    profs.forEach(function(p,i){
+      var o=document.createElement('option'); o.value=i; o.textContent=p.name+' ('+p.pos+')';
+      a.appendChild(o); b.appendChild(o.cloneNode(true));
+    });
+    var chart;
+    function ds(p,c){return {label:p.name,data:M.map(function(m){return p.pct[m[0]];}),
+      borderColor:c,backgroundColor:c+'33',pointBackgroundColor:c,borderWidth:2};}
+    function draw(){
+      var sets=[ds(profs[+a.value],'#16346b')];
+      if(b.value!==''){ sets.push(ds(profs[+b.value],'#d1352b')); }
+      var data={labels:M.map(function(m){return m[1];}),datasets:sets};
+      var opts={responsive:true,maintainAspectRatio:false,
+        scales:{r:{min:0,max:100,ticks:{stepSize:20,backdropColor:'transparent',font:{size:9}},
+          grid:{color:C.line},angleLines:{color:C.line},pointLabels:{font:{size:11}}}},
+        plugins:{legend:{position:'bottom',labels:{boxWidth:12}},
+          tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+ord(ctx.raw)+' pct';}}}}};
+      if(chart){chart.data=data;chart.update();} else chart=new Chart(document.getElementById('c-radar'),{type:'radar',data:data,options:opts});
+    }
+    a.addEventListener('change',draw); b.addEventListener('change',draw);
+    a.value=0; draw();
+  }
+
+  function ord(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+  function fmtVal(v){return (Math.round(v)===v)?v:(+v).toFixed(2);}
 })();
 </script>
 </body>

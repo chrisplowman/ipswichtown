@@ -3,11 +3,10 @@
 A static, auto-updating reference page for Ipswich Town's Premier League season,
 organised into four tabs:
 
-- **Overview** — next fixture, season record, upcoming fixtures with difficulty, recent results (with club badges)
+- **Overview** — next fixture, a **next-opponent preview** (their position, form and xG), season record, upcoming fixtures with difficulty, recent results (with club badges)
 - **Table** — the full Premier League table, Ipswich highlighted, European and relegation edges marked
-- **Charts** — points progression, goals by gameweek, goals vs xG (attack and defence, from Understat),
-  a non-penalty finishing chart (goals vs npxG), an interactive **shot map** per recent match, and the fixture-difficulty run
-- **Squad** — full player stats, sortable by any column
+- **Charts** — points progression, goals by gameweek, goals vs xG (attack and defence), non-penalty finishing, a **league-wide xG-vs-xGA scatter** of all 20 clubs, a **"how Ipswich compare"** panel ranking them against the league on each measure, an interactive **shot map with a match report** per recent match, and the fixture-difficulty run
+- **Squad** — full player stats with a **per-90 toggle**, plus **player profile radars** showing each player's percentile ranks vs positional peers league-wide, with a compare-two-players mode
 
 No server, no database — a scheduled GitHub Action pulls the data and publishes a
 static page to GitHub Pages. Charts render client-side with Chart.js (one CDN tag,
@@ -19,7 +18,9 @@ if one is unavailable on a given run, the page still builds from the rest.
 - **Fantasy Premier League API** — `bootstrap-static`, `fixtures`, and `event/{gw}/live`
   for squad, schedule, difficulty ratings and per-gameweek points/goals.
 - **Understat** — shot-level xG with x/y coordinates (the shot maps), per-match team xG
-  and xG-against, and player non-penalty xG for the finishing chart.
+  and xG-against, player non-penalty xG for the finishing chart, and the **league page**
+  (every club's season aggregates and every player league-wide) that powers the team
+  scatter, the rank comparison, and the player percentile radars.
 - **ESPN** (public endpoint) — the live Premier League table.
 - **TheSportsDB** (public test key) — club badges.
 

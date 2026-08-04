@@ -295,6 +295,43 @@ def fetch_understat():
 
 
 # --------------------------------------------------------------------------- #
+#  Understat LEAGUE page — every team + every player, in one request           #
+# --------------------------------------------------------------------------- #
+def simplify_pos(p):
+    p = (p or "").upper()
+    if p.startswith("G"): return "GKP"
+    if p.startswith("D"): return "DEF"
+    if p.startswith("F") or p.startswith("S"): return "FWD"
+    return "MID"
+
+
+def fetch_understat_league():
+    html = get_text(f"https://understat.com/league/EPL/{UNDERSTAT_SEASON}")
+    teams_raw = _us_json(html, "teamsData") or {}
+    players_raw = _us_json(html, "playersData") or []
+
+    league_teams = {}
+    for t in teams_raw.values():
+        hist = t.get("history", [])
+        g = len(hist) or 1
+        att = sum(to_float((h.get("ppda") or {}).get("att", 0)) for h in hist)
+        dfn = sum(to_float((h.get("ppda") or {}).get("def", 0)) for h in hist)
+        agg = {"title": t["title"], "games": len(hist),
+               "xg": round(sum(to_float(h["xG"]) for h in hist), 2),
+               "xga": round(sum(to_float(h["xGA"]) for h in hist), 2),
+               "npxg": round(sum(to_float(h.get("npxG", 0)) for h in hist), 2),
+               "scored": sum(int(h["scored"]) for h in hist),
+               "conceded": sum(int(h["missed"]) for h in hist),
+               "ppda": round(att / dfn, 2) if dfn else None,
+               "xg_pg": round(sum(to_float(h["xG"]) for h in hist) / g, 2),
+               "xga_pg": round(sum(to_float(h["xGA"]) for h in hist) / g, 2),
+               "form": [h.get("result", "").upper()[:1] for h in hist[-5:]
+                        if h.get("result", "").upper()[:1] in ("W", "D", "L")]}
+        league_teams[t["title"]] = agg
+    return league_teams, players_raw
+
+
+# --------------------------------------------------------------------------- #
 def main():
     fpl = fetch_fpl()
     tid, teams, ipswich = fpl["tid"], fpl["teams"], fpl["ipswich"]
@@ -338,6 +375,116 @@ def main():
     upcoming = fpl["upcoming"][:8]
     next_fixture = dict(upcoming[0]) if upcoming else None
 
+    # ---- league-wide comparison data (Understat league page) -------------- #
+    league_teams, league_players = {}, []
+    try:
+        league_teams, league_players = fetch_understat_league()
+        print(f"  understat league: {len(league_teams)} teams, {len(league_players)} players")
+    except Exception as e:
+        print(f"  understat league: skipped ({e})")
+
+    # short-name + badge lookup for Understat team titles
+    meta_by_norm = {_norm(t["name"]): (t["short_name"], badges.get(t["short_name"]))
+                    for t in teams.values()}
+    def team_meta(title):
+        k = _norm(title)
+        if k in meta_by_norm: return meta_by_norm[k]
+        if k in ALIASES and ALIASES[k] in meta_by_norm: return meta_by_norm[ALIASES[k]]
+        for nk, v in meta_by_norm.items():
+            if len(k) > 3 and (k in nk or nk in k): return v
+        return (title[:3].upper(), None)
+
+    # team scatter: xG vs xGA per game, all clubs
+    team_scatter = []
+    for title, a in league_teams.items():
+        short, badge = team_meta(title)
+        team_scatter.append({"team": title, "short": short, "badge": badge,
+                             "xg_pg": a["xg_pg"], "xga_pg": a["xga_pg"],
+                             "is_ipswich": TEAM_NAME_MATCH in title.lower()})
+
+    # team ranks: where Ipswich sit among the 20 on each metric
+    team_ranks = []
+    ips_title = next((t for t in league_teams if TEAM_NAME_MATCH in t.lower()), None)
+    if ips_title:
+        n = len(league_teams)
+        ips = league_teams[ips_title]
+        def rank_on(key, low_good):
+            arr = [a for a in league_teams.values() if a.get(key) is not None]
+            arr.sort(key=lambda a: a[key], reverse=not low_good)
+            return next((i for i, a in enumerate(arr, 1) if a["title"] == ips_title), None)
+        for key, label, low in [("xg_pg", "xG per game", False), ("xga_pg", "xGA per game", True),
+                                ("npxg", "Non-penalty xG", False), ("ppda", "Pressing (PPDA)", True)]:
+            if ips.get(key) is not None:
+                team_ranks.append({"label": label, "value": ips[key],
+                                   "rank": rank_on(key, low), "total": n, "low_good": low})
+
+    # points & goal-difference ranks come from the ESPN table
+    if table:
+        nt = len(table)
+        ips_row = next((r for r in table if r.get("is_ipswich")), None)
+        if ips_row:
+            gd_rank = next((i for i, r in enumerate(
+                sorted(table, key=lambda r: -r["gd"]), 1) if r.get("is_ipswich")), None)
+            team_ranks.insert(0, {"label": "Points", "value": ips_row["points"],
+                                  "rank": ips_row["rank"], "total": nt, "low_good": False})
+            team_ranks.append({"label": "Goal difference", "value": ips_row["gd"],
+                               "rank": gd_rank, "total": nt, "low_good": False})
+
+    # player profiles: per-90 + percentile vs positional peers (league-wide)
+    player_profiles = []
+    if league_players:
+        def per90(v, m): return round(v / (m / 90), 2) if m > 0 else 0.0
+        pool, rows = {}, []
+        for p in league_players:
+            m = int(p.get("time", 0) or 0)
+            if m <= 0:
+                continue
+            pos = simplify_pos(p.get("position", ""))
+            vals = {"goals": per90(int(p["goals"]), m), "assists": per90(int(p["assists"]), m),
+                    "npxg": per90(to_float(p.get("npxG", p["xG"])), m), "xa": per90(to_float(p["xA"]), m),
+                    "shots": per90(int(p["shots"]), m), "key_passes": per90(int(p["key_passes"]), m),
+                    "xgchain": per90(to_float(p.get("xGChain", 0)), m),
+                    "xgbuildup": per90(to_float(p.get("xGBuildup", 0)), m)}
+            rows.append({"name": p["player_name"], "team": p.get("team_title", ""),
+                         "pos": pos, "minutes": m, "per90": vals})
+            pool.setdefault(pos, []).append(vals)
+        def pctile(pos, metric, val):
+            peers = [v[metric] for v in pool.get(pos, [])]
+            return round(sum(1 for x in peers if x <= val) / len(peers) * 100) if peers else 0
+        keys = ["goals", "assists", "npxg", "xa", "shots", "key_passes", "xgchain", "xgbuildup"]
+        for r in rows:
+            if TEAM_NAME_MATCH in r["team"].lower():
+                r["pct"] = {k: pctile(r["pos"], k, r["per90"][k]) for k in keys}
+                player_profiles.append(r)
+        player_profiles.sort(key=lambda r: -r["minutes"])
+
+    # next-opponent preview (table position/points + Understat xG + recent form)
+    next_opponent = None
+    if next_fixture:
+        opp = next_fixture["opponent"]
+        row = next((r for r in (table or [])
+                    if _norm(r["team"]) == _norm(opp) or _norm(opp) in _norm(r["team"])
+                    or _norm(r["team"]) in _norm(opp)), None)
+        agg = next((a for tt, a in league_teams.items()
+                    if _norm(tt) == _norm(opp) or _norm(tt) in _norm(opp)
+                    or _norm(opp) in _norm(tt)), None)
+        short, badge = team_meta(opp)
+        next_opponent = {"name": opp, "short": next_fixture.get("opponent_short", short),
+                         "badge": next_fixture.get("badge") or badge, "home": next_fixture["home"],
+                         "position": row["rank"] if row else None,
+                         "points": row["points"] if row else None,
+                         "gd": row["gd"] if row else None,
+                         "xg_pg": agg["xg_pg"] if agg else None,
+                         "xga_pg": agg["xga_pg"] if agg else None,
+                         "form": agg["form"] if agg else []}
+
+    # match reports: join team xG onto each shot map
+    xg_by_mid = {m["match_id"]: m for m in understat["matches"]}
+    for sm in understat["shot_maps"]:
+        mm = xg_by_mid.get(sm["match_id"])
+        if mm:
+            sm["xg_for"] = mm["xg_for"]; sm["xg_against"] = mm["xg_against"]
+
     data = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "season": "2026/27",
@@ -345,9 +492,13 @@ def main():
                  "badge": badges.get(ipswich["short_name"])},
         "current_event": fpl["current"], "next_event": fpl["next"],
         "next_fixture": next_fixture,
+        "next_opponent": next_opponent,
         "position": position,
         "summary": fpl["summary"],
         "table": table or [],
+        "team_scatter": team_scatter,
+        "team_ranks": team_ranks,
+        "player_profiles": player_profiles,
         "by_gameweek": fpl["by_gameweek"],
         "understat_matches": understat["matches"],
         "shot_maps": understat["shot_maps"],
