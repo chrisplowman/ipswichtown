@@ -1,21 +1,30 @@
 # Ipswich Town — season stats reference
 
 A static, auto-updating reference page for Ipswich Town's Premier League season,
-organised into three tabs:
+organised into four tabs:
 
-- **Overview** — next fixture, season record, upcoming fixtures with difficulty, recent results
-- **Charts** — points progression, goals by gameweek, goals vs xG (attack and defence),
-  a squad xG-vs-xA scatter, and the upcoming fixture-difficulty run
+- **Overview** — next fixture, season record, upcoming fixtures with difficulty, recent results (with club badges)
+- **Table** — the full Premier League table, Ipswich highlighted, European and relegation edges marked
+- **Charts** — points progression, goals by gameweek, goals vs xG (attack and defence, from Understat),
+  a non-penalty finishing chart (goals vs npxG), an interactive **shot map** per recent match, and the fixture-difficulty run
 - **Squad** — full player stats, sortable by any column
 
 No server, no database — a scheduled GitHub Action pulls the data and publishes a
 static page to GitHub Pages. Charts render client-side with Chart.js (one CDN tag,
-no build step) from the same data the page publishes.
+no build step); the shot map is inline SVG. Each data source degrades gracefully:
+if one is unavailable on a given run, the page still builds from the rest.
 
-**Data source:** the (keyless) Fantasy Premier League API — `bootstrap-static`
-for teams/players/gameweeks, `fixtures` for the schedule and difficulty ratings,
-and `event/{gw}/live` (one call per finished gameweek) to aggregate team xG and
-xG-against for the trend charts. No API key or account needed.
+**Data sources** (all free, no API key required):
+
+- **Fantasy Premier League API** — `bootstrap-static`, `fixtures`, and `event/{gw}/live`
+  for squad, schedule, difficulty ratings and per-gameweek points/goals.
+- **Understat** — shot-level xG with x/y coordinates (the shot maps), per-match team xG
+  and xG-against, and player non-penalty xG for the finishing chart.
+- **ESPN** (public endpoint) — the live Premier League table.
+- **TheSportsDB** (public test key) — club badges.
+
+No keys or accounts are needed. Understat is parsed from its embedded page JSON with
+the standard library, so there are no extra dependencies beyond `requests` and `jinja2`.
 
 ## How it works
 

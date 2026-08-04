@@ -57,6 +57,10 @@ def main():
     )
     env.filters["kickoff"] = fmt_kickoff
     env.filters["updated"] = fmt_updated
+    env.filters["ordinal"] = lambda n: (
+        f"{int(n)}{'th' if 11 <= int(n) % 100 <= 13 else {1:'st',2:'nd',3:'rd'}.get(int(n) % 10, 'th')}"
+        if str(n).lstrip('-').isdigit() else n
+    )
     template = env.get_template("index.html.j2")
     # Inline the data for the charts. Escape "<" so a stray "</script>" in the
     # data can't break out of the script tag; "\u003c" is valid JSON.
