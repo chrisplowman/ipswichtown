@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ipswich Town · {{ season }} Reference</title>
+<meta name="description" content="Ipswich Town Premier League {{ season }} — record, fixtures, results, squad stats and season charts. Rebuilt automatically from the FPL API.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue:#16346b;--blue-deep:#0e2450;--blue-bright:#3f7ddb;
+    --red:#d1352b;--paper:#f6f8fc;--card:#ffffff;--ink:#0f1826;--muted:#5b6779;--line:#dde3ee;
+    --easy:#2e9e5b;--easy2:#4bb673;--mid:#e0a53b;--hard:#e06a3b;--hard2:#d1483f;
+    --shadow:0 1px 2px rgba(15,24,38,.06),0 6px 20px rgba(15,24,38,.05);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+  a{color:var(--blue-bright)}
+
+  /* masthead */
+  .masthead{background:var(--blue);color:#fff;border-bottom:4px solid var(--red)}
+  .masthead .wrap{padding:26px 20px 22px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .crest{display:flex;align-items:center;gap:14px}
+  .crest .mark{width:44px;height:44px;border-radius:6px;background:#fff;flex:none;
+    display:flex;align-items:center;justify-content:center;color:var(--blue);
+    font-family:"Archivo";font-weight:800;font-size:20px;letter-spacing:-.5px}
+  .wordmark{font-family:"Archivo";font-weight:800;font-size:clamp(24px,4vw,34px);
+    line-height:.95;letter-spacing:-.5px;text-transform:uppercase}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#b9cdf0;font-weight:600}
+  .updated{font-size:12.5px;color:#b9cdf0;text-align:right}
+  .updated b{color:#fff;font-weight:600}
+
+  /* tabs */
+  .tabs{background:var(--blue-deep);position:sticky;top:0;z-index:20}
+  .tabs .wrap{display:flex;gap:2px;padding:0 20px}
+  .tabs button{all:unset;cursor:pointer;color:#9bb8ea;font-weight:600;font-size:13px;
+    letter-spacing:.06em;text-transform:uppercase;padding:14px 20px;position:relative}
+  .tabs button:hover{color:#fff}
+  .tabs button[aria-selected="true"]{color:#fff}
+  .tabs button[aria-selected="true"]::after{content:"";position:absolute;left:14px;right:14px;bottom:0;
+    height:3px;background:var(--red);border-radius:2px 2px 0 0}
+  .tabs button:focus-visible{outline:2px solid #fff;outline-offset:-4px;border-radius:4px}
+
+  section.panel{padding:28px 0}
+  section.panel[hidden]{display:none}
+  .block{margin-bottom:30px}
+  .label{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+  .label::after{content:"";height:1px;background:var(--line);flex:1}
+
+  /* next fixture board */
+  .board{background:var(--blue-deep);color:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);position:relative}
+  .board::before{content:"NEXT";position:absolute;top:14px;left:18px;font-size:11px;letter-spacing:.2em;font-weight:600;color:#8fb0e8}
+  .board .row{display:flex;align-items:center;justify-content:center;gap:clamp(16px,5vw,54px);padding:38px 20px 34px;text-align:center;flex-wrap:wrap}
+  .board .side{min-width:96px}
+  .board .side .abbr{font-family:"Archivo";font-weight:800;font-size:clamp(30px,7vw,52px);line-height:1}
+  .board .side .full{font-size:12px;color:#9bb8ea;margin-top:6px}
+  .board .vs{font-family:"IBM Plex Mono";font-size:13px;color:#d14a41;font-weight:600;border:1px solid #3a5a97;border-radius:999px;padding:6px 12px;letter-spacing:.1em}
+  .board .when{border-top:1px solid #23407a;text-align:center;padding:12px;font-size:13.5px;color:#cdddf6}
+  .board .venue{color:#8fb0e8}
+  .board.empty .row{padding:34px 20px;color:#cdddf6;font-size:15px}
+
+  /* summary strip */
+  .stats{display:grid;grid-template-columns:repeat(8,1fr);gap:10px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 8px;text-align:center;box-shadow:var(--shadow)}
+  .stat .v{font-family:"Archivo";font-weight:800;font-size:26px;line-height:1}
+  .stat .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+  .stat.accent .v{color:var(--blue)}
+  .stat .v.pos{color:var(--easy)}.stat .v.neg{color:var(--hard2)}
+
+  /* two columns */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+  .card h3{margin:0;padding:14px 18px;font-family:"Archivo";font-weight:700;font-size:15px;letter-spacing:.02em;border-bottom:1px solid var(--line);background:#fbfcfe}
+  ul.list{list-style:none;margin:0;padding:4px 0}
+  ul.list li{display:flex;align-items:center;gap:12px;padding:9px 18px;border-bottom:1px solid #eef1f7}
+  ul.list li:last-child{border-bottom:0}
+  .opp{flex:1;font-weight:500}
+  .opp .ha{color:var(--muted);font-family:"IBM Plex Mono";font-size:12px;margin-left:6px}
+  .kick{font-size:12.5px;color:var(--muted);font-family:"IBM Plex Mono"}
+  .gw{font-family:"IBM Plex Mono";font-size:11px;color:var(--muted);width:34px;flex:none}
+  .fdr{font-family:"IBM Plex Mono";font-weight:600;font-size:12px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:#fff;flex:none}
+  .fdr-1{background:var(--easy)}.fdr-2{background:var(--easy2)}.fdr-3{background:var(--mid)}.fdr-4{background:var(--hard)}.fdr-5{background:var(--hard2)}
+  .res{font-family:"Archivo";font-weight:800;font-size:12px;width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:6px;color:#fff}
+  .res.W{background:var(--easy)}.res.D{background:var(--mid)}.res.L{background:var(--hard2)}
+  .score{font-family:"IBM Plex Mono";font-weight:600;font-size:14px}
+  .empty-note{padding:22px 18px;color:var(--muted);font-size:14px}
+
+  /* charts */
+  .chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .chartcard{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:16px 18px 18px}
+  .chartcard.wide{grid-column:1 / -1}
+  .chartcard h3{margin:0 0 4px;font-family:"Archivo";font-weight:700;font-size:15px}
+  .chartcard p.sub{margin:0 0 14px;font-size:12.5px;color:var(--muted)}
+  .canvas-holder{position:relative;height:260px}
+  .chartcard .note{color:var(--muted);font-size:14px;padding:40px 0;text-align:center}
+
+  /* squad table */
+  .tablewrap{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+  thead th{position:sticky;top:0;background:var(--blue);color:#fff;font-weight:600;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;text-align:right;padding:0;white-space:nowrap}
+  thead th button{all:unset;cursor:pointer;padding:12px 12px;width:100%;box-sizing:border-box;display:block;text-align:right}
+  thead th button:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+  thead th.player button,thead th.pos button{text-align:left}
+  thead th[aria-sort] button::after{content:" ↕";opacity:.45}
+  thead th[aria-sort="ascending"] button::after{content:" ↑";opacity:1}
+  thead th[aria-sort="descending"] button::after{content:" ↓";opacity:1}
+  tbody td{padding:10px 12px;text-align:right;border-bottom:1px solid #eef1f7;font-family:"IBM Plex Mono";font-variant-numeric:tabular-nums}
+  tbody td.player{text-align:left;font-family:"IBM Plex Sans";font-weight:500}
+  tbody td.pos{text-align:left}
+  tbody tr:hover{background:#f7f9fd}
+  .pill{font-family:"IBM Plex Mono";font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px;color:#fff}
+  .p-GKP{background:#8a63d2}.p-DEF{background:#2e9e5b}.p-MID{background:#2f6fd1}.p-FWD{background:#d1483f}
+
+  footer{padding:30px 0 50px;color:var(--muted);font-size:12.5px;text-align:center}
+  footer code{font-family:"IBM Plex Mono";background:#eef1f7;padding:1px 5px;border-radius:4px}
+
+  @media(max-width:760px){
+    .stats{grid-template-columns:repeat(4,1fr)}
+    .cols,.chartgrid{grid-template-columns:1fr}
+    .tabs .wrap{overflow-x:auto}
+  }
+  @media(prefers-reduced-motion:no-preference){
+    .board,.stat,.card,.chartcard,.tablewrap{animation:rise .5s cubic-bezier(.2,.7,.3,1) both}
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <div class="crest">
+      <div class="mark">{{ team.short_name }}</div>
+      <div><div class="eyebrow">Premier League · {{ season }}</div><div class="wordmark">Ipswich Town</div></div>
+    </div>
+    <div class="updated">Updated<br><b>{{ generated_at|updated }}</b></div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true">Overview</button>
+    <button role="tab" id="tab-charts" aria-controls="panel-charts" aria-selected="false" tabindex="-1">Charts</button>
+    <button role="tab" id="tab-squad" aria-controls="panel-squad" aria-selected="false" tabindex="-1">Squad</button>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- OVERVIEW -->
+  <section class="panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+    <div class="block">
+      <p class="label">Next fixture</p>
+      {% if next_fixture %}
+      <div class="board">
+        <div class="row">
+          <div class="side"><div class="abbr">{{ team.short_name }}</div><div class="full">Ipswich Town</div></div>
+          <div class="vs">{{ "HOME" if next_fixture.home else "AWAY" }}</div>
+          <div class="side"><div class="abbr">{{ next_fixture.opponent_short }}</div><div class="full">{{ next_fixture.opponent }}</div></div>
+        </div>
+        <div class="when">{{ next_fixture.kickoff|kickoff }} · <span class="venue">{{ "Portman Road" if next_fixture.home else "Away" }}</span>{% if next_fixture.event %} · GW{{ next_fixture.event }}{% endif %}</div>
+      </div>
+      {% else %}<div class="board empty"><div class="row">No upcoming fixtures scheduled yet.</div></div>{% endif %}
+    </div>
+
+    <div class="block">
+      <p class="label">Season record</p>
+      <div class="stats">
+        <div class="stat"><div class="v">{{ summary.played }}</div><div class="k">Played</div></div>
+        <div class="stat"><div class="v">{{ summary.won }}</div><div class="k">Won</div></div>
+        <div class="stat"><div class="v">{{ summary.drawn }}</div><div class="k">Drawn</div></div>
+        <div class="stat"><div class="v">{{ summary.lost }}</div><div class="k">Lost</div></div>
+        <div class="stat"><div class="v">{{ summary.gf }}</div><div class="k">For</div></div>
+        <div class="stat"><div class="v">{{ summary.ga }}</div><div class="k">Against</div></div>
+        <div class="stat"><div class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</div><div class="k">Goal diff</div></div>
+        <div class="stat accent"><div class="v">{{ summary.points }}</div><div class="k">Points</div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cols">
+        <div class="card">
+          <h3>Upcoming fixtures</h3>
+          {% if upcoming %}
+          <ul class="list">
+            {% for f in upcoming %}
+            <li>
+              <span class="gw">{{ ('GW'+f.event|string) if f.event else '' }}</span>
+              <span class="opp">{{ f.opponent }}<span class="ha">{{ '(H)' if f.home else '(A)' }}</span></span>
+              <span class="kick">{{ f.kickoff|kickoff }}</span>
+              <span class="fdr fdr-{{ f.difficulty or 3 }}" title="Fixture difficulty {{ f.difficulty }}/5">{{ f.difficulty or '–' }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}<p class="empty-note">No fixtures scheduled yet — they'll appear once the FPL API lists them.</p>{% endif %}
+        </div>
+        <div class="card">
+          <h3>Recent results</h3>
+          {% if results %}
+          <ul class="list">
+            {% for r in results %}
+            <li><span class="res {{ r.result }}">{{ r.result }}</span><span class="opp">{{ r.opponent }}<span class="ha">{{ '(H)' if r.home else '(A)' }}</span></span><span class="score">{{ r.score }}</span></li>
+            {% endfor %}
+          </ul>
+          {% else %}<p class="empty-note">No matches played yet. The season opens on 22 August — check back after kickoff.</p>{% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHARTS -->
+  <section class="panel" id="panel-charts" role="tabpanel" aria-labelledby="tab-charts" hidden>
+    <div class="chartgrid">
+      <div class="chartcard wide">
+        <h3>Points progression</h3>
+        <p class="sub">Cumulative league points by gameweek.</p>
+        <div class="canvas-holder"><canvas id="c-points"></canvas></div>
+        <div class="note" id="n-points" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Goals by gameweek</h3>
+        <p class="sub">Scored vs conceded, each matchweek.</p>
+        <div class="canvas-holder"><canvas id="c-goals"></canvas></div>
+        <div class="note" id="n-goals" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Attack: goals vs xG</h3>
+        <p class="sub">Cumulative — above the xG line means clinical finishing.</p>
+        <div class="canvas-holder"><canvas id="c-xg"></canvas></div>
+        <div class="note" id="n-xg" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Defence: conceded vs xG against</h3>
+        <p class="sub">Cumulative — below the xGA line means keeping worse chances out.</p>
+        <div class="canvas-holder"><canvas id="c-xga"></canvas></div>
+        <div class="note" id="n-xga" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Squad: xG vs xA</h3>
+        <p class="sub">Finishers to the right, creators up top. Players with minutes only.</p>
+        <div class="canvas-holder"><canvas id="c-scatter"></canvas></div>
+        <div class="note" id="n-scatter" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Upcoming difficulty</h3>
+        <p class="sub">FPL fixture difficulty for the next matches (1 easy → 5 hard).</p>
+        <div class="canvas-holder"><canvas id="c-fdr"></canvas></div>
+        <div class="note" id="n-fdr" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SQUAD -->
+  <section class="panel" id="panel-squad" role="tabpanel" aria-labelledby="tab-squad" hidden>
+    <p class="label">Squad · {{ squad|length }} players</p>
+    <div class="tablewrap">
+      <table id="squad">
+        <thead><tr>
+          <th class="player" aria-sort="none"><button>Player</button></th>
+          <th class="pos" aria-sort="none"><button>Pos</button></th>
+          <th aria-sort="none"><button>£m</button></th>
+          <th aria-sort="descending"><button>Pts</button></th>
+          <th aria-sort="none"><button>Form</button></th>
+          <th aria-sort="none"><button>Mins</button></th>
+          <th aria-sort="none"><button>G</button></th>
+          <th aria-sort="none"><button>A</button></th>
+          <th aria-sort="none"><button>xG</button></th>
+          <th aria-sort="none"><button>xA</button></th>
+          <th aria-sort="none"><button>xGI</button></th>
+          <th aria-sort="none"><button>Sel%</button></th>
+        </tr></thead>
+        <tbody>
+          {% for p in squad %}
+          <tr>
+            <td class="player" title="{{ p.full_name }}">{{ p.name }}</td>
+            <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
+            <td>{{ '%.1f'|format(p.price) }}</td>
+            <td>{{ p.points }}</td>
+            <td>{{ '%.1f'|format(p.form) }}</td>
+            <td>{{ p.minutes }}</td>
+            <td>{{ p.goals }}</td>
+            <td>{{ p.assists }}</td>
+            <td>{{ '%.2f'|format(p.xg) }}</td>
+            <td>{{ '%.2f'|format(p.xa) }}</td>
+            <td>{{ '%.2f'|format(p.xgi) }}</td>
+            <td>{{ '%.1f'|format(p.selected) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  Data from the Fantasy Premier League API · rebuilt automatically via GitHub Actions.<br>
+  Raw data: <code>data/itfc.json</code> · A reference page, not affiliated with Ipswich Town FC.
+</footer>
+
+<script id="itfc-data" type="application/json">{{ data_json|safe }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  var DATA = JSON.parse(document.getElementById('itfc-data').textContent);
+  var C = {blue:'#16346b',bright:'#3f7ddb',red:'#d1352b',amber:'#e0a53b',green:'#2e9e5b',ink:'#0f1826',muted:'#5b6779',line:'#eef1f7'};
+  var FDR = {1:'#2e9e5b',2:'#4bb673',3:'#e0a53b',4:'#e06a3b',5:'#d1483f'};
+  var POS = {GKP:'#8a63d2',DEF:'#2e9e5b',MID:'#2f6fd1',FWD:'#d1483f'};
+
+  // ---- tabs ----
+  var tabs = [].slice.call(document.querySelectorAll('[role="tab"]'));
+  var chartsBuilt = false;
+  function select(tab){
+    tabs.forEach(function(t){
+      var on = t===tab;
+      t.setAttribute('aria-selected', on?'true':'false');
+      t.tabIndex = on?0:-1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    if(tab.id==='tab-charts' && !chartsBuilt){ chartsBuilt = true; buildCharts(); }
+  }
+  tabs.forEach(function(tab,i){
+    tab.addEventListener('click', function(){ select(tab); });
+    tab.addEventListener('keydown', function(e){
+      var n;
+      if(e.key==='ArrowRight') n = tabs[(i+1)%tabs.length];
+      else if(e.key==='ArrowLeft') n = tabs[(i-1+tabs.length)%tabs.length];
+      if(n){ e.preventDefault(); n.focus(); select(n); }
+    });
+  });
+
+  // ---- charts ----
+  function showNote(id, msg){
+    document.getElementById('c-'+id).style.display='none';
+    var n=document.getElementById('n-'+id); n.hidden=false; n.textContent=msg;
+  }
+  function baseOpts(extra){
+    var o={responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:12,font:{size:12}}}},
+      scales:{x:{grid:{color:C.line},ticks:{font:{size:11}}},
+              y:{grid:{color:C.line},ticks:{font:{size:11}},beginAtZero:true}}};
+    return Object.assign(o, extra||{});
+  }
+
+  function buildCharts(){
+    if(!window.Chart){ ['points','goals','xg','xga','scatter','fdr'].forEach(function(id){showNote(id,'Charts library did not load.');}); return; }
+    Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+    Chart.defaults.color = C.muted;
+
+    var gw = DATA.by_gameweek || [];
+    var labels = gw.map(function(d){return 'GW'+d.gw;});
+
+    // Points progression
+    if(gw.length){
+      new Chart(document.getElementById('c-points'), {type:'line',
+        data:{labels:labels,datasets:[{label:'Points',data:gw.map(function(d){return d.cum_points;}),
+          borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:3}]},
+        options:baseOpts()});
+    } else showNote('points','No matches played yet.');
+
+    // Goals by gameweek
+    if(gw.length){
+      new Chart(document.getElementById('c-goals'), {type:'bar',
+        data:{labels:labels,datasets:[
+          {label:'For',data:gw.map(function(d){return d.gf;}),backgroundColor:C.blue},
+          {label:'Against',data:gw.map(function(d){return d.ga;}),backgroundColor:C.red}]},
+        options:baseOpts()});
+    } else showNote('goals','No matches played yet.');
+
+    // helper: cumulative series skipping nulls
+    function cum(key){var t=0;return gw.map(function(d){if(d[key]!=null)t+=d[key];return +t.toFixed(2);});}
+
+    // Attack: goals vs xG (cumulative)
+    var hasXg = gw.some(function(d){return d.team_xg!=null;});
+    if(gw.length && hasXg){
+      new Chart(document.getElementById('c-xg'), {type:'line',
+        data:{labels:labels,datasets:[
+          {label:'Goals',data:cum('gf'),borderColor:C.blue,tension:.25,pointRadius:2},
+          {label:'xG',data:cum('team_xg'),borderColor:C.amber,borderDash:[6,4],tension:.25,pointRadius:2}]},
+        options:baseOpts()});
+    } else showNote('xg', gw.length?'xG not available yet.':'No matches played yet.');
+
+    // Defence: conceded vs xGA (cumulative)
+    var hasXga = gw.some(function(d){return d.team_xga!=null;});
+    if(gw.length && hasXga){
+      new Chart(document.getElementById('c-xga'), {type:'line',
+        data:{labels:labels,datasets:[
+          {label:'Conceded',data:cum('ga'),borderColor:C.red,tension:.25,pointRadius:2},
+          {label:'xG against',data:cum('team_xga'),borderColor:C.muted,borderDash:[6,4],tension:.25,pointRadius:2}]},
+        options:baseOpts()});
+    } else showNote('xga', gw.length?'xG against not available yet.':'No matches played yet.');
+
+    // Squad xG vs xA scatter
+    var players = (DATA.squad||[]).filter(function(p){return p.minutes>0 && (p.xg>0 || p.xa>0);});
+    if(players.length){
+      var byPos = {};
+      players.forEach(function(p){(byPos[p.pos]=byPos[p.pos]||[]).push({x:p.xg,y:p.xa,name:p.name});});
+      var sets = Object.keys(byPos).map(function(pos){
+        return {label:pos,data:byPos[pos],backgroundColor:POS[pos]||C.blue,pointRadius:5,pointHoverRadius:7};});
+      new Chart(document.getElementById('c-scatter'), {type:'scatter',
+        data:{datasets:sets},
+        options:baseOpts({
+          plugins:{legend:{labels:{boxWidth:12}},tooltip:{callbacks:{label:function(ctx){
+            return ctx.raw.name+' — xG '+ctx.raw.x.toFixed(2)+', xA '+ctx.raw.y.toFixed(2);}}}},
+          scales:{x:{title:{display:true,text:'xG'},grid:{color:C.line},beginAtZero:true},
+                  y:{title:{display:true,text:'xA'},grid:{color:C.line},beginAtZero:true}}})});
+    } else showNote('scatter','No player minutes yet.');
+
+    // Upcoming difficulty
+    var up = DATA.upcoming || [];
+    if(up.length){
+      new Chart(document.getElementById('c-fdr'), {type:'bar',
+        data:{labels:up.map(function(f){return f.opponent_short+(f.home?' (H)':' (A)');}),
+          datasets:[{label:'Difficulty',data:up.map(function(f){return f.difficulty||0;}),
+            backgroundColor:up.map(function(f){return FDR[f.difficulty]||C.muted;})}]},
+        options:baseOpts({plugins:{legend:{display:false}},
+          scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:5,ticks:{stepSize:1}}}})});
+    } else showNote('fdr','No upcoming fixtures scheduled.');
+  }
+
+  // ---- squad table sort (progressive enhancement) ----
+  var table = document.getElementById('squad');
+  if(table){
+    var heads = table.tHead.rows[0].cells, body = table.tBodies[0];
+    function val(row,i){var t=row.cells[i].textContent.trim().replace('%','');var n=parseFloat(t);return isNaN(n)?t.toLowerCase():n;}
+    [].forEach.call(heads,function(th,i){
+      th.querySelector('button').addEventListener('click',function(){
+        var dir = th.getAttribute('aria-sort')==='ascending'?'descending':'ascending';
+        [].forEach.call(heads,function(h){h.setAttribute('aria-sort','none');});
+        th.setAttribute('aria-sort',dir);
+        var rows=[].slice.call(body.rows);
+        rows.sort(function(a,b){var x=val(a,i),y=val(b,i);return x<y?(dir==='ascending'?-1:1):x>y?(dir==='ascending'?1:-1):0;});
+        rows.forEach(function(r){body.appendChild(r);});
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

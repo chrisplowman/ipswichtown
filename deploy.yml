@@ -1,0 +1,54 @@
+name: Build & deploy Ipswich stats
+
+on:
+  # Refresh a few times a day (UTC). Matchdays are covered by the 3-hourly cadence.
+  schedule:
+    - cron: "0 */3 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:        # lets you trigger a rebuild by hand from the Actions tab
+
+# Least-privilege permissions needed to publish Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deploys at once; don't cancel an in-flight one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch data
+        run: python ingest.py
+
+      - name: Build site
+        run: python build.py
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
