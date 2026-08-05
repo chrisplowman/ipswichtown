@@ -68,12 +68,22 @@ python build.py       # writes site/index.html
 # then open site/index.html
 ```
 
+### Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Covers the pure helper functions in `ingest.py` and `build.py` (name
+normalisation, date formatting, win-probability modelling, etc.).
+
 ## Customising the look
 
 The entire visual design is driven by CSS variables in one place: the `:root`
-block at the top of the `<style>` section in `templates/index.html.j2`. The token
-names mirror `DESIGN.md` (`--primary`, `--brand-navy`, `--surface`, `--hairline`,
-`--radius-lg`, `--space-md`, and so on).
+block at the top of the `<style>` section in `templates/index.html.j2`
+(`--primary`, `--brand-navy`, `--surface`, `--hairline`, `--radius-lg`,
+`--space-md`, and so on).
 
 - **Change a colour, radius, spacing value or font once in `:root`** and it applies
   everywhere it's used.
