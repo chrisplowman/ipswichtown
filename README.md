@@ -68,6 +68,24 @@ python build.py       # writes site/index.html
 # then open site/index.html
 ```
 
+## Customising the look
+
+The entire visual design is driven by CSS variables in one place: the `:root`
+block at the top of the `<style>` section in `templates/index.html.j2`. The token
+names mirror `DESIGN.md` (`--primary`, `--brand-navy`, `--surface`, `--hairline`,
+`--radius-lg`, `--space-md`, and so on).
+
+- **Change a colour, radius, spacing value or font once in `:root`** and it applies
+  everywhere it's used.
+- **The charts read the same variables at runtime** (via `getComputedStyle`), so
+  recolouring `--primary`, `--win`/`--draw`/`--loss` or the `--fdr-*` tokens
+  restyles the graphs, shot map and rank bars too — no need to touch the JavaScript.
+- Football-specific colours are their own tokens (`--win`, `--draw`, `--loss`,
+  `--fdr-1`…`--fdr-5`) so you can retheme results and difficulty without disturbing
+  the brand palette.
+
+After any edit, run `python build.py` and open `site/index.html` to preview.
+
 ## Extending it
 
 - **More stats / shot maps:** add an Understat or FotMob fetch to `ingest.py`
