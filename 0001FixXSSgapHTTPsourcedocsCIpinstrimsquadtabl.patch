@@ -1,0 +1,311 @@
+From 0f82d0ea9e113c51faa65f6e2521a6ca6da28553 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 5 Aug 2026 15:12:04 +0000
+Subject: [PATCH] Fix XSS gap, HTTP source, docs, CI pins; trim squad table;
+ add tests
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Escape sh.result (not just sh.player) in the shot-map tooltip builder,
+  closing an inconsistent-escaping gap with untrusted Understat data.
+- Fetch ClubElo ratings over https instead of http.
+- Remove README's dangling reference to a nonexistent DESIGN.md.
+- Restore GitHub Actions to their previously-newer versions (checkout@v5,
+  setup-python@v6, upload-pages-artifact@v4, deploy-pages@v5).
+- Add .gitignore for generated data/ and site/ output.
+- Cap requirements.txt to avoid unreviewed major-version bumps on scheduled
+  CI runs; add requirements-dev.txt + pytest coverage for the pure helper
+  functions in ingest.py and build.py.
+- Remove the £m, Pts, Form and Sel% columns from the Squad table.
+---
+ .github/workflows/deploy.yml |  8 ++---
+ .gitignore                   |  4 +++
+ README.md                    | 16 +++++++--
+ ingest.py                    |  2 +-
+ requirements-dev.txt         |  2 ++
+ requirements.txt             |  6 ++--
+ templates/index.html.j2      | 10 ++----
+ tests/test_build.py          | 44 +++++++++++++++++++++++
+ tests/test_ingest.py         | 68 ++++++++++++++++++++++++++++++++++++
+ 9 files changed, 141 insertions(+), 19 deletions(-)
+ create mode 100644 .gitignore
+ create mode 100644 requirements-dev.txt
+ create mode 100644 tests/test_build.py
+ create mode 100644 tests/test_ingest.py
+
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index d2a8978..594e728 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -23,9 +23,9 @@ jobs:
+   build:
+     runs-on: ubuntu-latest
+     steps:
+-      - uses: actions/checkout@v4
++      - uses: actions/checkout@v5
+ 
+-      - uses: actions/setup-python@v5
++      - uses: actions/setup-python@v6
+         with:
+           python-version: "3.12"
+           cache: pip
+@@ -39,7 +39,7 @@ jobs:
+       - name: Build site
+         run: python build.py
+ 
+-      - uses: actions/upload-pages-artifact@v3
++      - uses: actions/upload-pages-artifact@v4
+         with:
+           path: site
+ 
+@@ -51,4 +51,4 @@ jobs:
+       url: ${{ steps.deployment.outputs.page_url }}
+     steps:
+       - id: deployment
+-        uses: actions/deploy-pages@v4
++        uses: actions/deploy-pages@v5
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..769bb81
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++data/
++site/
++__pycache__/
++*.pyc
+diff --git a/README.md b/README.md
+index 2fb61d4..4af3071 100644
+--- a/README.md
++++ b/README.md
+@@ -68,12 +68,22 @@ python build.py       # writes site/index.html
+ # then open site/index.html
+ ```
+ 
++### Tests
++
++```bash
++pip install -r requirements-dev.txt
++pytest
++```
++
++Covers the pure helper functions in `ingest.py` and `build.py` (name
++normalisation, date formatting, win-probability modelling, etc.).
++
+ ## Customising the look
+ 
+ The entire visual design is driven by CSS variables in one place: the `:root`
+-block at the top of the `<style>` section in `templates/index.html.j2`. The token
+-names mirror `DESIGN.md` (`--primary`, `--brand-navy`, `--surface`, `--hairline`,
+-`--radius-lg`, `--space-md`, and so on).
++block at the top of the `<style>` section in `templates/index.html.j2`
++(`--primary`, `--brand-navy`, `--surface`, `--hairline`, `--radius-lg`,
++`--space-md`, and so on).
+ 
+ - **Change a colour, radius, spacing value or font once in `:root`** and it applies
+   everywhere it's used.
+diff --git a/ingest.py b/ingest.py
+index 4eb991f..650ac99 100644
+--- a/ingest.py
++++ b/ingest.py
+@@ -427,7 +427,7 @@ def fetch_h2h_history():
+ def fetch_clubelo_elos():
+     """Current Elo rating for every club, from ClubElo's dated CSV endpoint."""
+     today = datetime.now(timezone.utc).date().isoformat()
+-    text = get_text(f"http://api.clubelo.com/{today}")
++    text = get_text(f"https://api.clubelo.com/{today}")
+     elos = {}
+     for r in csv.DictReader(io.StringIO(text)):
+         club, elo = r.get("Club"), r.get("Elo")
+diff --git a/requirements-dev.txt b/requirements-dev.txt
+new file mode 100644
+index 0000000..a266747
+--- /dev/null
++++ b/requirements-dev.txt
+@@ -0,0 +1,2 @@
++-r requirements.txt
++pytest>=8.0
+diff --git a/requirements.txt b/requirements.txt
+index b06ebd7..3b7d88a 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -1,3 +1,3 @@
+-requests>=2.31
+-jinja2>=3.1
+-tzdata
++requests>=2.31,<3
++jinja2>=3.1,<4
++tzdata<2026
+diff --git a/templates/index.html.j2 b/templates/index.html.j2
+index ef32a91..80dde05 100644
+--- a/templates/index.html.j2
++++ b/templates/index.html.j2
+@@ -480,30 +480,24 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
+         <thead><tr>
+           <th class="player" aria-sort="none"><button>Player</button></th>
+           <th class="pos" aria-sort="none"><button>Pos</button></th>
+-          <th aria-sort="none"><button>£m</button></th>
+-          <th aria-sort="descending"><button>Pts</button></th>
+-          <th aria-sort="none"><button>Form</button></th>
+           <th aria-sort="none"><button>Mins</button></th>
+           <th aria-sort="none"><button>G</button></th>
+           <th aria-sort="none"><button>A</button></th>
+           <th aria-sort="none"><button>xG</button></th>
+           <th aria-sort="none"><button>xA</button></th>
+           <th aria-sort="none"><button>xGI</button></th>
+-          <th aria-sort="none"><button>Sel%</button></th>
+         </tr></thead>
+         <tbody>
+           {% for p in squad %}
+           <tr data-min="{{ p.minutes }}">
+             <td class="player" title="{{ p.full_name }}">{{ p.name }}</td>
+             <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
+-            <td>{{ '%.1f'|format(p.price) }}</td><td>{{ p.points }}</td>
+-            <td>{{ '%.1f'|format(p.form) }}</td><td>{{ p.minutes }}</td>
++            <td>{{ p.minutes }}</td>
+             <td class="per90" data-raw="{{ p.goals }}" data-dec="0">{{ p.goals }}</td>
+             <td class="per90" data-raw="{{ p.assists }}" data-dec="0">{{ p.assists }}</td>
+             <td class="per90" data-raw="{{ p.xg }}" data-dec="2">{{ '%.2f'|format(p.xg) }}</td>
+             <td class="per90" data-raw="{{ p.xa }}" data-dec="2">{{ '%.2f'|format(p.xa) }}</td>
+             <td class="per90" data-raw="{{ p.xgi }}" data-dec="2">{{ '%.2f'|format(p.xgi) }}</td>
+-            <td>{{ '%.1f'|format(p.selected) }}</td>
+           </tr>
+           {% endfor %}
+         </tbody>
+@@ -719,7 +713,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
+       var cx=sh.x*W, cy=sh.y*H, r=2+Math.sqrt(sh.xg)*7;
+       var col=SHOT[sh.result]||'#9aa6b8';
+       s+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+col+'" fill-opacity="0.78" stroke="#0f1826" stroke-opacity="0.25" stroke-width="0.3">'+
+-         '<title>'+esc(sh.player)+" · "+sh.minute+"' · xG "+sh.xg.toFixed(2)+' · '+sh.result+'</title></circle>';
++         '<title>'+esc(sh.player)+" · "+sh.minute+"' · xG "+sh.xg.toFixed(2)+' · '+esc(sh.result)+'</title></circle>';
+     });
+     s+='</svg>'; return s;
+   }
+diff --git a/tests/test_build.py b/tests/test_build.py
+new file mode 100644
+index 0000000..b42cc90
+--- /dev/null
++++ b/tests/test_build.py
+@@ -0,0 +1,44 @@
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++
++from build import _ord, fmt_kickoff, fmt_updated
++
++
++def test_ord_suffixes():
++    assert _ord(1) == "st"
++    assert _ord(2) == "nd"
++    assert _ord(3) == "rd"
++    assert _ord(4) == "th"
++    assert _ord(11) == "th"
++    assert _ord(12) == "th"
++    assert _ord(13) == "th"
++    assert _ord(21) == "st"
++    assert _ord(22) == "nd"
++    assert _ord(23) == "rd"
++
++
++def test_fmt_kickoff_none():
++    assert fmt_kickoff(None) == "TBC"
++    assert fmt_kickoff("") == "TBC"
++
++
++def test_fmt_kickoff_malformed():
++    assert fmt_kickoff("not-a-date") == "TBC"
++
++
++def test_fmt_kickoff_valid():
++    out = fmt_kickoff("2026-08-22T14:00:00Z")
++    assert "22" in out
++    assert "Aug" in out
++
++
++def test_fmt_updated_valid():
++    out = fmt_updated("2026-08-05T12:34:56+00:00")
++    assert "2026" in out
++    assert "UTC" in out
++
++
++def test_fmt_updated_malformed_returns_input():
++    assert fmt_updated("not-a-date") == "not-a-date"
+diff --git a/tests/test_ingest.py b/tests/test_ingest.py
+new file mode 100644
+index 0000000..5628546
+--- /dev/null
++++ b/tests/test_ingest.py
+@@ -0,0 +1,68 @@
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++
++from ingest import to_float, _norm, canon, simplify_pos, win_probs, _fbd_iso
++
++
++def test_to_float_valid():
++    assert to_float("1.236") == 1.24
++    assert to_float(3) == 3.0
++
++
++def test_to_float_invalid():
++    assert to_float(None) == 0.0
++    assert to_float("not-a-number") == 0.0
++
++
++def test_norm_strips_club_suffixes_and_punctuation():
++    assert _norm("Ipswich Town FC") == "ipswichtown"
++    assert _norm("Nott'm Forest") == "nottmforest"
++    assert _norm("Brighton & Hove Albion") == "brightonhovealbion"
++
++
++def test_canon_known_aliases_collapse_to_same_key():
++    assert canon("Man City") == canon("Manchester City") == "mancity"
++    assert canon("Spurs") == canon("Tottenham Hotspur") == "tottenham"
++
++
++def test_canon_unknown_name_falls_back_to_normalised():
++    assert canon("Some New Club FC") == _norm("Some New Club FC")
++
++
++def test_simplify_pos():
++    assert simplify_pos("GK") == "GKP"
++    assert simplify_pos("D") == "DEF"
++    assert simplify_pos("F") == "FWD"
++    assert simplify_pos("S") == "FWD"
++    assert simplify_pos("M") == "MID"
++    assert simplify_pos("") == "MID"
++
++
++def test_win_probs_sums_to_100():
++    p = win_probs(1500, 1500, home=True)
++    assert p["ipswich"] + p["draw"] + p["opponent"] == 100
++
++
++def test_win_probs_home_advantage():
++    equal_home = win_probs(1500, 1500, home=True)
++    equal_away = win_probs(1500, 1500, home=False)
++    assert equal_home["ipswich"] > equal_away["ipswich"]
++
++
++def test_win_probs_stronger_team_favoured():
++    p = win_probs(1700, 1300, home=True)
++    assert p["ipswich"] > p["opponent"]
++
++
++def test_fbd_iso_two_digit_year():
++    assert _fbd_iso("22/08/26") == "2026-08-22"
++
++
++def test_fbd_iso_four_digit_year():
++    assert _fbd_iso("22/08/2026") == "2026-08-22"
++
++
++def test_fbd_iso_blank_passthrough():
++    assert _fbd_iso("") == ""
+-- 
+2.43.0
+
