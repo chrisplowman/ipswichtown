@@ -150,6 +150,27 @@
   .formdots i{width:18px;height:18px;border-radius:4px;color:#fff;font-size:11px;font-weight:700;font-family:"Archivo";display:flex;align-items:center;justify-content:center}
   .formdots i.W{background:var(--easy)}.formdots i.D{background:var(--mid)}.formdots i.L{background:var(--hard2)}
 
+  /* win probability + head-to-head (inside next-opponent card) */
+  .winprob{flex-basis:100%;margin-top:6px}
+  .wp-bar{display:flex;height:26px;border-radius:6px;overflow:hidden;font-family:"IBM Plex Mono";font-size:12px;font-weight:600;color:#fff}
+  .wp-bar span{display:flex;align-items:center;justify-content:center;min-width:30px}
+  .wp-w{background:var(--blue)}.wp-d{background:#9aa6b8}.wp-l{background:var(--hard2)}
+  .wp-key{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+  .h2h{flex-basis:100%;display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;font-size:13px}
+  .h2h-label{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .h2h-rec{font-family:"IBM Plex Mono";font-weight:600}
+  .h2h-dots{display:flex;gap:4px}
+  .h2h-dots i{width:20px;height:20px;border-radius:4px;color:#fff;font-size:11px;font-weight:700;font-family:"Archivo";display:flex;align-items:center;justify-content:center}
+  .h2h-dots i.W{background:var(--easy)}.h2h-dots i.D{background:var(--mid)}.h2h-dots i.L{background:var(--hard2)}
+
+  /* team news */
+  ul.news li{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #eef1f7}
+  ul.news li:last-child{border-bottom:0}
+  ul.news .nm{flex:1;font-weight:500}
+  ul.news .reason{font-size:12.5px;color:var(--muted);font-family:"IBM Plex Mono"}
+  ul.news .tag{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:5px;color:#fff;background:var(--muted);white-space:nowrap}
+  ul.news .tag.out{background:var(--hard2)}ul.news .tag.doubt{background:var(--mid)}
+
   /* league-context rank bars */
   .ranks{display:grid;grid-template-columns:1fr 1fr;gap:12px 26px}
   .rankrow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
@@ -229,7 +250,7 @@
       {% else %}<div class="board empty"><div class="row">No upcoming fixtures scheduled yet.</div></div>{% endif %}
     </div>
 
-    {% if next_opponent and (next_opponent.position or next_opponent.xg_pg is not none) %}
+    {% if next_opponent and (next_opponent.position or next_opponent.xg_pg is not none or next_opponent.prob or next_opponent.h2h_record) %}
     <div class="block">
       <p class="label">Next opponent</p>
       <div class="oppcard">
@@ -245,6 +266,42 @@
           {% if next_opponent.xg_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xg_pg) }}</div><div class="k">xG / game</div></div>{% endif %}
           {% if next_opponent.xga_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xga_pg) }}</div><div class="k">xGA / game</div></div>{% endif %}
         </div>
+        {% if next_opponent.prob %}
+        <div class="winprob">
+          <div class="wp-bar">
+            <span class="wp-w" style="width:{{ next_opponent.prob.ipswich }}%">{{ next_opponent.prob.ipswich }}%</span>
+            <span class="wp-d" style="width:{{ next_opponent.prob.draw }}%">{{ next_opponent.prob.draw }}%</span>
+            <span class="wp-l" style="width:{{ next_opponent.prob.opponent }}%">{{ next_opponent.prob.opponent }}%</span>
+          </div>
+          <div class="wp-key"><span>Ipswich win</span><span>Draw</span><span>{{ next_opponent.short }} win</span></div>
+        </div>
+        {% endif %}
+        {% if next_opponent.h2h_record %}
+        <div class="h2h">
+          <span class="h2h-label">Recent meetings</span>
+          <span class="h2h-rec">{{ next_opponent.h2h_record.w }}W {{ next_opponent.h2h_record.d }}D {{ next_opponent.h2h_record.l }}L</span>
+          <span class="h2h-dots">{% for m in next_opponent.h2h %}<i class="{{ m.result }}" title="{{ m.date }} {{ '(H)' if m.home else '(A)' }} {{ m.score }}">{{ m.result }}</i>{% endfor %}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if team_news %}
+    <div class="block">
+      <p class="label">Team news</p>
+      <div class="card">
+        <ul class="list news">
+          {% for t in team_news %}
+          <li>
+            <span class="nm">{{ t.player }}</span>
+            <span class="reason">{{ t.reason or t.type or 'Unavailable' }}</span>
+            {% set out = (t.type and ('miss' in t.type|lower or 'out' in t.type|lower)) or (t.reason and 'suspend' in t.reason|lower) %}
+            {% set doubt = t.type and ('question' in t.type|lower or 'doubt' in t.type|lower) %}
+            <span class="tag {{ 'out' if out else 'doubt' if doubt else '' }}">{{ t.type or 'Doubt' }}</span>
+          </li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
     {% endif %}
@@ -438,7 +495,7 @@
 </main>
 
 <footer class="wrap">
-  Data from the FPL API, Understat (xG &amp; shots), ESPN (table) and TheSportsDB (badges) · rebuilt automatically via GitHub Actions.<br>
+  Data from the FPL API, Understat (xG &amp; shots), ESPN (table), TheSportsDB (badges) and API-Football (team news, H2H, win probability) · rebuilt automatically via GitHub Actions.<br>
   Raw data: <code>data/itfc.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>
 
