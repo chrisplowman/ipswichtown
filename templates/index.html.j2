@@ -295,10 +295,8 @@
           {% for t in team_news %}
           <li>
             <span class="nm">{{ t.player }}</span>
-            <span class="reason">{{ t.reason or t.type or 'Unavailable' }}</span>
-            {% set out = (t.type and ('miss' in t.type|lower or 'out' in t.type|lower)) or (t.reason and 'suspend' in t.reason|lower) %}
-            {% set doubt = t.type and ('question' in t.type|lower or 'doubt' in t.type|lower) %}
-            <span class="tag {{ 'out' if out else 'doubt' if doubt else '' }}">{{ t.type or 'Doubt' }}</span>
+            <span class="reason">{{ t.news }}</span>
+            <span class="tag {{ t.sev }}">{{ t.tag }}</span>
           </li>
           {% endfor %}
         </ul>
@@ -495,7 +493,7 @@
 </main>
 
 <footer class="wrap">
-  Data from the FPL API, Understat (xG &amp; shots), ESPN (table), TheSportsDB (badges) and API-Football (team news, H2H, win probability) · rebuilt automatically via GitHub Actions.<br>
+  Data from the FPL API (squad &amp; team news), Understat (xG &amp; shots), ESPN (table), TheSportsDB (badges), football-data.co.uk (head-to-head) and ClubElo (win probability) · rebuilt automatically via GitHub Actions.<br>
   Raw data: <code>data/itfc.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>
 
