@@ -3,7 +3,7 @@
 A static, auto-updating reference page for Ipswich Town's Premier League season,
 organised into four tabs:
 
-- **Overview** — next fixture, a **next-opponent preview** (their position, form, xG, plus **win probability** and **head-to-head** when API-Football is enabled), a **team-news** panel (injuries/suspensions), season record, upcoming fixtures with difficulty, recent results (with club badges)
+- **Overview** — next fixture, a **next-opponent preview** (their position, form, xG, plus a modelled **win probability** and recent **head-to-head**), a **team-news** panel (injuries/suspensions/doubts), season record, upcoming fixtures with difficulty, recent results (with club badges)
 - **Table** — the full Premier League table, Ipswich highlighted, European and relegation edges marked
 - **Charts** — points progression, goals by gameweek, goals vs xG (attack and defence), non-penalty finishing, a **league-wide xG-vs-xGA scatter** of all 20 clubs, a **"how Ipswich compare"** panel ranking them against the league on each measure, an interactive **shot map with a match report** per recent match, and the fixture-difficulty run
 - **Squad** — full player stats with a **per-90 toggle**, plus **player profile radars** showing each player's percentile ranks vs positional peers league-wide, with a compare-two-players mode
@@ -23,9 +23,14 @@ if one is unavailable on a given run, the page still builds from the rest.
   scatter, the rank comparison, and the player percentile radars.
 - **ESPN** (public endpoint) — the live Premier League table.
 - **TheSportsDB** (public test key) — club badges.
-- **API-Football** *(optional, needs a free key)* — team news (injuries/suspensions),
-  head-to-head, and win-probability predictions on the next-opponent card. Skipped
-  automatically if no key is set.
+- **FPL player flags** — team news (injuries, suspensions, doubts) from each player's
+  status and news fields.
+- **football-data.co.uk** — historical results (recent PL and Championship seasons)
+  for the next-opponent head-to-head.
+- **ClubElo** — club Elo ratings, used to model the next-match win probability.
+
+Every source is free and keyless. Each is wrapped so that if one is unavailable on a
+given run, the page still builds from the rest.
 
 No keys or accounts are needed. Understat is parsed from its embedded page JSON with
 the standard library, so there are no extra dependencies beyond `requests` and `jinja2`.
@@ -54,26 +59,10 @@ workflow**.
 > Note: GitHub disables scheduled workflows after ~60 days of no repo activity.
 > Any push (or a manual run) re-arms the schedule.
 
-### Optional: team news, head-to-head and win probability (API-Football)
-
-These extras come from API-Football, which needs a free key. Without it the page
-builds fine and simply omits those sections.
-
-1. Register free at **api-sports.io** (or via RapidAPI) to get an API key. The free
-   tier is 100 requests/day, which is ample — a run uses about five calls.
-2. In the repo, go to **Settings → Secrets and variables → Actions → New repository
-   secret**. Name it `API_FOOTBALL_KEY`, paste the key, save. The secret is never
-   committed, so it stays private even in a public repo.
-3. The next run picks it up automatically.
-
-> Using RapidAPI instead of api-sports.io direct? Change `AF_BASE` and the request
-> header in `ingest.py` to RapidAPI's host/key headers.
-
 ## Run it locally
 
 ```bash
 pip install -r requirements.txt
-export API_FOOTBALL_KEY=your_key   # optional — omit to skip team news / H2H / win prob
 python ingest.py      # writes data/itfc.json
 python build.py       # writes site/index.html
 # then open site/index.html

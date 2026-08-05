@@ -15,7 +15,10 @@ Run:  python ingest.py
 """
 
 import codecs
+import csv
+import io
 import json
+import math
 import os
 import re
 import sys
@@ -29,9 +32,9 @@ UNDERSTAT_SEASON = "2026"          # Understat labels 2026/27 as "2026"
 ESPN_SEASON = "2026"
 UNDERSTAT_TEAM_SLUG = "Ipswich_Town"
 TSDB_PL_LEAGUE_ID = "4328"         # English Premier League on TheSportsDB
-AF_BASE = "https://v3.football.api-sports.io"   # API-Football (api-sports.io direct)
-AF_LEAGUE = 39                     # Premier League on API-Football
-AF_SEASON = 2026                   # 2026/27
+FBD_SEASONS = ["2223", "2324", "2425", "2526"]  # football-data.co.uk season codes
+FBD_DIVS = ["E0", "E1"]            # Premier League, Championship
+CLUBELO_HFA = 65                   # home advantage, in Elo points
 SHOT_MAP_MATCHES = 5               # how many recent matches to keep shot maps for
 TEAM_NAME_MATCH = "ipswich"
 OUT = Path("data/itfc.json")
@@ -142,8 +145,28 @@ def fetch_fpl():
                       "clean_sheets": p["clean_sheets"], "selected": to_float(p["selected_by_percent"])})
     squad.sort(key=lambda x: (-x["points"], -x["minutes"]))
 
+    # team news — FPL flags injuries/suspensions/doubts via status + news
+    status_label = {"i": ("Injured", "out"), "s": ("Suspended", "out"),
+                    "u": ("Unavailable", "out"), "d": ("Doubtful", "doubt"),
+                    "n": ("Unavailable", "out")}
+    team_news = []
+    for p in boot["elements"]:
+        if p["team"] != tid:
+            continue
+        status = p.get("status", "a")
+        news = (p.get("news") or "").strip()
+        if status == "a" and not news:
+            continue
+        label, sev = status_label.get(status, ("Doubtful", "doubt"))
+        chance = p.get("chance_of_playing_next_round")
+        if sev == "out" and chance is not None and 0 < chance < 100:
+            sev = "doubt"  # flagged but has a chance of featuring
+        team_news.append({"player": p["web_name"], "news": news or label,
+                          "tag": label, "sev": sev})
+    team_news.sort(key=lambda t: 0 if t["sev"] == "out" else 1)
+
     return {"teams": teams, "ipswich": ipswich, "tid": tid,
-            "current": current, "next": nxt, "summary": summary,
+            "current": current, "next": nxt, "summary": summary, "team_news": team_news,
             "by_gameweek": by_gameweek, "upcoming": upcoming, "results": results, "squad": squad}
 
 
@@ -336,187 +359,98 @@ def fetch_understat_league():
 
 
 # --------------------------------------------------------------------------- #
-#  API-Football — team news, head-to-head, win probability (needs a free key)  #
-#  Set the API_FOOTBALL_KEY env var (a GitHub Actions secret). Without it this  #
-#  source is simply skipped and the page builds from everything else.           #
+#  Keyless team news / head-to-head / win probability                          #
+#  - team news is built from FPL player flags (in fetch_fpl)                    #
+#  - head-to-head from football-data.co.uk historical CSVs                      #
+#  - win probability modelled from ClubElo ratings                             #
 # --------------------------------------------------------------------------- #
-AF_BASE = "https://v3.football.api-sports.io"
-AF_LEAGUE = 39            # Premier League on API-Football
-AF_SEASON = "2026"        # 2026/27
+CANON = {  # collapse club-name variants (FPL / football-data / ClubElo) to one key
+    "man city": "mancity", "manchester city": "mancity",
+    "man united": "manutd", "man utd": "manutd", "manchester united": "manutd",
+    "nott'm forest": "forest", "nottingham forest": "forest", "forest": "forest",
+    "spurs": "tottenham", "tottenham": "tottenham", "tottenham hotspur": "tottenham",
+    "wolves": "wolves", "wolverhampton": "wolves", "wolverhampton wanderers": "wolves",
+    "west ham": "westham", "west ham united": "westham",
+    "newcastle": "newcastle", "newcastle united": "newcastle", "newcastle utd": "newcastle",
+    "brighton": "brighton", "brighton & hove albion": "brighton", "brighton and hove albion": "brighton",
+    "sheffield united": "sheffutd", "sheffield utd": "sheffutd", "sheff united": "sheffutd",
+    "leeds": "leeds", "leeds united": "leeds",
+    "west brom": "westbrom", "west bromwich albion": "westbrom",
+    "qpr": "qpr", "queens park rangers": "qpr",
+}
 
 
-def af_get(path, params):
-    key = os.environ.get("API_FOOTBALL_KEY")
-    if not key:
-        raise RuntimeError("API_FOOTBALL_KEY not set")
-    r = requests.get(f"{AF_BASE}/{path}", params=params,
-                     headers={"x-apisports-key": key, **UA}, timeout=TIMEOUT)
-    r.raise_for_status()
-    return r.json().get("response", [])
+def canon(name):
+    k = (name or "").strip().lower()
+    if k in CANON:
+        return CANON[k]
+    n = _norm(name)
+    return CANON.get(n, n)
 
 
-def _af_pct(s):
-    try:
-        return int(str(s).replace("%", "").strip())
-    except (TypeError, ValueError):
-        return None
-
-
-def fetch_api_football():
-    out = {"team_news": [], "h2h": [], "h2h_summary": None, "win_prob": None}
-
-    teams = af_get("teams", {"league": AF_LEAGUE, "season": AF_SEASON})
-    ips = next((t for t in teams if TEAM_NAME_MATCH in t["team"]["name"].lower()), None)
-    if not ips:
-        raise RuntimeError("Ipswich not found in API-Football PL teams")
-    ips_id = ips["team"]["id"]
-
-    nxt = af_get("fixtures", {"team": ips_id, "next": 1})
-    if not nxt:
-        return out
-    fx = nxt[0]
-    fid = fx["fixture"]["id"]
-    ips_home = fx["teams"]["home"]["id"] == ips_id
-    opp_id = (fx["teams"]["away"] if ips_home else fx["teams"]["home"])["id"]
-
-    # team news: prefer injuries for the exact next fixture, else recent season ones
-    inj = []
-    try:
-        inj = [i for i in af_get("injuries", {"fixture": fid}) if i["team"]["id"] == ips_id]
-        if not inj:
-            cutoff = (datetime.now(timezone.utc) - timedelta(days=21)).isoformat()
-            latest = {}
-            for i in af_get("injuries", {"team": ips_id, "season": AF_SEASON}):
-                nm = i["player"]["name"]
-                d = (i.get("fixture") or {}).get("date", "")
-                if nm not in latest or d > (latest[nm].get("fixture") or {}).get("date", ""):
-                    latest[nm] = i
-            inj = [i for i in latest.values()
-                   if (i.get("fixture") or {}).get("date", "") >= cutoff]
-    except requests.RequestException:
-        pass
-    seen = set()
-    for i in inj:
-        nm = i["player"]["name"]
-        if nm in seen:
+def _fbd_iso(s):
+    for fmt in ("%d/%m/%Y", "%d/%m/%y"):
+        try:
+            return datetime.strptime((s or "").strip(), fmt).date().isoformat()
+        except ValueError:
             continue
-        seen.add(nm)
-        out["team_news"].append({"player": nm,
-                                 "type": i["player"].get("type") or "Out",
-                                 "reason": i["player"].get("reason") or ""})
-    out["team_news"] = out["team_news"][:12]
+    return s or ""
 
-    # head-to-head, last 5 meetings
-    try:
-        w = d = l = 0
-        for m in af_get("fixtures/headtohead", {"h2h": f"{ips_id}-{opp_id}", "last": 5}):
-            gh, ga = m["goals"]["home"], m["goals"]["away"]
-            if gh is None:
+
+def fetch_h2h_history():
+    """Ipswich results across recent PL (E0) and Championship (E1) seasons."""
+    meetings = {}
+    for s in FBD_SEASONS:
+        for div in FBD_DIVS:
+            try:
+                text = get_text(f"https://www.football-data.co.uk/mmz4281/{s}/{div}.csv")
+            except requests.RequestException:
                 continue
-            h_is_ips = m["teams"]["home"]["id"] == ips_id
-            us, them = (gh, ga) if h_is_ips else (ga, gh)
-            res = "W" if us > them else "L" if us < them else "D"
-            w += res == "W"; d += res == "D"; l += res == "L"
-            out["h2h"].append({"date": (m["fixture"]["date"] or "")[:10],
-                               "home": h_is_ips, "score": f"{us}-{them}", "result": res})
-        if out["h2h"]:
-            out["h2h_summary"] = f"W{w} D{d} L{l}"
-    except requests.RequestException:
-        pass
-
-    # win probability from API-Football's prediction model
-    try:
-        pred = af_get("predictions", {"fixture": fid})
-        if pred:
-            pc = pred[0].get("predictions", {}).get("percent", {})
-            h, dr, a = _af_pct(pc.get("home")), _af_pct(pc.get("draw")), _af_pct(pc.get("away"))
-            if None not in (h, dr, a):
-                out["win_prob"] = {"ipswich": h if ips_home else a, "draw": dr,
-                                   "opponent": a if ips_home else h}
-    except requests.RequestException:
-        pass
-
-    return out
+            for r in csv.DictReader(io.StringIO(text)):
+                h, a = r.get("HomeTeam", ""), r.get("AwayTeam", "")
+                if TEAM_NAME_MATCH not in f"{h}{a}".lower():
+                    continue
+                try:
+                    hg, ag = int(r["FTHG"]), int(r["FTAG"])
+                except (KeyError, ValueError, TypeError):
+                    continue
+                ips_home = TEAM_NAME_MATCH in h.lower()
+                opp = a if ips_home else h
+                our, their = (hg, ag) if ips_home else (ag, hg)
+                res = "W" if our > their else "L" if our < their else "D"
+                meetings.setdefault(canon(opp), []).append(
+                    {"date": _fbd_iso(r.get("Date", "")), "opponent": opp,
+                     "home": ips_home, "score": f"{our}-{their}", "result": res})
+    return meetings
 
 
-# --------------------------------------------------------------------------- #
-#  API-Football — team news (injuries/suspensions), head-to-head, win prob     #
-#  Needs a free key in the API_FOOTBALL_KEY env var (a GitHub Actions secret).  #
-# --------------------------------------------------------------------------- #
-def af_get(path, params, key):
-    r = requests.get(f"{AF_BASE}/{path}", params=params,
-                     headers={"x-apisports-key": key}, timeout=TIMEOUT)
-    r.raise_for_status()
-    j = r.json()
-    return j.get("response", [])
-
-
-def _pct(v):
-    try:
-        return int(str(v).replace("%", "").strip())
-    except (TypeError, ValueError):
-        return None
-
-
-def fetch_api_football(key):
-    out = {"team_news": [], "h2h": [], "h2h_record": None, "prob": None}
-
-    # resolve Ipswich's API-Football team id
-    resp = af_get("teams", {"search": "ipswich", "league": AF_LEAGUE, "season": AF_SEASON}, key)
-    if not resp:
-        resp = af_get("teams", {"search": "ipswich"}, key)
-    ips_id = next((t["team"]["id"] for t in resp
-                   if TEAM_NAME_MATCH in t["team"]["name"].lower()), None)
-    if not ips_id:
-        return out
-
-    # team news — dedupe to most recent record per player
-    seen = {}
-    for rec in af_get("injuries", {"team": ips_id, "season": AF_SEASON}, key):
-        p = rec.get("player", {}) or {}
-        name = p.get("name")
-        if not name:
-            continue
-        date = (rec.get("fixture", {}) or {}).get("date", "")
-        if name not in seen or date > seen[name]["_date"]:
-            seen[name] = {"player": name, "type": p.get("type"),
-                          "reason": p.get("reason"), "_date": date}
-    out["team_news"] = [{k: v for k, v in r.items() if not k.startswith("_")}
-                        for r in sorted(seen.values(), key=lambda r: r["_date"], reverse=True)][:12]
-
-    # next fixture → opponent id + fixture id + Ipswich's home/away
-    nxt = af_get("fixtures", {"team": ips_id, "next": 1}, key)
-    if nxt:
-        fx = nxt[0]
-        fid = fx["fixture"]["id"]
-        home = fx["teams"]["home"]["id"] == ips_id
-        opp_id = fx["teams"]["away"]["id"] if home else fx["teams"]["home"]["id"]
-
-        # head-to-head, most recent meetings
-        w = d = l = 0
-        for m in af_get("fixtures/headtohead", {"h2h": f"{ips_id}-{opp_id}", "last": 6}, key):
-            gh, ga = m["goals"]["home"], m["goals"]["away"]
-            if gh is None:
+def fetch_clubelo_elos():
+    """Current Elo rating for every club, from ClubElo's dated CSV endpoint."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    text = get_text(f"http://api.clubelo.com/{today}")
+    elos = {}
+    for r in csv.DictReader(io.StringIO(text)):
+        club, elo = r.get("Club"), r.get("Elo")
+        if club and elo:
+            try:
+                elos[canon(club)] = float(elo)
+            except ValueError:
                 continue
-            ips_home = m["teams"]["home"]["id"] == ips_id
-            our, their = (gh, ga) if ips_home else (ga, gh)
-            res = "W" if our > their else "L" if our < their else "D"
-            w += res == "W"; d += res == "D"; l += res == "L"
-            out["h2h"].append({"date": m["fixture"]["date"][:10],
-                               "opponent": (m["teams"]["away"] if ips_home else m["teams"]["home"])["name"],
-                               "home": ips_home, "score": f"{our}-{their}", "result": res})
-        if out["h2h"]:
-            out["h2h_record"] = {"w": w, "d": d, "l": l}
+    return elos
 
-        # win probability from the predictions endpoint
-        pred = af_get("predictions", {"fixture": fid}, key)
-        if pred:
-            pc = (pred[0].get("predictions") or {}).get("percent") or {}
-            ph, pdrw, pa = _pct(pc.get("home")), _pct(pc.get("draw")), _pct(pc.get("away"))
-            if ph is not None and pa is not None:
-                out["prob"] = {"ipswich": ph if home else pa, "draw": pdrw,
-                               "opponent": pa if home else ph}
-    return out
+
+def win_probs(elo_ips, elo_opp, home):
+    """W/D/L probabilities estimated from an Elo difference (with home edge)."""
+    dr = elo_ips - elo_opp + (CLUBELO_HFA if home else -CLUBELO_HFA)
+    we = 1.0 / (1.0 + 10 ** (-dr / 400.0))          # Ipswich expected points share
+    p_draw = 0.28 * (1 - abs(2 * we - 1))
+    p_win = max(0.0, we - p_draw / 2)
+    p_loss = max(0.0, (1 - we) - p_draw / 2)
+    total = p_win + p_draw + p_loss or 1
+    ips = round(p_win / total * 100)
+    draw = round(p_draw / total * 100)
+    return {"ipswich": ips, "draw": draw, "opponent": 100 - ips - draw}
+
 
 
 # --------------------------------------------------------------------------- #
@@ -673,24 +607,34 @@ def main():
         if mm:
             sm["xg_for"] = mm["xg_for"]; sm["xg_against"] = mm["xg_against"]
 
-    # ---- API-Football: team news, head-to-head, win probability ----------- #
-    team_news = []
-    af_key = os.environ.get("API_FOOTBALL_KEY", "").strip()
-    if af_key:
+    # ---- keyless team news / head-to-head / win probability --------------- #
+    team_news = fpl["team_news"]
+    print(f"  team news (FPL): {len(team_news)} flagged players")
+
+    if next_opponent:
+        opp_name = next_opponent["name"]
+        home = next_opponent.get("home", True)
         try:
-            af = fetch_api_football(af_key)
-            team_news = af.get("team_news", [])
-            if next_opponent:
-                if af.get("prob"): next_opponent["prob"] = af["prob"]
-                if af.get("h2h"):
-                    next_opponent["h2h"] = af["h2h"]
-                    next_opponent["h2h_record"] = af.get("h2h_record")
-            print(f"  api-football: {len(team_news)} team-news, h2h {len(af.get('h2h', []))}, "
-                  f"prob {'yes' if af.get('prob') else 'no'}")
+            meetings = fetch_h2h_history()
+            hist = sorted(meetings.get(canon(opp_name), []),
+                          key=lambda m: m["date"], reverse=True)[:6]
+            if hist:
+                next_opponent["h2h"] = hist
+                next_opponent["h2h_record"] = {
+                    "w": sum(m["result"] == "W" for m in hist),
+                    "d": sum(m["result"] == "D" for m in hist),
+                    "l": sum(m["result"] == "L" for m in hist)}
+            print(f"  football-data H2H: {len(hist)} meetings vs {opp_name}")
         except Exception as e:
-            print(f"  api-football: skipped ({e})")
-    else:
-        print("  api-football: no API_FOOTBALL_KEY set — skipping team news / H2H / win prob")
+            print(f"  football-data H2H: skipped ({e})")
+        try:
+            elos = fetch_clubelo_elos()
+            ei, eo = elos.get(canon("Ipswich")), elos.get(canon(opp_name))
+            if ei and eo:
+                next_opponent["prob"] = win_probs(ei, eo, home)
+            print(f"  clubelo: Ipswich {ei}, {opp_name} {eo}")
+        except Exception as e:
+            print(f"  clubelo: skipped ({e})")
 
     data = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
