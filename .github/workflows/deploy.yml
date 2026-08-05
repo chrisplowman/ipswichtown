@@ -34,6 +34,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Fetch data
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         run: python ingest.py
 
       - name: Build site
