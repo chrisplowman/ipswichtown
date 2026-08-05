@@ -427,7 +427,7 @@ def fetch_h2h_history():
 def fetch_clubelo_elos():
     """Current Elo rating for every club, from ClubElo's dated CSV endpoint."""
     today = datetime.now(timezone.utc).date().isoformat()
-    text = get_text(f"https://api.clubelo.com/{today}")
+    text = get_text(f"http://api.clubelo.com/{today}")
     elos = {}
     for r in csv.DictReader(io.StringIO(text)):
         club, elo = r.get("Club"), r.get("Elo")
