@@ -480,30 +480,24 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <thead><tr>
           <th class="player" aria-sort="none"><button>Player</button></th>
           <th class="pos" aria-sort="none"><button>Pos</button></th>
-          <th aria-sort="none"><button>£m</button></th>
-          <th aria-sort="descending"><button>Pts</button></th>
-          <th aria-sort="none"><button>Form</button></th>
           <th aria-sort="none"><button>Mins</button></th>
           <th aria-sort="none"><button>G</button></th>
           <th aria-sort="none"><button>A</button></th>
           <th aria-sort="none"><button>xG</button></th>
           <th aria-sort="none"><button>xA</button></th>
           <th aria-sort="none"><button>xGI</button></th>
-          <th aria-sort="none"><button>Sel%</button></th>
         </tr></thead>
         <tbody>
           {% for p in squad %}
           <tr data-min="{{ p.minutes }}">
             <td class="player" title="{{ p.full_name }}">{{ p.name }}</td>
             <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
-            <td>{{ '%.1f'|format(p.price) }}</td><td>{{ p.points }}</td>
-            <td>{{ '%.1f'|format(p.form) }}</td><td>{{ p.minutes }}</td>
+            <td>{{ p.minutes }}</td>
             <td class="per90" data-raw="{{ p.goals }}" data-dec="0">{{ p.goals }}</td>
             <td class="per90" data-raw="{{ p.assists }}" data-dec="0">{{ p.assists }}</td>
             <td class="per90" data-raw="{{ p.xg }}" data-dec="2">{{ '%.2f'|format(p.xg) }}</td>
             <td class="per90" data-raw="{{ p.xa }}" data-dec="2">{{ '%.2f'|format(p.xa) }}</td>
             <td class="per90" data-raw="{{ p.xgi }}" data-dec="2">{{ '%.2f'|format(p.xgi) }}</td>
-            <td>{{ '%.1f'|format(p.selected) }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -719,7 +713,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
       var cx=sh.x*W, cy=sh.y*H, r=2+Math.sqrt(sh.xg)*7;
       var col=SHOT[sh.result]||'#9aa6b8';
       s+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+col+'" fill-opacity="0.78" stroke="#0f1826" stroke-opacity="0.25" stroke-width="0.3">'+
-         '<title>'+esc(sh.player)+" · "+sh.minute+"' · xG "+sh.xg.toFixed(2)+' · '+sh.result+'</title></circle>';
+         '<title>'+esc(sh.player)+" · "+sh.minute+"' · xG "+sh.xg.toFixed(2)+' · '+esc(sh.result)+'</title></circle>';
     });
     s+='</svg>'; return s;
   }
