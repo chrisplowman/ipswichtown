@@ -501,8 +501,25 @@ def main():
     except Exception as e:
         print(f"  badges: skipped ({e})")
 
+    # league table (fetched early so its club logos can back up any missing badges)
+    table, position = None, None
+    espn_by_short = {}
+    try:
+        table, position = fetch_table()
+        if table:
+            short_by_norm = {_norm(t["name"]): t["short_name"] for t in teams.values()}
+            for row in table:
+                short = short_by_norm.get(_norm(row["team"]))
+                if short and row.get("espn_logo"):
+                    espn_by_short[short] = row["espn_logo"]
+                row["badge"] = (badges.get(short) if short else None) or row.get("espn_logo")
+        print(f"  table: {len(table) if table else 0} teams, Ipswich {position or '—'}")
+    except Exception as e:
+        print(f"  table: skipped ({e})")
+
+    # a club's badge: TheSportsDB first, then the ESPN table logo (as the table view uses)
     def badge_for(short):
-        return badges.get(short)
+        return badges.get(short) or espn_by_short.get(short)
 
     for f in fpl["upcoming"]:
         f["badge"] = badge_for(f["opponent_short"])
@@ -510,19 +527,6 @@ def main():
         r["badge"] = badge_for(r["opponent_short"])
     for x in fpl["fixtures"]:
         x["badge"] = badge_for(x["opponent_short"])
-
-    table, position = None, None
-    try:
-        table, position = fetch_table()
-        # graft TheSportsDB badges onto table rows, ESPN logo as fallback
-        if table:
-            short_by_norm = {_norm(t["name"]): t["short_name"] for t in teams.values()}
-            for row in table:
-                short = short_by_norm.get(_norm(row["team"]))
-                row["badge"] = (badges.get(short) if short else None) or row.get("espn_logo")
-        print(f"  table: {len(table) if table else 0} teams, Ipswich {position or '—'}")
-    except Exception as e:
-        print(f"  table: skipped ({e})")
 
     understat = {"matches": [], "shot_maps": [], "players": []}
     try:
@@ -683,7 +687,7 @@ def main():
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "season": "2026/27",
         "team": {"id": tid, "name": ipswich["name"], "short_name": ipswich["short_name"],
-                 "badge": badges.get(ipswich["short_name"])},
+                 "badge": badge_for(ipswich["short_name"])},
         "current_event": fpl["current"], "next_event": fpl["next"],
         "next_fixture": next_fixture,
         "next_opponent": next_opponent,
@@ -700,7 +704,7 @@ def main():
         "understat_players": understat["players"][:14],
         "upcoming": upcoming,
         "fixtures": fpl["fixtures"],
-        "results": list(reversed(fpl["results"]))[:10],
+        "results": list(reversed(fpl["results"])),
         "squad": fpl["squad"],
     }
 
