@@ -152,6 +152,13 @@ ul.list li:last-child{border-bottom:0}
 .res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
 .score{font-weight:600;font-size:14px}
 .empty-note{padding:22px 18px;color:var(--steel);font-size:14px}
+ul.newslist li{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--hairline-soft)}
+ul.newslist li:last-child{border-bottom:0}
+.newslist .src{flex:none;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--steel);background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-sm);padding:4px 8px;width:92px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.newslist .headline{flex:1;font-weight:500;color:var(--ink);line-height:1.35;text-decoration:none}
+.newslist .headline:hover{color:var(--primary);text-decoration:underline}
+.newslist .date{flex:none;font-size:12px;color:var(--stone);white-space:nowrap}
+@media(max-width:600px){.newslist li{flex-wrap:wrap;gap:6px 10px}.newslist .headline{flex-basis:100%;order:3}}
 
 /* league table */
 .tablewrap{overflow-x:auto}
@@ -262,6 +269,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
     <button role="tab" id="tab-table" aria-controls="panel-table" aria-selected="false" tabindex="-1">Table</button>
     <button role="tab" id="tab-charts" aria-controls="panel-charts" aria-selected="false" tabindex="-1">Charts</button>
     <button role="tab" id="tab-squad" aria-controls="panel-squad" aria-selected="false" tabindex="-1">Squad</button>
+    <button role="tab" id="tab-news" aria-controls="panel-news" aria-selected="false" tabindex="-1">News</button>
   </div>
 </nav>
 
@@ -517,10 +525,29 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
       </div>
     </div>
   </section>
+
+  <!-- NEWS -->
+  <section class="panel" id="panel-news" role="tabpanel" aria-labelledby="tab-news" hidden>
+    <p class="label">Latest news</p>
+    {% if news %}
+    <div class="card">
+      <ul class="list newslist">
+        {% for a in news %}
+        <li>
+          <span class="src">{{ a.source|e }}</span>
+          <a class="headline" href="{{ a.link|e }}" target="_blank" rel="noopener noreferrer">{{ a.title|e }}</a>
+          {% if a.date_display %}<span class="date">{{ a.date_display|e }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <p class="empty-note" style="padding:14px 2px 0">Headlines from Ipswich-focused RSS feeds. Links open on the publisher's site.</p>
+    {% else %}<p class="empty-note">No news available right now.</p>{% endif %}
+  </section>
 </main>
 
 <footer class="wrap">
-  Data from the FPL API (squad &amp; team news), Understat (xG &amp; shots), ESPN (table), TheSportsDB (badges), football-data.co.uk (head-to-head) and ClubElo (win probability) · rebuilt automatically via GitHub Actions.<br>
+  Data from the FPL API (squad &amp; team news), Understat (xG &amp; shots), ESPN (table), TheSportsDB (badges), football-data.co.uk (head-to-head), ClubElo (win probability) and Ipswich RSS feeds (news) · rebuilt automatically via GitHub Actions.<br>
   Raw data: <code>data/itfc.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>
 
