@@ -51,7 +51,7 @@ img.badge{width:20px;height:20px;object-fit:contain;flex:none;vertical-align:mid
 td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nums}
 
 /* shared card surface */
-.card,.board,.oppcard,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
+.card,.board,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
 
 /* masthead — deep navy hero band */
 .masthead{background:var(--brand-navy);color:var(--on-dark)}
@@ -82,7 +82,7 @@ section.panel[hidden]{display:none}
 /* next-fixture board */
 .board{overflow:hidden;position:relative}
 .board::before{content:"NEXT";position:absolute;top:16px;left:18px;font-size:11px;letter-spacing:1px;font-weight:600;color:var(--steel)}
-.board .row{display:flex;align-items:center;justify-content:center;gap:clamp(16px,5vw,54px);padding:40px 20px 34px;text-align:center;flex-wrap:wrap}
+.board .row{display:flex;align-items:center;justify-content:center;gap:clamp(16px,5vw,54px);padding:32px 20px 24px;text-align:center;flex-wrap:wrap}
 .board .side{min-width:96px}
 .board .side .badge-lg{width:40px;height:40px;object-fit:contain;margin:0 auto 8px;display:block}
 .board .side .abbr{font-weight:700;font-size:clamp(28px,6vw,44px);line-height:1;letter-spacing:-1px;color:var(--ink)}
@@ -93,15 +93,15 @@ section.panel[hidden]{display:none}
 .board.empty .row{padding:34px 20px;color:var(--steel);font-size:15px}
 
 /* next opponent */
-.oppcard{display:flex;align-items:center;gap:16px;padding:18px 20px;flex-wrap:wrap}
-.oppcard img{width:44px;height:44px;object-fit:contain;flex:none}
-.oppcard .who{flex:1;min-width:150px}
-.oppcard .who .nm{font-weight:600;font-size:18px;letter-spacing:-.3px}
-.oppcard .who .sub{font-size:13px;color:var(--steel)}
-.oppcard .metrics{display:flex;gap:22px;flex-wrap:wrap}
-.oppcard .metric{text-align:center}
-.oppcard .metric .v{font-weight:600;font-size:17px}
-.oppcard .metric .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--steel);margin-top:2px}
+.board .oppdetail{border-top:1px solid var(--hairline);padding:16px 20px 18px}
+.oppdetail .opprow{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:2px}
+.who{flex:1;min-width:150px}
+.who .nm{font-weight:600;font-size:16px;letter-spacing:-.2px}
+.who .sub{font-size:13px;color:var(--steel)}
+.metrics{display:flex;gap:22px;flex-wrap:wrap}
+.metric{text-align:center}
+.metric .v{font-weight:600;font-size:16px}
+.metric .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--steel);margin-top:2px}
 .formdots{display:flex;gap:4px}
 .formdots i,.h2h-dots i{width:20px;height:20px;border-radius:var(--radius-sm);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .formdots i.W,.h2h-dots i.W{background:var(--win)}.formdots i.D,.h2h-dots i.D{background:var(--draw)}.formdots i.L,.h2h-dots i.L{background:var(--loss)}
@@ -109,7 +109,7 @@ section.panel[hidden]{display:none}
 /* win prob + h2h */
 .winprob{flex-basis:100%;margin-top:6px}
 .wp-bar{display:flex;height:28px;border-radius:var(--radius-md);overflow:hidden;font-size:12px;font-weight:600;color:#fff}
-.wp-bar span{display:flex;align-items:center;justify-content:center;min-width:30px}
+.wp-bar span{display:flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:0;overflow:hidden;white-space:nowrap;padding:0 2px}
 .wp-w{background:var(--win)}.wp-d{background:var(--draw)}.wp-l{background:var(--loss)}
 .wp-key{display:flex;justify-content:space-between;font-size:11px;color:var(--steel);margin-top:5px}
 .h2h{flex-basis:100%;display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;font-size:13px}
@@ -279,46 +279,43 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
           <div class="side">{% if next_fixture.badge %}<img class="badge-lg" src="{{ next_fixture.badge }}" alt="">{% endif %}<div class="abbr">{{ next_fixture.opponent_short }}</div><div class="full">{{ next_fixture.opponent }}</div></div>
         </div>
         <div class="when">{{ next_fixture.kickoff|kickoff }} · <span class="venue">{{ "Portman Road" if next_fixture.home else "Away" }}</span>{% if next_fixture.event %} · GW{{ next_fixture.event }}{% endif %}</div>
+        {% if next_opponent and (next_opponent.position or next_opponent.xg_pg is not none or next_opponent.prob or next_opponent.h2h_record) %}
+        <div class="oppdetail">
+          <div class="opprow">
+            <div class="who">
+              <div class="nm">{{ next_opponent.name }}</div>
+              <div class="sub">{% if next_opponent.position %}{{ next_opponent.position|ordinal }}{% if next_opponent.points is not none %} · {{ next_opponent.points }} pts{% endif %}{% if next_opponent.gd is not none %} · {{ '%+d'|format(next_opponent.gd) }} GD{% endif %}{% endif %}</div>
+            </div>
+            {% if next_opponent.form %}
+            <div class="metric"><div class="formdots">{% for f in next_opponent.form %}<i class="{{ f }}">{{ f }}</i>{% endfor %}</div><div class="k">Last 5</div></div>
+            {% endif %}
+            <div class="metrics">
+              {% if next_opponent.xg_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xg_pg) }}</div><div class="k">xG / game</div></div>{% endif %}
+              {% if next_opponent.xga_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xga_pg) }}</div><div class="k">xGA / game</div></div>{% endif %}
+            </div>
+          </div>
+          {% if next_opponent.prob %}
+          <div class="winprob">
+            <div class="wp-bar">
+              <span class="wp-w" style="width:{{ next_opponent.prob.ipswich }}%">{{ next_opponent.prob.ipswich }}%</span>
+              <span class="wp-d" style="width:{{ next_opponent.prob.draw }}%">{{ next_opponent.prob.draw }}%</span>
+              <span class="wp-l" style="width:{{ next_opponent.prob.opponent }}%">{{ next_opponent.prob.opponent }}%</span>
+            </div>
+            <div class="wp-key"><span>Ipswich win</span><span>Draw</span><span>{{ next_opponent.short }} win</span></div>
+          </div>
+          {% endif %}
+          {% if next_opponent.h2h_record %}
+          <div class="h2h">
+            <span class="h2h-label">Recent meetings</span>
+            <span class="h2h-rec">{{ next_opponent.h2h_record.w }}W {{ next_opponent.h2h_record.d }}D {{ next_opponent.h2h_record.l }}L</span>
+            <span class="h2h-dots">{% for m in next_opponent.h2h %}<i class="{{ m.result }}" title="{{ m.date }} {{ '(H)' if m.home else '(A)' }} {{ m.score }}">{{ m.result }}</i>{% endfor %}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
       {% else %}<div class="board empty"><div class="row">No upcoming fixtures scheduled yet.</div></div>{% endif %}
     </div>
-
-    {% if next_opponent and (next_opponent.position or next_opponent.xg_pg is not none or next_opponent.prob or next_opponent.h2h_record) %}
-    <div class="block">
-      <p class="label">Next opponent</p>
-      <div class="oppcard">
-        {% if next_opponent.badge %}<img src="{{ next_opponent.badge }}" alt="">{% endif %}
-        <div class="who">
-          <div class="nm">{{ next_opponent.name }}</div>
-          <div class="sub">{% if next_opponent.position %}{{ next_opponent.position|ordinal }}{% if next_opponent.points is not none %} · {{ next_opponent.points }} pts{% endif %}{% if next_opponent.gd is not none %} · {{ '%+d'|format(next_opponent.gd) }} GD{% endif %}{% endif %}</div>
-        </div>
-        {% if next_opponent.form %}
-        <div class="metric"><div class="formdots">{% for f in next_opponent.form %}<i class="{{ f }}">{{ f }}</i>{% endfor %}</div><div class="k">Last 5</div></div>
-        {% endif %}
-        <div class="metrics">
-          {% if next_opponent.xg_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xg_pg) }}</div><div class="k">xG / game</div></div>{% endif %}
-          {% if next_opponent.xga_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xga_pg) }}</div><div class="k">xGA / game</div></div>{% endif %}
-        </div>
-        {% if next_opponent.prob %}
-        <div class="winprob">
-          <div class="wp-bar">
-            <span class="wp-w" style="width:{{ next_opponent.prob.ipswich }}%">{{ next_opponent.prob.ipswich }}%</span>
-            <span class="wp-d" style="width:{{ next_opponent.prob.draw }}%">{{ next_opponent.prob.draw }}%</span>
-            <span class="wp-l" style="width:{{ next_opponent.prob.opponent }}%">{{ next_opponent.prob.opponent }}%</span>
-          </div>
-          <div class="wp-key"><span>Ipswich win</span><span>Draw</span><span>{{ next_opponent.short }} win</span></div>
-        </div>
-        {% endif %}
-        {% if next_opponent.h2h_record %}
-        <div class="h2h">
-          <span class="h2h-label">Recent meetings</span>
-          <span class="h2h-rec">{{ next_opponent.h2h_record.w }}W {{ next_opponent.h2h_record.d }}D {{ next_opponent.h2h_record.l }}L</span>
-          <span class="h2h-dots">{% for m in next_opponent.h2h %}<i class="{{ m.result }}" title="{{ m.date }} {{ '(H)' if m.home else '(A)' }} {{ m.score }}">{{ m.result }}</i>{% endfor %}</span>
-        </div>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
 
     {% if team_news %}
     <div class="block">
