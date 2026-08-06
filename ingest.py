@@ -110,6 +110,14 @@ def fetch_fpl():
     summary = {"played": played, "won": won, "drawn": drawn, "lost": lost,
                "gf": gf, "ga": ga, "gd": gf - ga, "points": won * 3 + drawn}
 
+    # full season fixture list (played + upcoming), in gameweek order
+    fixtures = ([{**r, "finished": True} for r in results]
+                + [{**u, "finished": False} for u in upcoming])
+    fixtures.sort(key=lambda x: (x["event"] or 999, x.get("kickoff") or ""))
+
+    # has the season actually started? (no finished/current gameweek = pre-season)
+    season_started = current is not None or any(e.get("finished") for e in boot["events"])
+
     # per-gameweek series (points/goals from fixtures; xG from live feed)
     finished_meta.sort(key=lambda m: m["gw"])
     by_gameweek, cum = [], 0
@@ -145,6 +153,15 @@ def fetch_fpl():
                       "clean_sheets": p["clean_sheets"], "selected": to_float(p["selected_by_percent"])})
     squad.sort(key=lambda x: (-x["points"], -x["minutes"]))
 
+    # Before the season starts FPL still serves last season's totals — show only
+    # this season's stats, i.e. zero the accumulated counters until GW1 is under way.
+    if not season_started:
+        for r in squad:
+            for k in ("points", "minutes", "starts", "goals", "assists", "clean_sheets"):
+                r[k] = 0
+            for k in ("form", "xg", "xa", "xgi"):
+                r[k] = 0.0
+
     # team news — FPL flags injuries/suspensions/doubts via status + news
     status_label = {"i": ("Injured", "out"), "s": ("Suspended", "out"),
                     "u": ("Unavailable", "out"), "d": ("Doubtful", "doubt"),
@@ -167,7 +184,8 @@ def fetch_fpl():
 
     return {"teams": teams, "ipswich": ipswich, "tid": tid,
             "current": current, "next": nxt, "summary": summary, "team_news": team_news,
-            "by_gameweek": by_gameweek, "upcoming": upcoming, "results": results, "squad": squad}
+            "by_gameweek": by_gameweek, "upcoming": upcoming, "results": results,
+            "fixtures": fixtures, "squad": squad}
 
 
 # --------------------------------------------------------------------------- #
@@ -427,7 +445,16 @@ def fetch_h2h_history():
 def fetch_clubelo_elos():
     """Current Elo rating for every club, from ClubElo's dated CSV endpoint."""
     today = datetime.now(timezone.utc).date().isoformat()
-    text = get_text(f"http://api.clubelo.com/{today}")
+    # api.clubelo.com's HTTPS cert is invalid, so try HTTP first, then HTTPS.
+    text = None
+    for scheme in ("http", "https"):
+        try:
+            text = get_text(f"{scheme}://api.clubelo.com/{today}")
+            break
+        except requests.RequestException:
+            continue
+    if text is None:
+        raise requests.RequestException("ClubElo unreachable over http and https")
     elos = {}
     for r in csv.DictReader(io.StringIO(text)):
         club, elo = r.get("Club"), r.get("Elo")
@@ -452,6 +479,15 @@ def win_probs(elo_ips, elo_opp, home):
     return {"ipswich": ips, "draw": draw, "opponent": 100 - ips - draw}
 
 
+def fdr_win_probs(difficulty):
+    """Rough W/D/L from the FPL fixture difficulty (1 easy … 5 hard) — a fallback
+    for when ClubElo is unavailable (e.g. pre-season)."""
+    table = {1: (56, 26, 18), 2: (45, 28, 27), 3: (33, 28, 39),
+             4: (24, 26, 50), 5: (15, 24, 61)}
+    ips, draw, opp = table.get(difficulty, (33, 28, 39))
+    return {"ipswich": ips, "draw": draw, "opponent": opp}
+
+
 
 # --------------------------------------------------------------------------- #
 def main():
@@ -472,6 +508,8 @@ def main():
         f["badge"] = badge_for(f["opponent_short"])
     for r in fpl["results"]:
         r["badge"] = badge_for(r["opponent_short"])
+    for x in fpl["fixtures"]:
+        x["badge"] = badge_for(x["opponent_short"])
 
     table, position = None, None
     try:
@@ -635,6 +673,11 @@ def main():
             print(f"  clubelo: Ipswich {ei}, {opp_name} {eo}")
         except Exception as e:
             print(f"  clubelo: skipped ({e})")
+        # Fallback so the win-probability bar always renders: derive from FPL
+        # fixture difficulty when ClubElo gave us nothing.
+        if not next_opponent.get("prob") and next_fixture and next_fixture.get("difficulty"):
+            next_opponent["prob"] = fdr_win_probs(next_fixture["difficulty"])
+            print(f"  win prob: FDR fallback (difficulty {next_fixture['difficulty']})")
 
     data = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -656,6 +699,7 @@ def main():
         "shot_maps": understat["shot_maps"],
         "understat_players": understat["players"][:14],
         "upcoming": upcoming,
+        "fixtures": fpl["fixtures"],
         "results": list(reversed(fpl["results"]))[:10],
         "squad": fpl["squad"],
     }
