@@ -22,7 +22,9 @@ import math
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import requests
@@ -35,6 +37,14 @@ TSDB_PL_LEAGUE_ID = "4328"         # English Premier League on TheSportsDB
 FBD_SEASONS = ["2223", "2324", "2425", "2526"]  # football-data.co.uk season codes
 FBD_DIVS = ["E0", "E1"]            # Premier League, Championship
 CLUBELO_HFA = 65                   # home advantage, in Elo points
+# Ipswich-specific RSS feeds (all team-specific, so no filtering needed).
+# Add or remove feeds here — each is fetched independently and skipped on failure.
+NEWS_FEEDS = [
+    ("BBC Sport", "https://feeds.bbci.co.uk/sport/football/teams/ipswich-town/rss.xml"),
+    ("TWTD", "https://www.twtd.co.uk/rss"),
+    ("Vital", "https://ipswich.vitalfootball.co.uk/feed/"),
+]
+NEWS_LIMIT = 18                    # max articles to keep after merging feeds
 SHOT_MAP_MATCHES = 5               # how many recent matches to keep shot maps for
 TEAM_NAME_MATCH = "ipswich"
 OUT = Path("data/itfc.json")
@@ -490,6 +500,59 @@ def fdr_win_probs(difficulty):
 
 
 # --------------------------------------------------------------------------- #
+#  News — merge a few Ipswich-specific RSS feeds (keyless)                      #
+# --------------------------------------------------------------------------- #
+ATOM = "{http://www.w3.org/2005/Atom}"
+DC = "{http://purl.org/dc/elements/1.1/}"
+
+
+def _parse_feed_date(s):
+    s = (s or "").strip()
+    if not s:
+        return None
+    try:                                    # RFC-822 (RSS pubDate)
+        dt = parsedate_to_datetime(s)
+        return (dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        pass
+    try:                                    # ISO-8601 (Atom)
+        return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def fetch_news():
+    items = []
+    for source, url in NEWS_FEEDS:
+        try:
+            root = ET.fromstring(get_text(url))
+        except (requests.RequestException, ET.ParseError):
+            continue
+        entries = root.findall(".//item") or root.findall(f".//{ATOM}entry")
+        for e in entries:
+            title = (e.findtext("title") or e.findtext(f"{ATOM}title") or "").strip()
+            link = (e.findtext("link") or "").strip()
+            if not link:                    # Atom stores the URL in an attribute
+                a = e.find(f"{ATOM}link")
+                link = a.get("href", "").strip() if a is not None else ""
+            dt = _parse_feed_date(e.findtext("pubDate") or e.findtext(f"{ATOM}updated")
+                                  or e.findtext(f"{DC}date"))
+            if not title or not link.startswith(("http://", "https://")):
+                continue
+            items.append({"title": title, "link": link, "source": source,
+                          "date": dt.isoformat() if dt else "",
+                          "date_display": dt.strftime("%-d %b") if dt else ""})
+
+    items.sort(key=lambda x: x["date"], reverse=True)  # newest first; undated last
+    seen, out = set(), []
+    for it in items:
+        if it["link"] not in seen:
+            seen.add(it["link"])
+            out.append(it)
+    return out[:NEWS_LIMIT]
+
+
+# --------------------------------------------------------------------------- #
 def main():
     fpl = fetch_fpl()
     tid, teams, ipswich = fpl["tid"], fpl["teams"], fpl["ipswich"]
@@ -683,6 +746,13 @@ def main():
             next_opponent["prob"] = fdr_win_probs(next_fixture["difficulty"])
             print(f"  win prob: FDR fallback (difficulty {next_fixture['difficulty']})")
 
+    news = []
+    try:
+        news = fetch_news()
+        print(f"  news: {len(news)} articles from {len(NEWS_FEEDS)} feeds")
+    except Exception as e:
+        print(f"  news: skipped ({e})")
+
     data = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "season": "2026/27",
@@ -706,6 +776,7 @@ def main():
         "fixtures": fpl["fixtures"],
         "results": list(reversed(fpl["results"])),
         "squad": fpl["squad"],
+        "news": news,
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

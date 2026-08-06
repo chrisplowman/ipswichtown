@@ -7,6 +7,7 @@ organised into four tabs:
 - **Table** — the full Premier League table, Ipswich highlighted, European and relegation edges marked
 - **Charts** — points progression, goals by gameweek, goals vs xG (attack and defence), non-penalty finishing, a **league-wide xG-vs-xGA scatter** of all 20 clubs, a **"how Ipswich compare"** panel ranking them against the league on each measure, an interactive **shot map with a match report** per recent match, and the fixture-difficulty run
 - **Squad** — full player stats with a **per-90 toggle**, plus **player profile radars** showing each player's percentile ranks vs positional peers league-wide, with a compare-two-players mode
+- **News** — latest headlines merged from Ipswich-specific RSS feeds (BBC Sport, TWTD, Vital), newest first, linking out to each publisher
 
 No server, no database — a scheduled GitHub Action pulls the data and publishes a
 static page to GitHub Pages. Charts render client-side with Chart.js (one CDN tag,
@@ -28,6 +29,7 @@ if one is unavailable on a given run, the page still builds from the rest.
 - **football-data.co.uk** — historical results (recent PL and Championship seasons)
   for the next-opponent head-to-head.
 - **ClubElo** — club Elo ratings, used to model the next-match win probability.
+- **RSS feeds** — Ipswich-specific news feeds (BBC Sport, TWTD, Vital) for the News tab. Edit the list in `NEWS_FEEDS` at the top of `ingest.py` to add or remove sources.
 
 Every source is free and keyless. Each is wrapped so that if one is unavailable on a
 given run, the page still builds from the rest.
