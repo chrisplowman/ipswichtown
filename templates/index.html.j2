@@ -142,9 +142,6 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 ul.list{list-style:none;margin:0;padding:4px 0}
 ul.list li{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--hairline-soft)}
 ul.list li:last-child{border-bottom:0}
-.fixtures-grid{column-count:2;column-gap:36px;padding:6px 0}
-.fixtures-grid li{break-inside:avoid}
-@media(max-width:760px){.fixtures-grid{column-count:1}}
 .opp{flex:1;font-weight:500;display:flex;align-items:center;gap:8px}
 .opp .ha{color:var(--steel);font-size:12px}
 .kick{font-size:12.5px;color:var(--steel)}
@@ -352,23 +349,35 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
     </div>
 
     <div class="block">
-      <p class="label">Fixtures</p>
-      <div class="card">
-        {% if fixtures %}
-        <ul class="list fixtures-grid">
-          {% for f in fixtures %}
-          <li>
-            <span class="gw">{{ ('GW'+f.event|string) if f.event else '' }}</span>
-            <span class="opp">{% if f.badge %}<img class="badge" src="{{ f.badge }}" alt="">{% endif %}{{ f.opponent }}<span class="ha">{{ '(H)' if f.home else '(A)' }}</span></span>
-            {% if f.finished %}
-            <span class="res {{ f.result }}">{{ f.result }}</span><span class="score">{{ f.score }}</span>
-            {% else %}
-            <span class="kick">{{ f.kickoff|kickoff }}</span><span class="fdr fdr-{{ f.difficulty or 3 }}" title="Fixture difficulty {{ f.difficulty }}/5">{{ f.difficulty or '–' }}</span>
-            {% endif %}
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}<p class="empty-note">No fixtures scheduled yet.</p>{% endif %}
+      <div class="cols">
+        <div class="card">
+          <h3>Fixtures</h3>
+          {% if fixtures %}
+          <ul class="list">
+            {% for f in fixtures %}
+            <li>
+              <span class="gw">{{ ('GW'+f.event|string) if f.event else '' }}</span>
+              <span class="opp">{% if f.badge %}<img class="badge" src="{{ f.badge }}" alt="">{% endif %}{{ f.opponent }}<span class="ha">{{ '(H)' if f.home else '(A)' }}</span></span>
+              {% if f.finished %}
+              <span class="res {{ f.result }}">{{ f.result }}</span><span class="score">{{ f.score }}</span>
+              {% else %}
+              <span class="kick">{{ f.kickoff|kickoff }}</span><span class="fdr fdr-{{ f.difficulty or 3 }}" title="Fixture difficulty {{ f.difficulty }}/5">{{ f.difficulty or '–' }}</span>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}<p class="empty-note">No fixtures scheduled yet.</p>{% endif %}
+        </div>
+        <div class="card">
+          <h3>Results</h3>
+          {% if results %}
+          <ul class="list">
+            {% for r in results %}
+            <li><span class="res {{ r.result }}">{{ r.result }}</span><span class="opp">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.opponent }}<span class="ha">{{ '(H)' if r.home else '(A)' }}</span></span><span class="score">{{ r.score }}</span></li>
+            {% endfor %}
+          </ul>
+          {% else %}<p class="empty-note">No matches played yet. The season opens on 22 August.</p>{% endif %}
+        </div>
       </div>
     </div>
   </section>
