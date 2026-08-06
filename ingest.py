@@ -22,6 +22,7 @@ import math
 import os
 import re
 import sys
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -41,27 +42,48 @@ CLUBELO_HFA = 65                   # home advantage, in Elo points
 # Add or remove feeds here — each is fetched independently and skipped on failure.
 NEWS_FEEDS = [
     ("BBC Sport", "https://feeds.bbci.co.uk/sport/football/teams/ipswich-town/rss.xml"),
-    ("TWTD", "https://www.twtd.co.uk/rss"),
-    ("Vital", "https://ipswich.vitalfootball.co.uk/feed/"),
+    ("TWTD", "https://www.twtd.co.uk/rss/"),
+    ("ITFC.CO.UK", "https://www.itfc.co.uk/rss.xml"),
+    ("The Athletic", "https://www.nytimes.com/athletic/rss/football/ipswich/"),
+    ("EADT", "http://www.eadt.co.uk/sport/ipswich-town/rss/"),
 ]
 NEWS_LIMIT = 18                    # max articles to keep after merging feeds
 SHOT_MAP_MATCHES = 5               # how many recent matches to keep shot maps for
 TEAM_NAME_MATCH = "ipswich"
 OUT = Path("data/itfc.json")
 TIMEOUT = 30
-UA = {"User-Agent": "Mozilla/5.0 (compatible; itfc-stats/2.0; +github pages reference page)"}
+RETRIES = 3
+# A realistic browser User-Agent — some APIs (notably FPL) return 403 to CI/
+# datacenter requests that don't look like a browser.
+UA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/xml, application/xml, text/html, */*",
+    "Accept-Language": "en-GB,en;q=0.9",
+}
+
+
+def _get(url):
+    """GET with a browser UA and a few retries/backoff on transient failures."""
+    last = None
+    for attempt in range(RETRIES):
+        try:
+            r = requests.get(url, headers=UA, timeout=TIMEOUT)
+            r.raise_for_status()
+            return r
+        except requests.RequestException as e:
+            last = e
+            if attempt < RETRIES - 1:
+                time.sleep(1.5 * (attempt + 1))
+    raise last
 
 
 def get_json(url, base=None):
-    r = requests.get((f"{base}/{url}" if base else url), headers=UA, timeout=TIMEOUT)
-    r.raise_for_status()
-    return r.json()
+    return _get(f"{base}/{url}" if base else url).json()
 
 
 def get_text(url):
-    r = requests.get(url, headers=UA, timeout=TIMEOUT)
-    r.raise_for_status()
-    return r.text
+    return _get(url).text
 
 
 def to_float(v):
@@ -525,8 +547,8 @@ def fetch_news():
     items = []
     for source, url in NEWS_FEEDS:
         try:
-            root = ET.fromstring(get_text(url))
-        except (requests.RequestException, ET.ParseError):
+            root = ET.fromstring(_get(url).content)   # bytes -> honours XML encoding
+        except (requests.RequestException, ET.ParseError, ValueError):
             continue
         entries = root.findall(".//item") or root.findall(f".//{ATOM}entry")
         for e in entries:
