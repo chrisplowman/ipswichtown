@@ -3,7 +3,7 @@ name: Build & deploy Ipswich stats
 on:
   # Refresh a few times a day (UTC). Matchdays are covered by the 3-hourly cadence.
   schedule:
-    - cron: "0 */3 * * *"
+    - cron: "0 * * * *"
   push:
     branches: [main]
   workflow_dispatch:        # lets you trigger a rebuild by hand from the Actions tab
