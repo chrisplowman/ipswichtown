@@ -622,9 +622,20 @@ def main():
     except Exception as e:
         print(f"  badges: skipped ({e})")
 
-    # league table (fetched early so its club logos can back up any missing badges)
-    table, position = None, None
+    # A club's badge. Primary source is the official Premier League badge CDN keyed
+    # by FPL's own team code — this covers all 20 clubs with no name-matching, so no
+    # badges go missing. TheSportsDB / ESPN logos are kept only as a safety net.
+    code_by_short = {t["short_name"]: t.get("code") for t in teams.values()}
     espn_by_short = {}
+
+    def badge_for(short):
+        code = code_by_short.get(short)
+        if code:
+            return f"https://resources.premierleague.com/premierleague/badges/50/{code}.png"
+        return badges.get(short) or espn_by_short.get(short)
+
+    # league table
+    table, position = None, None
     try:
         table, position = fetch_table()
         if table:
@@ -633,14 +644,10 @@ def main():
                 short = short_by_norm.get(_norm(row["team"]))
                 if short and row.get("espn_logo"):
                     espn_by_short[short] = row["espn_logo"]
-                row["badge"] = (badges.get(short) if short else None) or row.get("espn_logo")
+                row["badge"] = badge_for(short) if short else row.get("espn_logo")
         print(f"  table: {len(table) if table else 0} teams, Ipswich {position or '—'}")
     except Exception as e:
         print(f"  table: skipped ({e})")
-
-    # a club's badge: TheSportsDB first, then the ESPN table logo (as the table view uses)
-    def badge_for(short):
-        return badges.get(short) or espn_by_short.get(short)
 
     for f in fpl["upcoming"]:
         f["badge"] = badge_for(f["opponent_short"])
