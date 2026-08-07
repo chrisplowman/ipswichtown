@@ -391,7 +391,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
           {% if results %}
           <ul class="list">
             {% for r in results %}
-            <li><span class="res {{ r.result }}">{{ r.result }}</span><span class="opp">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.opponent }}<span class="ha">{{ '(H)' if r.home else '(A)' }}</span></span><span class="score">{{ r.score }}</span></li>
+            <li><span class="gw">{{ ('GW'+r.event|string) if r.event else '' }}</span><span class="res {{ r.result }}">{{ r.result }}</span><span class="opp">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.opponent }}<span class="ha">{{ '(H)' if r.home else '(A)' }}</span></span><span class="score">{{ r.score }}</span></li>
             {% endfor %}
           </ul>
           {% else %}<p class="empty-note">No matches played yet. The season opens on 22 August.</p>{% endif %}
