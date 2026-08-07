@@ -622,11 +622,16 @@ def main():
     except Exception as e:
         print(f"  badges: skipped ({e})")
 
-    # A club's badge: TheSportsDB first (matched via canon so all 20 resolve),
-    # then the ESPN table logo as a safety net.
+    # A club's badge: the official Premier League crest, keyed by FPL's own team
+    # code (verified URL used on premierleague.com). Complete for all 20 clubs with
+    # no name-matching. TheSportsDB / ESPN logos remain a fallback.
+    code_by_short = {t["short_name"]: t.get("code") for t in teams.values()}
     espn_by_short = {}
 
     def badge_for(short):
+        code = code_by_short.get(short)
+        if code:
+            return f"https://resources.premierleague.com/premierleague25/badges-alt/{code}.svg"
         return badges.get(short) or espn_by_short.get(short)
 
     # league table
