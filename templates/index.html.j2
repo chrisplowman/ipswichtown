@@ -373,21 +373,18 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
       <div class="cols">
         <div class="card">
           <h3>Fixtures</h3>
-          {% if fixtures %}
+          {% set upcoming_fx = fixtures|rejectattr('finished')|list %}
+          {% if upcoming_fx %}
           <ul class="list">
-            {% for f in fixtures %}
+            {% for f in upcoming_fx %}
             <li>
               <span class="gw">{{ ('GW'+f.event|string) if f.event else '' }}</span>
               <span class="opp">{% if f.badge %}<img class="badge" src="{{ f.badge }}" alt="">{% endif %}{{ f.opponent }}<span class="ha">{{ '(H)' if f.home else '(A)' }}</span></span>
-              {% if f.finished %}
-              <span class="res {{ f.result }}">{{ f.result }}</span><span class="score">{{ f.score }}</span>
-              {% else %}
               <span class="kick">{{ f.kickoff|kickoff }}</span><span class="fdr fdr-{{ f.difficulty or 3 }}" title="Fixture difficulty {{ f.difficulty }}/5">{{ f.difficulty or '–' }}</span>
-              {% endif %}
             </li>
             {% endfor %}
           </ul>
-          {% else %}<p class="empty-note">No fixtures scheduled yet.</p>{% endif %}
+          {% else %}<p class="empty-note">No upcoming fixtures — the season is complete.</p>{% endif %}
         </div>
         <div class="card">
           <h3>Results</h3>
