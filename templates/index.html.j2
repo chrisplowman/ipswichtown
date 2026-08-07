@@ -64,14 +64,20 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nu
 .eyebrow .pos{color:var(--on-primary);background:var(--primary);border-radius:var(--radius-full);padding:3px 10px;letter-spacing:.3px}
 .updated{font-size:13px;color:var(--on-dark-muted);text-align:right}
 .updated b{color:var(--on-dark);font-weight:600}
+.headright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.previewtoggle{font-size:12px;font-weight:600;color:var(--on-dark);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-full);padding:6px 13px;text-decoration:none;white-space:nowrap}
+.previewtoggle:hover{background:rgba(255,255,255,.2)}
+.previewtoggle.on{background:var(--brand-orange);border-color:var(--brand-orange)}
+.previewbanner{background:var(--brand-orange);color:#fff;text-align:center;font-size:13px;font-weight:500;padding:9px 16px}
+.previewbanner a{color:#fff;text-decoration:underline}
 
 /* tabs — light sticky pill nav */
 .tabs{background:var(--canvas);border-bottom:1px solid var(--hairline);position:sticky;top:0;z-index:20}
 .tabs .wrap{display:flex;gap:8px;padding:12px var(--space-lg)}
-.tabs button{all:unset;cursor:pointer;font-weight:500;font-size:14px;color:var(--steel);padding:8px 16px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1}
-.tabs button:hover{color:var(--ink);background:var(--surface)}
-.tabs button[aria-selected="true"]{background:var(--ink-deep);color:var(--on-dark);border-color:var(--ink-deep)}
-.tabs button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.tabs a{cursor:pointer;font-weight:500;font-size:14px;color:var(--steel);padding:8px 16px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
+.tabs a:hover{color:var(--ink);background:var(--surface)}
+.tabs a.active{background:var(--ink-deep);color:var(--on-dark);border-color:var(--ink-deep)}
+.tabs a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
 section.panel{padding:28px 0}
 section.panel[hidden]{display:none}
@@ -254,7 +260,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 </style>
 </head>
 <body>
-<header class="masthead">
+<header class="masthead{% if preview %} is-preview{% endif %}">
   <div class="wrap">
     <div class="crest">
       <div class="mark">{% if team.badge %}<img src="{{ team.badge }}" alt="Ipswich Town crest">{% else %}{{ team.short_name }}{% endif %}</div>
@@ -263,24 +269,27 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <div class="wordmark">Ipswich Town</div>
       </div>
     </div>
-    <div class="updated">Updated<br><b>{{ generated_at|updated }}</b></div>
+    <div class="headright">
+      <a class="previewtoggle{% if preview %} on{% endif %}" href="{{ toggle_href }}">{% if preview %}← Live data{% else %}Preview mode{% endif %}</a>
+      <div class="updated">Updated<br><b>{{ generated_at|updated }}</b></div>
+    </div>
   </div>
 </header>
+{% if preview %}<div class="previewbanner">Preview mode — every section is showing sample data. <a href="{{ toggle_href }}">Switch back to live data</a></div>{% endif %}
 
 <nav class="tabs">
-  <div class="wrap" role="tablist" aria-label="Sections">
-    <button role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true">Overview</button>
-    <button role="tab" id="tab-table" aria-controls="panel-table" aria-selected="false" tabindex="-1">Table</button>
-    <button role="tab" id="tab-charts" aria-controls="panel-charts" aria-selected="false" tabindex="-1">Charts</button>
-    <button role="tab" id="tab-squad" aria-controls="panel-squad" aria-selected="false" tabindex="-1">Squad</button>
-    <button role="tab" id="tab-news" aria-controls="panel-news" aria-selected="false" tabindex="-1">News</button>
+  <div class="wrap">
+    {% for pid, filename, label in pages %}
+    <a href="{{ filename }}"{% if pid == current %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
   </div>
 </nav>
 
 <main class="wrap">
 
   <!-- OVERVIEW -->
-  <section class="panel" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+  {% if page == 'overview' %}
+  <section class="panel">
     <div class="block">
       <p class="label">Next fixture</p>
       {% if next_fixture %}
@@ -395,7 +404,9 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   </section>
 
   <!-- TABLE -->
-  <section class="panel" id="panel-table" role="tabpanel" aria-labelledby="tab-table" hidden>
+  {% endif %}
+  {% if page == 'table' %}
+  <section class="panel">
     <p class="label">Premier League table</p>
     {% if table %}
     <div class="tablewrap">
@@ -426,7 +437,9 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   </section>
 
   <!-- CHARTS -->
-  <section class="panel" id="panel-charts" role="tabpanel" aria-labelledby="tab-charts" hidden>
+  {% endif %}
+  {% if page == 'charts' %}
+  <section class="panel">
     <div class="chartgrid">
       <div class="chartcard wide">
         <h3>Points progression</h3><p class="sub">Cumulative league points by gameweek.</p>
@@ -482,7 +495,9 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   </section>
 
   <!-- SQUAD -->
-  <section class="panel" id="panel-squad" role="tabpanel" aria-labelledby="tab-squad" hidden>
+  {% endif %}
+  {% if page == 'squad' %}
+  <section class="panel">
     <p class="label">Squad · {{ squad|length }} players</p>
     <div class="toolbar">
       <label class="toggle"><input type="checkbox" id="per90-toggle" aria-label="Show per 90 minutes"> Per 90 minutes</label>
@@ -531,7 +546,9 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   </section>
 
   <!-- NEWS -->
-  <section class="panel" id="panel-news" role="tabpanel" aria-labelledby="tab-news" hidden>
+  {% endif %}
+  {% if page == 'news' %}
+  <section class="panel">
     <p class="label">Latest news</p>
     {% if news %}
     <div class="card">
@@ -551,6 +568,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
     <p class="empty-note" style="padding:14px 2px 0">Headlines from Ipswich-focused RSS feeds. Links open on the publisher's site.</p>
     {% else %}<p class="empty-note">No news available right now.</p>{% endif %}
   </section>
+{% endif %}
 </main>
 
 <footer class="wrap">
@@ -558,11 +576,14 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   Raw data: <code>data/itfc.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>
 
+{% if page in ['charts','squad'] %}
 <script id="itfc-data" type="application/json">{{ data_json|safe }}</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endif %}
 <script>
 (function(){
-  var DATA = JSON.parse(document.getElementById('itfc-data').textContent);
+  var _d = document.getElementById('itfc-data');
+  var DATA = _d ? JSON.parse(_d.textContent) : {};
   // Drop any news thumbnail whose image fails to load (dead/hotlink-blocked URL).
   [].forEach.call(document.querySelectorAll('.newslist .thumb'), function(img){
     img.addEventListener('error', function(){ img.remove(); });
@@ -573,27 +594,9 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   var FDR = {1:cv('--fdr-1'),2:cv('--fdr-2'),3:cv('--fdr-3'),4:cv('--fdr-4'),5:cv('--fdr-5')};
   var SHOT = {Goal:cv('--win'),SavedShot:cv('--link-blue'),BlockedShot:cv('--brand-orange'),MissedShots:cv('--stone'),ShotOnPost:cv('--loss'),OwnGoal:cv('--stone')};
 
-  // tabs
-  var tabs = [].slice.call(document.querySelectorAll('[role="tab"]'));
-  var chartsBuilt = false, profilesBuilt = false;
-  function select(tab){
-    tabs.forEach(function(t){
-      var on = t===tab;
-      t.setAttribute('aria-selected', on?'true':'false');
-      t.tabIndex = on?0:-1;
-      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
-    });
-    if(tab.id==='tab-charts' && !chartsBuilt){ chartsBuilt = true; buildCharts(); }
-    if(tab.id==='tab-squad' && !profilesBuilt){ profilesBuilt = true; buildProfiles(); }
-  }
-  tabs.forEach(function(tab,i){
-    tab.addEventListener('click', function(){ select(tab); });
-    tab.addEventListener('keydown', function(e){
-      var n; if(e.key==='ArrowRight') n=tabs[(i+1)%tabs.length];
-      else if(e.key==='ArrowLeft') n=tabs[(i-1+tabs.length)%tabs.length];
-      if(n){ e.preventDefault(); n.focus(); select(n); }
-    });
-  });
+  // Each section is its own page now — build whatever this page contains.
+  if(document.getElementById('c-points')) buildCharts();
+  if(document.getElementById('c-radar')) buildProfiles();
 
   function showNote(id,msg){ var c=document.getElementById('c-'+id); if(c)c.style.display='none';
     var n=document.getElementById('n-'+id); if(n){n.hidden=false;n.textContent=msg;} }
