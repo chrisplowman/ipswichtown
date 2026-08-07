@@ -287,19 +287,19 @@ ALIASES = {  # bridge FPL/ESPN naming to TheSportsDB where a plain match fails
 def fetch_badges(fpl_teams):
     url = f"https://www.thesportsdb.com/api/v1/json/3/lookup_all_teams.php?id={TSDB_PL_LEAGUE_ID}"
     j = get_json(url)
-    by_norm = {}
+    by_canon = {}
     for t in (j.get("teams") or []):
         badge = t.get("strBadge") or t.get("strTeamBadge")
         if badge:
-            by_norm[_norm(t.get("strTeam", ""))] = badge
+            by_canon[canon(t.get("strTeam", ""))] = badge
 
     def lookup(name):
-        k = _norm(name)
-        if k in by_norm: return by_norm[k]
-        if k in ALIASES and ALIASES[k] in by_norm: return by_norm[ALIASES[k]]
-        for nk, url_ in by_norm.items():          # contains fallback
-            if len(k) > 3 and (k in nk or nk in k):
-                return url_
+        k = canon(name)
+        if k in by_canon:
+            return by_canon[k]
+        for ck, badge in by_canon.items():          # contains fallback
+            if len(k) > 3 and (k in ck or ck in k):
+                return badge
         return None
 
     return {t["short_name"]: lookup(t["name"]) for t in fpl_teams.values()}
@@ -622,16 +622,11 @@ def main():
     except Exception as e:
         print(f"  badges: skipped ({e})")
 
-    # A club's badge. Primary source is the official Premier League badge CDN keyed
-    # by FPL's own team code — this covers all 20 clubs with no name-matching, so no
-    # badges go missing. TheSportsDB / ESPN logos are kept only as a safety net.
-    code_by_short = {t["short_name"]: t.get("code") for t in teams.values()}
+    # A club's badge: TheSportsDB first (matched via canon so all 20 resolve),
+    # then the ESPN table logo as a safety net.
     espn_by_short = {}
 
     def badge_for(short):
-        code = code_by_short.get(short)
-        if code:
-            return f"https://resources.premierleague.com/premierleague/badges/50/{code}.png"
         return badges.get(short) or espn_by_short.get(short)
 
     # league table
