@@ -526,6 +526,38 @@ def fdr_win_probs(difficulty):
 # --------------------------------------------------------------------------- #
 ATOM = "{http://www.w3.org/2005/Atom}"
 DC = "{http://purl.org/dc/elements/1.1/}"
+MEDIA = "{http://search.yahoo.com/mrss/}"
+CONTENT = "{http://purl.org/rss/1.0/modules/content/}"
+SUMMARY_CHARS = 400        # cap the stored snippet; the page clamps it to ~5 lines
+
+
+def _strip_html(s):
+    if not s:
+        return ""
+    from html import unescape
+    s = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", s)  # drop script/style
+    s = re.sub(r"<[^>]+>", " ", s)                              # strip tags
+    return re.sub(r"\s+", " ", unescape(s)).strip()
+
+
+def _item_image(e, desc_html):
+    """Best image URL for a feed item, from Media RSS, an enclosure, or the body."""
+    thumb = e.find(f".//{MEDIA}thumbnail")
+    if thumb is not None and (thumb.get("url") or "").startswith(("http://", "https://")):
+        return thumb.get("url")
+    for mc in e.findall(f".//{MEDIA}content"):
+        url = mc.get("url") or ""
+        if url.startswith(("http://", "https://")) and (
+                mc.get("medium") == "image" or (mc.get("type") or "").startswith("image")):
+            return url
+    enc = e.find("enclosure")
+    if enc is not None and (enc.get("type") or "").startswith("image") \
+            and (enc.get("url") or "").startswith(("http://", "https://")):
+        return enc.get("url")
+    m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', desc_html or "", re.I)
+    if m and m.group(1).startswith(("http://", "https://")):
+        return m.group(1)
+    return None
 
 
 def _parse_feed_date(s):
@@ -561,9 +593,13 @@ def fetch_news():
                                   or e.findtext(f"{DC}date"))
             if not title or not link.startswith(("http://", "https://")):
                 continue
+            desc_raw = (e.findtext("description") or e.findtext(f"{CONTENT}encoded")
+                        or e.findtext(f"{ATOM}summary") or e.findtext(f"{ATOM}content") or "")
             items.append({"title": title, "link": link, "source": source,
                           "date": dt.isoformat() if dt else "",
-                          "date_display": dt.strftime("%-d %b") if dt else ""})
+                          "date_display": dt.strftime("%-d %b") if dt else "",
+                          "image": _item_image(e, desc_raw),
+                          "summary": _strip_html(desc_raw)[:SUMMARY_CHARS].strip()})
 
     items.sort(key=lambda x: x["date"], reverse=True)  # newest first; undated last
     seen, out = set(), []
