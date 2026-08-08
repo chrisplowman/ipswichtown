@@ -243,7 +243,9 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .toggle input:checked::after{transform:translateX(16px)}
 .profile-controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .profile-controls label{font-size:12px;color:var(--steel);display:flex;flex-direction:column;gap:5px}
-.profile-controls select{min-width:180px}
+.profile-controls select,.profile-controls input{min-width:180px}
+.profile-controls input{font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--hairline-strong);border-radius:var(--radius-md);background:var(--canvas);color:var(--ink);min-width:240px}
+.profile-controls input:focus{outline:2px solid var(--primary);outline-offset:1px;border-color:var(--primary)}
 
 footer{padding:32px 0 50px;color:var(--steel);font-size:12.5px;text-align:center}
 footer code{background:var(--surface);border:1px solid var(--hairline);padding:1px 6px;border-radius:var(--radius-xs)}
@@ -539,10 +541,16 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
     <div class="block" style="margin-top:30px">
       <p class="label">Player profiles</p>
       <div class="chartcard wide">
-        <p class="sub">Per-90 percentile ranks vs positional peers across the Premier League. Pick a second player to compare.</p>
+        <p class="sub">Per-90 percentile ranks vs positional peers across the Premier League. Search an Ipswich player, then any PL player to compare across the league.</p>
         <div class="profile-controls">
-          <label>Player<select id="prof-a"></select></label>
-          <label>Compare with<select id="prof-b"><option value="">— none —</option></select></label>
+          <label>Ipswich player
+            <input id="prof-a" list="prof-a-list" placeholder="Search Ipswich players…" autocomplete="off" spellcheck="false">
+            <datalist id="prof-a-list"></datalist>
+          </label>
+          <label>Compare with (any PL player)
+            <input id="prof-b" list="prof-b-list" placeholder="Search all Premier League players…" autocomplete="off" spellcheck="false">
+            <datalist id="prof-b-list"></datalist>
+          </label>
         </div>
         <div class="canvas-holder" style="height:360px"><canvas id="c-radar"></canvas></div>
         <div class="note" id="n-radar" hidden></div>
@@ -863,31 +871,49 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   function buildProfiles(){
     var profs=DATA.player_profiles||[];
     var a=document.getElementById('prof-a'), b=document.getElementById('prof-b');
+    var la=document.getElementById('prof-a-list'), lb=document.getElementById('prof-b-list');
     if(!profs.length){ var pc=document.querySelector('.profile-controls'); if(pc)pc.style.display='none';
       showNote('radar','No player minutes yet — profiles appear once games are played.'); return; }
     if(!window.Chart){ showNote('radar','Charts library did not load.'); return; }
     var M=[['goals','Goals'],['assists','Assists'],['npxg','npxG'],['xa','xA'],
            ['shots','Shots'],['key_passes','Key passes'],['xgchain','xGChain'],['xgbuildup','xGBuildup']];
-    profs.forEach(function(p,i){
-      var o=document.createElement('option'); o.value=i; o.textContent=p.name+' ('+p.pos+')';
-      a.appendChild(o); b.appendChild(o.cloneNode(true));
-    });
-    var chart;
+    // unique display key per player, plus datalist options (Ipswich list vs all-PL list)
+    function keyOf(p){return p.name + (p.team ? ' — ' + p.team : '');}
+    var byKey={};
+    profs.forEach(function(p){ byKey[keyOf(p)]=p; });
+    function opt(p){var o=document.createElement('option'); o.value=keyOf(p); o.label=p.pos; return o;}
+    profs.forEach(function(p){ if(p.is_ipswich) la.appendChild(opt(p)); lb.appendChild(opt(p)); });
+
+    var chart, curA=null, curB=null;
     function ds(p,c){return {label:p.name,data:M.map(function(m){return p.pct[m[0]];}),
-      borderColor:c,backgroundColor:c+'33',pointBackgroundColor:c,borderWidth:2};}
+      borderColor:c,backgroundColor:c+'33',pointBackgroundColor:c,borderWidth:2,
+      _p90:M.map(function(m){return (p.per90&&p.per90[m[0]]!=null)?p.per90[m[0]]:null;})};}
     function draw(){
-      var sets=[ds(profs[+a.value],C.blue)];
-      if(b.value!==''){ sets.push(ds(profs[+b.value],C.red)); }
+      if(!curA && !curB){ return; }
+      var sets=[];
+      if(curA) sets.push(ds(curA,C.blue));
+      if(curB) sets.push(ds(curB,C.red));
       var data={labels:M.map(function(m){return m[1];}),datasets:sets};
       var opts={responsive:true,maintainAspectRatio:false,
         scales:{r:{min:0,max:100,ticks:{stepSize:20,backdropColor:'transparent',font:{size:9}},
           grid:{color:C.line},angleLines:{color:C.line},pointLabels:{font:{size:11}}}},
         plugins:{legend:{position:'bottom',labels:{boxWidth:12}},
-          tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+ord(ctx.raw)+' pct';}}}}};
+          tooltip:{callbacks:{label:function(ctx){var p90=ctx.dataset._p90?ctx.dataset._p90[ctx.dataIndex]:null;
+            return ctx.dataset.label+': '+ord(ctx.raw)+' pct'+(p90!=null?' ('+p90+' /90)':'');}}}}};
       if(chart){chart.data=data;chart.update();} else chart=new Chart(document.getElementById('c-radar'),{type:'radar',data:data,options:opts});
     }
-    a.addEventListener('change',draw); b.addEventListener('change',draw);
-    a.value=0; draw();
+    function pick(input,isA){
+      var p=byKey[input.value];
+      if(p){ if(isA) curA=p; else curB=p; draw(); }
+      else if(input.value===''){ if(isA) curA=null; else curB=null; draw(); }
+    }
+    a.addEventListener('change',function(){pick(a,true);});
+    a.addEventListener('input',function(){pick(a,true);});
+    b.addEventListener('change',function(){pick(b,false);});
+    b.addEventListener('input',function(){pick(b,false);});
+    var firstIps=profs.filter(function(p){return p.is_ipswich;})[0];
+    if(firstIps){ curA=firstIps; a.value=keyOf(firstIps); draw(); }
+    else showNote('radar','No Ipswich player minutes yet.');
   }
 
   function ord(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
