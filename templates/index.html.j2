@@ -585,6 +585,29 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   [].forEach.call(document.querySelectorAll('.newslist .thumb'), function(img){
     img.addEventListener('error', function(){ img.remove(); });
   });
+  // Club badges: a few clubs are absent from the primary PL badge directory, so on
+  // failure fall back through the other known paths, and hide (rather than show a
+  // broken "?") if none resolve.
+  [].forEach.call(document.querySelectorAll('img'), function(img){
+    if(img.src.indexOf('resources.premierleague.com') === -1) return;
+    img.addEventListener('error', function(){
+      if(!('badgeCode' in img.dataset)){
+        var m = img.src.match(/badges(?:-alt)?\/(\d+)\./);
+        img.dataset.badgeCode = m ? m[1] : '';
+        img.dataset.badgeStep = '0';
+      }
+      var code = img.dataset.badgeCode;
+      if(!code){ img.style.visibility = 'hidden'; return; }
+      var alts = [
+        'https://resources.premierleague.com/premierleague25/badges/' + code + '.svg',
+        'https://resources.premierleague.com/premierleague/badges/50/t' + code + '.png',
+        'https://resources.premierleague.com/premierleague/badges/25/' + code + '.png'
+      ];
+      var step = +img.dataset.badgeStep;
+      if(step < alts.length){ img.dataset.badgeStep = '' + (step + 1); img.src = alts[step]; }
+      else { img.style.visibility = 'hidden'; }
+    });
+  });
   var css = getComputedStyle(document.documentElement);
   function cv(n){ return css.getPropertyValue(n).trim(); }
   var C = {blue:cv('--primary'),bright:cv('--brand-navy-mid'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid'),pink:cv('--brand-pink'),pitch:cv('--tint-mint'),pitchline:cv('--hairline-strong')};
