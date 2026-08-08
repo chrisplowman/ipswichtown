@@ -194,14 +194,27 @@ def sample_data(live=None):
     shooters = [s["full_name"] for s in outfield[:4]] or ["Player One", "Player Two"]
     shot_maps = [{"match_id": "8", "opponent": results[0]["opponent"] if results else "Newcastle",
                   "home": True, "date": "2026-10-04", "score": "3-1", "xg_for": 2.3, "xg_against": 0.9,
-                  "shots": [{"x": 0.88, "y": 0.45, "xg": 0.62, "result": "Goal", "player": shooters[0], "minute": 23},
-                            {"x": 0.80, "y": 0.55, "xg": 0.18, "result": "Goal", "player": shooters[1 % len(shooters)], "minute": 41},
-                            {"x": 0.74, "y": 0.35, "xg": 0.09, "result": "SavedShot", "player": shooters[2 % len(shooters)], "minute": 58},
-                            {"x": 0.83, "y": 0.62, "xg": 0.44, "result": "Goal", "player": shooters[3 % len(shooters)], "minute": 77}]}]
+                  "shots": [{"x": 0.88, "y": 0.45, "xg": 0.62, "result": "Goal", "player": shooters[0], "minute": 23, "situation": "OpenPlay"},
+                            {"x": 0.80, "y": 0.55, "xg": 0.18, "result": "Goal", "player": shooters[1 % len(shooters)], "minute": 41, "situation": "FromCorner"},
+                            {"x": 0.74, "y": 0.35, "xg": 0.09, "result": "SavedShot", "player": shooters[2 % len(shooters)], "minute": 58, "situation": "OpenPlay"},
+                            {"x": 0.83, "y": 0.62, "xg": 0.44, "result": "Goal", "player": shooters[3 % len(shooters)], "minute": 77, "situation": "Penalty"}]}]
     understat_matches = [{"match_id": str(g["gw"]), "opponent": r["opponent"], "home": r["home"],
                           "date": "2026-09-01", "gf": g["gf"], "ga": g["ga"],
                           "xg_for": g["team_xg"], "xg_against": g["team_xga"]}
                          for g, r in zip(by_gameweek[-5:], results[:5])]
+    # per-match history (xPts, PPDA, deep completions) + shot counts for the new charts
+    understat_history, match_stats = [], []
+    for i, g in enumerate(by_gameweek):
+        won = g["pts"] == 3
+        understat_history.append({"date": "2026-09-01", "h_a": "h" if i % 2 else "a",
+            "xg": g["team_xg"], "xga": g["team_xga"], "npxg": round(g["team_xg"]*0.9, 2),
+            "npxga": round(g["team_xga"]*0.9, 2), "deep": 8 + (i % 5), "deep_allowed": 6 + (i % 4),
+            "scored": g["gf"], "conceded": g["ga"], "xpts": round(1.0 + (i % 3)*0.6, 2),
+            "pts": g["pts"], "ppda": round(9.0 + (i % 5), 2), "ppda_allowed": round(11.0 - (i % 4), 2)})
+        match_stats.append({"date": "2026-09-01", "opponent": g.get("opponent", "Opp"), "home": bool(i % 2),
+            "shots_for": 10 + (i*3) % 8, "shots_against": 8 + (i*2) % 7,
+            "sot_for": 3 + (i*2) % 5, "sot_against": 2 + i % 4,
+            "corners_for": 4 + i % 5, "corners_against": 3 + i % 4})
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -216,6 +229,7 @@ def sample_data(live=None):
         "team_scatter": team_scatter, "team_ranks": team_ranks, "player_profiles": player_profiles,
         "by_gameweek": by_gameweek, "understat_matches": understat_matches, "shot_maps": shot_maps,
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
+        "understat_history": understat_history, "match_stats": match_stats,
         "results": results, "squad": squad, "news": live.get("news") or [],
     }
 

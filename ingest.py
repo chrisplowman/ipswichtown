@@ -36,6 +36,7 @@ ESPN_SEASON = "2026"
 UNDERSTAT_TEAM_SLUG = "Ipswich_Town"
 TSDB_PL_LEAGUE_ID = "4328"         # English Premier League on TheSportsDB
 FBD_SEASONS = ["2223", "2324", "2425", "2526"]  # football-data.co.uk season codes
+FBD_CURRENT = "2627"               # current season, for per-match shot stats
 FBD_DIVS = ["E0", "E1"]            # Premier League, Championship
 CLUBELO_HFA = 65                   # home advantage, in Elo points
 # Ipswich-specific RSS feeds (all team-specific, so no filtering needed).
@@ -351,7 +352,8 @@ def fetch_understat():
                               "date": date, "score": score,
                               "shots": [{"x": to_float(s["X"]), "y": to_float(s["Y"]),
                                          "xg": to_float(s["xG"]), "result": s["result"],
-                                         "player": s["player"], "minute": int(s["minute"])}
+                                         "player": s["player"], "minute": int(s["minute"]),
+                                         "situation": s.get("situation", "")}
                                         for s in ours]})
         except requests.RequestException:
             continue
@@ -405,7 +407,31 @@ def fetch_understat_league():
                "form": [h.get("result", "").upper()[:1] for h in hist[-5:]
                         if h.get("result", "").upper()[:1] in ("W", "D", "L")]}
         league_teams[t["title"]] = agg
-    return league_teams, players_raw
+
+    # Ipswich's per-match history (xPts, PPDA, deep completions, etc.) for trend charts
+    ips_history = []
+    for t in teams_raw.values():
+        if TEAM_NAME_MATCH not in t["title"].lower():
+            continue
+        for h in t.get("history", []):
+            ppda = h.get("ppda") or {}
+            ppda_a = h.get("ppda_allowed") or {}
+            def _ppda(d):
+                att, dfn = to_float(d.get("att", 0)), to_float(d.get("def", 0))
+                return round(att / dfn, 2) if dfn else None
+            ips_history.append({
+                "date": (h.get("date", "") or "")[:10], "h_a": h.get("h_a", ""),
+                "xg": to_float(h.get("xG", 0)), "xga": to_float(h.get("xGA", 0)),
+                "npxg": to_float(h.get("npxG", 0)), "npxga": to_float(h.get("npxGA", 0)),
+                "deep": int(h.get("deep", 0) or 0), "deep_allowed": int(h.get("deep_allowed", 0) or 0),
+                "scored": int(h.get("scored", 0) or 0), "conceded": int(h.get("missed", 0) or 0),
+                "xpts": to_float(h.get("xpts", 0)),
+                "pts": int(h["pts"]) if h.get("pts") not in (None, "") else
+                       (3 if (h.get("result", "") or "").lower() == "w"
+                        else 1 if (h.get("result", "") or "").lower() == "d" else 0),
+                "ppda": _ppda(ppda), "ppda_allowed": _ppda(ppda_a)})
+        break
+    return league_teams, players_raw, ips_history
 
 
 # --------------------------------------------------------------------------- #
@@ -472,6 +498,37 @@ def fetch_h2h_history():
                     {"date": _fbd_iso(r.get("Date", "")), "opponent": opp,
                      "home": ips_home, "score": f"{our}-{their}", "result": res})
     return meetings
+
+
+def fetch_match_stats():
+    """Ipswich's current-season per-match shots/on-target/corners from football-data.co.uk
+    (Premier League, then Championship as a fallback if not yet in the top flight)."""
+    out = []
+    for div in FBD_DIVS:
+        try:
+            text = get_text(f"https://www.football-data.co.uk/mmz4281/{FBD_CURRENT}/{div}.csv")
+        except requests.RequestException:
+            continue
+        for r in csv.DictReader(io.StringIO(text)):
+            h, a = r.get("HomeTeam", ""), r.get("AwayTeam", "")
+            if TEAM_NAME_MATCH not in f"{h}{a}".lower():
+                continue
+
+            def gi(k):
+                try:
+                    return int(r.get(k, "") or 0)
+                except (ValueError, TypeError):
+                    return 0
+            ips_home = TEAM_NAME_MATCH in h.lower()
+            opp = a if ips_home else h
+            pick = lambda hk, ak: gi(hk) if ips_home else gi(ak)
+            out.append({"date": _fbd_iso(r.get("Date", "")), "opponent": opp, "home": ips_home,
+                        "shots_for": pick("HS", "AS"), "shots_against": pick("AS", "HS"),
+                        "sot_for": pick("HST", "AST"), "sot_against": pick("AST", "HST"),
+                        "corners_for": pick("HC", "AC"), "corners_against": pick("AC", "HC")})
+        if out:
+            break
+    return out
 
 
 def fetch_clubelo_elos():
@@ -668,12 +725,20 @@ def main():
     next_fixture = dict(upcoming[0]) if upcoming else None
 
     # ---- league-wide comparison data (Understat league page) -------------- #
-    league_teams, league_players = {}, []
+    league_teams, league_players, ips_history = {}, [], []
     try:
-        league_teams, league_players = fetch_understat_league()
-        print(f"  understat league: {len(league_teams)} teams, {len(league_players)} players")
+        league_teams, league_players, ips_history = fetch_understat_league()
+        print(f"  understat league: {len(league_teams)} teams, {len(league_players)} players, "
+              f"{len(ips_history)} Ipswich matches")
     except Exception as e:
         print(f"  understat league: skipped ({e})")
+
+    match_stats = []
+    try:
+        match_stats = fetch_match_stats()
+        print(f"  match stats: {len(match_stats)} matches (shots/corners)")
+    except Exception as e:
+        print(f"  match stats: skipped ({e})")
 
     # short-name + badge lookup for Understat team titles
     meta_by_norm = {_norm(t["name"]): (t["short_name"], badges.get(t["short_name"]))
@@ -838,6 +903,8 @@ def main():
         "player_profiles": player_profiles,
         "by_gameweek": fpl["by_gameweek"],
         "understat_matches": understat["matches"],
+        "understat_history": ips_history,
+        "match_stats": match_stats,
         "shot_maps": understat["shot_maps"],
         "understat_players": understat["players"][:14],
         "upcoming": upcoming,
