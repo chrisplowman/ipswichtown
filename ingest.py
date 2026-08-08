@@ -631,7 +631,7 @@ def main():
     def badge_for(short):
         code = code_by_short.get(short)
         if code:
-            return f"https://resources.premierleague.com/premierleague25/badges-alt/{code}.svg"
+            return f"https://resources.premierleague.com/premierleague25/badges/{code}.svg"
         return badges.get(short) or espn_by_short.get(short)
 
     # league table
