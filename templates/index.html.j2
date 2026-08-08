@@ -439,19 +439,19 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   <section class="panel">
     <div class="chartgrid">
       <div class="chartcard wide">
-        <h3>Points progression</h3><p class="sub">Cumulative league points by gameweek.</p>
+        <h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at your current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p>
         <div class="canvas-holder"><canvas id="c-points"></canvas></div><div class="note" id="n-points" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Goals by gameweek</h3><p class="sub">Scored vs conceded, each matchweek.</p>
+        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of your best and worst weeks.</p>
         <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Attack: goals vs xG</h3><p class="sub">Cumulative (Understat). Above the line = clinical finishing.</p>
+        <h3>Attack: goals vs xG</h3><p class="sub">Cumulative goals vs expected goals (Understat). Above the line = finishing better than the chances created.</p>
         <div class="canvas-holder"><canvas id="c-xg"></canvas></div><div class="note" id="n-xg" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative (Understat). Below the line = keeping chances out.</p>
+        <h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances you'd expect to concede.</p>
         <div class="canvas-holder"><canvas id="c-xga"></canvas></div><div class="note" id="n-xga" hidden></div>
       </div>
       <div class="chartcard">
@@ -459,16 +459,24 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <div class="canvas-holder"><canvas id="c-finish"></canvas></div><div class="note" id="n-finish" hidden></div>
       </div>
       <div class="chartcard wide">
+        <h3>Rolling xG difference</h3><p class="sub">xG created minus xG conceded, averaged over the last 5 games. Above zero = on top of matches; the slope shows momentum.</p>
+        <div class="canvas-holder"><canvas id="c-xgd"></canvas></div><div class="note" id="n-xgd" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Home &amp; away split</h3><p class="sub">Per-game points, goals and xG at home vs away — how differently the side performs by venue.</p>
+        <div class="canvas-holder"><canvas id="c-homeaway"></canvas></div><div class="note" id="n-homeaway" hidden></div>
+      </div>
+      <div class="chartcard wide">
         <h3>League: chance creation vs concession</h3><p class="sub">Every club — xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
         <div class="canvas-holder" style="height:340px"><canvas id="c-scatter"></canvas></div><div class="note" id="n-scatter" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>How Ipswich compare</h3><p class="sub">Where Ipswich rank among the 20 clubs on each measure.</p>
+        <h3>How Ipswich compare</h3><p class="sub">Ipswich's rank out of 20 on each measure — a longer bar is better.</p>
         <div class="ranks" id="ranks"></div>
         <div class="note" id="n-ranks" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Shot map</h3>
+        <h3>Shot map</h3><p class="sub">Every shot from the selected match, placed by pitch location. Circle size = chance quality (xG), colour = outcome.</p>
         <div class="shotbar">
           <select id="shot-select" aria-label="Choose match"></select>
           <span class="shotscore" id="shot-score"></span>
@@ -485,7 +493,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         </div>
       </div>
       <div class="chartcard wide">
-        <h3>Upcoming difficulty</h3><p class="sub">FPL fixture difficulty for the next matches (1 easy → 5 hard).</p>
+        <h3>Upcoming difficulty</h3><p class="sub">FPL difficulty of the next fixtures (1 easy → 5 hard) — a quick look at the run ahead.</p>
         <div class="canvas-holder"><canvas id="c-fdr"></canvas></div><div class="note" id="n-fdr" hidden></div>
       </div>
     </div>
@@ -612,15 +620,41 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   }
 
   function buildCharts(){
-    if(!window.Chart){ ['points','goals','xg','xga','finish','fdr'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
+    if(!window.Chart){ ['points','goals','xg','xga','xgd','homeaway','finish','fdr'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
     else {
       Chart.defaults.font.family="Inter, system-ui, sans-serif"; Chart.defaults.color=C.muted;
       var gw = DATA.by_gameweek||[], labels = gw.map(function(d){return 'GW'+d.gw;});
 
-      if(gw.length){ new Chart(document.getElementById('c-points'),{type:'line',
-        data:{labels:labels,datasets:[{label:'Points',data:gw.map(function(d){return d.cum_points;}),
-          borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:3}]},
-        options:baseOpts()}); } else showNote('points','No matches played yet.');
+      // Points progression across the whole season: actual so far, projected to GW38
+      // at current points-per-game, vs the pace the 17th-placed team is on (survival).
+      var TOTAL_GW = 38;
+      var seasonLabels = []; for(var _g=1;_g<=TOTAL_GW;_g++) seasonLabels.push('GW'+_g);
+      if(gw.length){
+        var played = gw.length;
+        var cumPts = gw.map(function(d){return d.cum_points;});
+        var lastPts = cumPts[played-1], ppg = lastPts/played;
+        var actualData = seasonLabels.map(function(_,i){return i < played ? cumPts[i] : null;});
+        var projData = seasonLabels.map(function(_,i){var g=i+1;
+          if(g < played) return null;
+          if(g === played) return lastPts;
+          return +(lastPts + ppg*(g-played)).toFixed(1);});
+        var tbl = DATA.table||[], safe=null;
+        for(var _k=0;_k<tbl.length;_k++){ if(tbl[_k].rank===17){safe=tbl[_k];break;} }
+        if(!safe && tbl.length>=17) safe = tbl[16];
+        var dsets=[
+          {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
+          {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}];
+        if(safe && safe.played){
+          var sp = safe.points/safe.played, survFinal=Math.round(sp*TOTAL_GW);
+          dsets.push({label:'Survival pace (~'+survFinal+' pts)',
+            data:seasonLabels.map(function(_,i){return +(sp*(i+1)).toFixed(1);}),
+            borderColor:C.red,borderDash:[3,4],tension:0,pointRadius:0,fill:false});
+        }
+        new Chart(document.getElementById('c-points'),{type:'line',
+          data:{labels:seasonLabels,datasets:dsets},
+          options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:13}},
+            y:{beginAtZero:true,grid:{color:C.line}}}})});
+      } else showNote('points','No matches played yet.');
 
       if(gw.length){ new Chart(document.getElementById('c-goals'),{type:'bar',
         data:{labels:labels,datasets:[
@@ -651,6 +685,37 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
           {label:'Conceded',data:gAgCum,borderColor:C.red,tension:.25,pointRadius:2},
           {label:'xG against',data:xgAgCum,borderColor:C.muted,borderDash:[6,4],tension:.25,pointRadius:2}]},
         options:baseOpts()}); } else showNote('xga','No matches played yet.');
+
+      // Rolling xG difference (5-match average of xG for minus xG against)
+      var WIN = 5;
+      if(um.length){
+        var diff = um.map(function(m){return (m.xg_for||0)-(m.xg_against||0);});
+        var roll = diff.map(function(_,i){var s=Math.max(0,i-WIN+1),seg=diff.slice(s,i+1);
+          return +(seg.reduce(function(a,b){return a+b;},0)/seg.length).toFixed(2);});
+        new Chart(document.getElementById('c-xgd'),{type:'line',
+          data:{labels:um.map(function(m,i){return 'M'+(i+1);}),datasets:[
+            {label:'Rolling xGD',data:roll,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.12)',
+              fill:'origin',tension:.3,pointRadius:2}]},
+          options:baseOpts({plugins:{legend:{display:false}},
+            scales:{x:{grid:{display:false}},y:{grid:{color:C.line},
+              title:{display:true,text:'xG diff / game (5-match avg)'}}}})});
+      } else showNote('xgd','No match xG data yet.');
+
+      // Home / away split — per-game points, goals and xG by venue (from Understat matches)
+      var hm = DATA.understat_matches||[];
+      if(hm.length){
+        function agg(isHome){var m=hm.filter(function(x){return !!x.home===isHome;});
+          if(!m.length) return null; var n=m.length,gf=0,ga=0,xf=0,xa=0,pts=0;
+          m.forEach(function(x){gf+=x.gf||0;ga+=x.ga||0;xf+=x.xg_for||0;xa+=x.xg_against||0;
+            pts+=(x.gf>x.ga?3:(x.gf===x.ga?1:0));});
+          return [pts/n,gf/n,ga/n,xf/n,xa/n].map(function(v){return +v.toFixed(2);});}
+        var H=agg(true),A=agg(false);
+        new Chart(document.getElementById('c-homeaway'),{type:'bar',
+          data:{labels:['PPG','Goals for','Goals against','xG for','xGA'],datasets:[
+            {label:'Home',data:H||[0,0,0,0,0],backgroundColor:C.blue},
+            {label:'Away',data:A||[0,0,0,0,0],backgroundColor:C.amber}]},
+          options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})});
+      } else showNote('homeaway','No match data yet.');
 
       // Finishing: npg vs npxg scatter with y=x reference
       var pl = (DATA.understat_players||[]).filter(function(p){return p.shots>0;});
