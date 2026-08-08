@@ -170,8 +170,20 @@ def sample_data(live=None):
             {"goals": 72, "assists": 80, "npxg": 68, "xa": 85, "shots": 66, "key_passes": 78, "xgchain": 74, "xgbuildup": 55},
             {"goals": 30, "assists": 62, "npxg": 25, "xa": 70, "shots": 40, "key_passes": 66, "xgchain": 60, "xgbuildup": 72}]
     player_profiles = [{"name": s["full_name"], "team": "Ipswich", "pos": s["pos"], "minutes": s["minutes"],
-                        "per90": {k: round(v / 40, 2) for k, v in pcts[i].items()}, "pct": pcts[i]}
+                        "per90": {k: round(v / 40, 2) for k, v in pcts[i].items()}, "pct": pcts[i],
+                        "is_ipswich": True}
                        for i, s in enumerate(outfield[:3])]
+    # a few non-Ipswich league players so the "any PL player" search has content in preview
+    league_demo = [
+        ("Mo Salah", "Liverpool", "F", {"goals": 95, "assists": 78, "npxg": 90, "xa": 72, "shots": 92, "key_passes": 80, "xgchain": 88, "xgbuildup": 60}),
+        ("Bruno Fernandes", "Manchester United", "M", {"goals": 70, "assists": 88, "npxg": 66, "xa": 90, "shots": 74, "key_passes": 93, "xgchain": 85, "xgbuildup": 70}),
+        ("Virgil van Dijk", "Liverpool", "D", {"goals": 40, "assists": 30, "npxg": 35, "xa": 28, "shots": 45, "key_passes": 40, "xgchain": 55, "xgbuildup": 82}),
+        ("Cole Palmer", "Chelsea", "M", {"goals": 90, "assists": 82, "npxg": 85, "xa": 84, "shots": 88, "key_passes": 86, "xgchain": 87, "xgbuildup": 64}),
+        ("Erling Haaland", "Manchester City", "F", {"goals": 99, "assists": 40, "npxg": 98, "xa": 45, "shots": 96, "key_passes": 42, "xgchain": 80, "xgbuildup": 35})]
+    for nm, tm, pos, pct in league_demo:
+        player_profiles.append({"name": nm, "team": tm, "pos": pos, "minutes": 1400,
+                                "per90": {k: round(v / 40, 2) for k, v in pct.items()}, "pct": pct,
+                                "is_ipswich": False})
 
     understat_players = [{"name": s["full_name"], "games": 12, "minutes": s["minutes"], "goals": s["goals"],
                           "assists": s["assists"], "shots": s["goals"] * 4 + 3, "xg": s["xg"], "xa": s["xa"],

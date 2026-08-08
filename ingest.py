@@ -744,11 +744,14 @@ def main():
             peers = [v[metric] for v in pool.get(pos, [])]
             return round(sum(1 for x in peers if x <= val) / len(peers) * 100) if peers else 0
         keys = ["goals", "assists", "npxg", "xa", "shots", "key_passes", "xgchain", "xgbuildup"]
+        PROFILE_MIN_MINUTES = 450   # league players need a decent sample to be comparable
         for r in rows:
-            if TEAM_NAME_MATCH in r["team"].lower():
+            r["is_ipswich"] = TEAM_NAME_MATCH in r["team"].lower()
+            if r["is_ipswich"] or r["minutes"] >= PROFILE_MIN_MINUTES:
                 r["pct"] = {k: pctile(r["pos"], k, r["per90"][k]) for k in keys}
                 player_profiles.append(r)
-        player_profiles.sort(key=lambda r: -r["minutes"])
+        # Ipswich first, then the rest of the league by minutes
+        player_profiles.sort(key=lambda r: (not r["is_ipswich"], -r["minutes"]))
 
     # next-opponent preview (table position/points + Understat xG + recent form)
     next_opponent = None
