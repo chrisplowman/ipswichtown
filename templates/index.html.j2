@@ -444,6 +444,10 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at your current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p>
         <div class="canvas-holder"><canvas id="c-points"></canvas></div><div class="note" id="n-points" hidden></div>
       </div>
+      <div class="chartcard wide">
+        <h3>Expected points vs actual</h3><p class="sub">Cumulative points vs the points your performances "deserved" (Understat xPts). Above the line = picking up more than the underlying play merits.</p>
+        <div class="canvas-holder"><canvas id="c-xpts"></canvas></div><div class="note" id="n-xpts" hidden></div>
+      </div>
       <div class="chartcard">
         <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of your best and worst weeks.</p>
         <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
@@ -465,8 +469,24 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <div class="canvas-holder"><canvas id="c-xgd"></canvas></div><div class="note" id="n-xgd" hidden></div>
       </div>
       <div class="chartcard wide">
+        <h3>Pressing intensity (PPDA)</h3><p class="sub">Passes the opponent completes per defensive action you make, 5-game average. Lower = pressing higher and harder.</p>
+        <div class="canvas-holder"><canvas id="c-ppda"></canvas></div><div class="note" id="n-ppda" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Territory: deep completions</h3><p class="sub">Passes completed near the opponent's box, for and against, per match. A read on which side controlled dangerous territory.</p>
+        <div class="canvas-holder"><canvas id="c-deep"></canvas></div><div class="note" id="n-deep" hidden></div>
+      </div>
+      <div class="chartcard wide">
         <h3>Home &amp; away split</h3><p class="sub">Per-game points, goals and xG at home vs away — how differently the side performs by venue.</p>
         <div class="canvas-holder"><canvas id="c-homeaway"></canvas></div><div class="note" id="n-homeaway" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Shots for &amp; against</h3><p class="sub">Actual shots (and shots on target) taken vs faced each match — real volume, not xG. Out-shooting opponents is a good sign.</p>
+        <div class="canvas-holder"><canvas id="c-shots"></canvas></div><div class="note" id="n-shots" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Where shots come from</h3><p class="sub">Breakdown of shots by situation across recent matches — open play, set pieces, corners and penalties.</p>
+        <div class="canvas-holder"><canvas id="c-situation"></canvas></div><div class="note" id="n-situation" hidden></div>
       </div>
       <div class="chartcard wide">
         <h3>League: chance creation vs concession</h3><p class="sub">Every club — xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
@@ -628,7 +648,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   }
 
   function buildCharts(){
-    if(!window.Chart){ ['points','goals','xg','xga','xgd','homeaway','finish','fdr'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
+    if(!window.Chart){ ['points','xpts','goals','xg','xga','xgd','ppda','deep','homeaway','shots','situation','finish','fdr'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
     else {
       Chart.defaults.font.family="Inter, system-ui, sans-serif"; Chart.defaults.color=C.muted;
       var gw = DATA.by_gameweek||[], labels = gw.map(function(d){return 'GW'+d.gw;});
@@ -724,6 +744,64 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
             {label:'Away',data:A||[0,0,0,0,0],backgroundColor:C.amber}]},
           options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})});
       } else showNote('homeaway','No match data yet.');
+
+      // Expected points vs actual (Understat xPts), cumulative
+      var uh = DATA.understat_history||[];
+      function rollAvg(arr,w){return arr.map(function(_,i){var s=Math.max(0,i-w+1),
+        seg=arr.slice(s,i+1).filter(function(v){return v!=null;});
+        return seg.length? +(seg.reduce(function(a,b){return a+b;},0)/seg.length).toFixed(2):null;});}
+      if(uh.length){
+        var cp=0, cx=0;
+        new Chart(document.getElementById('c-xpts'),{type:'line',
+          data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+            {label:'Points',data:uh.map(function(h){cp+=(h.pts||0);return cp;}),
+              borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:2},
+            {label:'Expected points',data:uh.map(function(h){cx+=(h.xpts||0);return +cx.toFixed(1);}),
+              borderColor:C.amber,borderDash:[6,4],tension:.25,pointRadius:2}]},
+          options:baseOpts()});
+      } else showNote('xpts','No match data yet.');
+
+      // Pressing intensity — rolling PPDA (lower = press harder)
+      if(uh.length){ new Chart(document.getElementById('c-ppda'),{type:'line',
+        data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+          {label:'PPDA (5-game avg)',data:rollAvg(uh.map(function(h){return h.ppda;}),5),
+            borderColor:C.blue,tension:.3,pointRadius:2,spanGaps:true}]},
+        options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},
+          y:{grid:{color:C.line},title:{display:true,text:'PPDA — lower = press harder'}}}})}); }
+      else showNote('ppda','No pressing data yet.');
+
+      // Territory — deep completions for vs against
+      if(uh.length){ new Chart(document.getElementById('c-deep'),{type:'bar',
+        data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+          {label:'For',data:uh.map(function(h){return h.deep;}),backgroundColor:C.blue},
+          {label:'Against',data:uh.map(function(h){return h.deep_allowed;}),backgroundColor:C.red}]},
+        options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})}); }
+      else showNote('deep','No territory data yet.');
+
+      // Shots for & against, with shots on target (football-data)
+      var ms = DATA.match_stats||[];
+      if(ms.length){ new Chart(document.getElementById('c-shots'),{type:'bar',
+        data:{labels:ms.map(function(m){return (m.opponent||'').slice(0,3).toUpperCase()+(m.home?' (H)':' (A)');}),
+          datasets:[
+            {label:'Shots for',data:ms.map(function(m){return m.shots_for;}),backgroundColor:C.blue},
+            {label:'Shots against',data:ms.map(function(m){return m.shots_against;}),backgroundColor:C.red},
+            {type:'line',label:'On target (for)',data:ms.map(function(m){return m.sot_for;}),
+              borderColor:C.green,backgroundColor:C.green,pointRadius:3,fill:false,tension:.2}]},
+        options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})}); }
+      else showNote('shots','No shot-count data yet.');
+
+      // Where shots come from — situation breakdown (from recent shot maps)
+      var sit={}; (DATA.shot_maps||[]).forEach(function(m){(m.shots||[]).forEach(function(s){
+        var k=s.situation||'Unknown'; sit[k]=(sit[k]||0)+1; });});
+      var sk=Object.keys(sit);
+      if(sk.length){ var nice={OpenPlay:'Open play',FromCorner:'From corner',SetPiece:'Set piece',DirectFreekick:'Free kick',Penalty:'Penalty'};
+        new Chart(document.getElementById('c-situation'),{type:'doughnut',
+          data:{labels:sk.map(function(k){return nice[k]||k;}),datasets:[
+            {data:sk.map(function(k){return sit[k];}),
+              backgroundColor:[C.blue,C.amber,C.green,C.pink,C.red,C.muted],borderWidth:0}]},
+          options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:12}}}}}}); }
+      else showNote('situation','No shot-location data yet.');
 
       // Finishing: npg vs npxg scatter with y=x reference
       var pl = (DATA.understat_players||[]).filter(function(p){return p.shots>0;});
