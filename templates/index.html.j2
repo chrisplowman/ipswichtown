@@ -162,6 +162,10 @@ ul.list li.has-link .opp{color:var(--primary)}
 .res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
 .score{font-weight:600;font-size:14px}
 .empty-note{padding:22px 18px;color:var(--steel);font-size:14px}
+.snapshot{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
+.snapshot-label{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--brand-orange);margin-bottom:8px}
+.snapshot p{margin:0;font-size:16px;line-height:1.55;color:#eef1f7;font-weight:400}
+@media(max-width:600px){.snapshot p{font-size:15px}}
 ul.newslist li{display:flex;align-items:flex-start;gap:16px;padding:16px 18px;border-bottom:1px solid var(--hairline-soft)}
 ul.newslist li:last-child{border-bottom:0}
 .newslist .thumb{flex:none;width:132px;height:88px;object-fit:cover;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--hairline)}
@@ -296,6 +300,14 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   <!-- OVERVIEW -->
   {% if page == 'overview' %}
   <section class="panel">
+    {% if summary_text %}
+    <div class="block">
+      <div class="snapshot">
+        <div class="snapshot-label">Season snapshot</div>
+        <p>{{ summary_text }}</p>
+      </div>
+    </div>
+    {% endif %}
     <div class="block">
       <p class="label">Next fixture</p>
       {% if next_fixture %}
