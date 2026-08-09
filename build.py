@@ -216,6 +216,46 @@ def sample_data(live=None):
             "sot_for": 3 + (i*2) % 5, "sot_against": 2 + i % 4,
             "corners_for": 4 + i % 5, "corners_against": 3 + i % 4})
 
+    # full detail match pages (dummy) for the most recent results, and link them in
+    def _shot(x, y, xg, res, pl, mn, sit):
+        return {"x": x, "y": y, "xg": xg, "result": res, "player": pl, "minute": mn,
+                "situation": sit, "assist": ""}
+    sq_names = [s["full_name"] for s in squad] or ["Player One", "Player Two", "Player Three"]
+    match_pages = []
+    for i, r in enumerate(results[:4]):
+        gf, ga = (int(x) for x in r["score"].split("-"))
+        sfor = [_shot(0.90, 0.45, 0.55, "Goal" if gf > 0 else "SavedShot", sq_names[0], 20, "OpenPlay"),
+                _shot(0.82, 0.40, 0.12, "SavedShot", sq_names[1 % len(sq_names)], 38, "OpenPlay"),
+                _shot(0.88, 0.55, 0.30, "Goal" if gf > 1 else "MissedShots", sq_names[2 % len(sq_names)], 66, "FromCorner")]
+        sag = [_shot(0.86, 0.50, 0.40, "Goal" if ga > 0 else "SavedShot", "Opponent striker", 55, "OpenPlay"),
+               _shot(0.78, 0.60, 0.08, "MissedShots", "Opponent winger", 72, "OpenPlay")]
+        goals = ([{"minute": s["minute"], "player": s["player"], "assist": "", "side": "for"} for s in sfor if s["result"] == "Goal"]
+                 + [{"minute": s["minute"], "player": s["player"], "assist": "", "side": "against"} for s in sag if s["result"] == "Goal"])
+        goals.sort(key=lambda g: g["minute"])
+        pfor = [{"name": sq_names[j % len(sq_names)], "pos": "F" if j == 0 else "M", "minutes": 90,
+                 "goals": 1 if (j == 0 and gf > 0) else 0, "assists": 0, "shots": (3 - j) if j < 3 else 1,
+                 "xg": round(max(0.1, 0.6 - j * 0.1), 2), "xa": round(max(0.02, 0.2 - j * 0.03), 2),
+                 "key_passes": (3 - j) if j < 3 else 0, "yellow": 1 if j == 4 else 0, "red": 0} for j in range(6)]
+        pag = [{"name": "Opponent " + p, "pos": q, "minutes": 90, "goals": 0, "assists": 0, "shots": 1,
+                "xg": 0.2, "xa": 0.1, "key_passes": 1, "yellow": 0, "red": 0}
+               for p, q in [("striker", "F"), ("winger", "M"), ("midfielder", "M"), ("defender", "D")]]
+        match_pages.append({
+            "id": "demo" + str(i + 1), "opponent": r["opponent"], "opponent_short": r["opponent_short"],
+            "opponent_badge": r["badge"], "team_badge": ips_badge, "home": r["home"], "date": "2026-10-04",
+            "score": r["score"], "gf": gf, "ga": ga, "result": r["result"],
+            "xg_for": round(1.4 + gf * 0.3, 2), "xg_against": round(0.8 + ga * 0.3, 2),
+            "ht_score": f"{min(gf,1)}-{min(ga,1)}", "referee": "M. Oliver",
+            "odds": {"win": 42, "draw": 27, "opp": 31}, "xpts": round(1.2 + gf * 0.4, 2),
+            "deep": 9 + i, "deep_allowed": 6 + i, "ppda": round(9.5 + i, 2), "ppda_allowed": round(11.0 - i, 2),
+            "fbd": {"shots_for": 14, "shots_against": 9, "sot_for": 6, "sot_against": 3,
+                    "corners_for": 7, "corners_against": 4, "fouls_for": 10, "fouls_against": 12,
+                    "yellows_for": 1, "yellows_against": 2, "reds_for": 0, "reds_against": 0},
+            "shots_for": sfor, "shots_against": sag, "players_for": pfor, "players_against": pag,
+            "goals": goals, "h2h": next_opponent["h2h"] if next_opponent else []})
+    mpid = {(mp["opponent_short"], mp["home"]): mp["id"] for mp in match_pages}
+    for r in results:
+        r["match_id"] = mpid.get((r["opponent_short"], r["home"]))
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "season": live.get("season", "2026/27"),
@@ -231,6 +271,7 @@ def sample_data(live=None):
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
         "understat_history": understat_history, "match_stats": match_stats,
         "results": results, "squad": squad, "news": live.get("news") or [],
+        "match_pages": match_pages,
     }
 
 
@@ -246,7 +287,7 @@ def _make_env():
     return env
 
 
-def render_site(template, data, preview):
+def render_site(template, match_template, data, preview):
     outdir = SITE / "preview" if preview else SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
     data_json = json.dumps(data).replace("<", "\\u003c")
@@ -257,18 +298,34 @@ def render_site(template, data, preview):
         (outdir / filename).write_text(html)
     (outdir / "data" / "itfc.json").write_text(json.dumps(data))
 
+    # a full detail page per finished match
+    matches = data.get("match_pages", [])
+    if matches:
+        (outdir / "match").mkdir(exist_ok=True)
+        for mp in matches:
+            match_json = json.dumps({"opponent": mp.get("opponent", ""),
+                                     "shots_for": mp.get("shots_for", []),
+                                     "shots_against": mp.get("shots_against", [])}).replace("<", "\\u003c")
+            html = match_template.render(m=mp, season=data.get("season", ""),
+                                         generated_at=data.get("generated_at", ""),
+                                         preview=preview, match_json=match_json)
+            (outdir / "match" / f"{mp['id']}.html").write_text(html)
+
 
 def main():
     real = json.loads(DATA.read_text())
-    template = _make_env().get_template("index.html.j2")
+    env = _make_env()
+    template = env.get_template("index.html.j2")
+    match_template = env.get_template("match.html.j2")
 
     if SITE.exists():
         shutil.rmtree(SITE)
     SITE.mkdir(parents=True)
-    render_site(template, real, preview=False)                # live -> site/*.html
-    render_site(template, sample_data(real), preview=True)    # dummy -> site/preview/*.html
+    render_site(template, match_template, real, preview=False)              # live
+    render_site(template, match_template, sample_data(real), preview=True)  # dummy preview
     (SITE / ".nojekyll").write_text("")
-    print(f"Built {len(PAGES)} pages (+ preview) into site/.")
+    n = len(real.get("match_pages", []))
+    print(f"Built {len(PAGES)} pages + {n} match pages (+ preview) into site/.")
 
 
 if __name__ == "__main__":

@@ -321,6 +321,38 @@ def _us_json(html, var):
     return json.loads(decoded)
 
 
+def fetch_match_detail(mid, side):
+    """Both teams' shots + player match-lines from an Understat match page."""
+    mh = get_text(f"https://understat.com/match/{mid}")
+    shots = _us_json(mh, "shotsData") or {}
+    rosters = _us_json(mh, "rostersData") or {}
+    them = "a" if side == "h" else "h"
+
+    def shot_list(key):
+        return [{"x": to_float(s["X"]), "y": to_float(s["Y"]), "xg": to_float(s["xG"]),
+                 "result": s["result"], "player": s["player"], "minute": int(s["minute"]),
+                 "situation": s.get("situation", ""), "assist": s.get("player_assisted") or ""}
+                for s in shots.get(key, [])]
+
+    def roster_list(key):
+        rl = []
+        for p in (rosters.get(key, {}) or {}).values():
+            if int(p.get("time", 0) or 0) <= 0:
+                continue
+            rl.append({"name": p.get("player", "?"), "pos": p.get("position", ""),
+                       "minutes": int(p.get("time", 0) or 0), "goals": int(p.get("goals", 0) or 0),
+                       "assists": int(p.get("assists", 0) or 0), "shots": int(p.get("shots", 0) or 0),
+                       "xg": to_float(p.get("xG", 0)), "xa": to_float(p.get("xA", 0)),
+                       "key_passes": int(p.get("key_passes", 0) or 0),
+                       "yellow": int(p.get("yellow_card", 0) or 0), "red": int(p.get("red_card", 0) or 0),
+                       "order": int(p.get("positionOrder", 99) or 99)})
+        rl.sort(key=lambda x: x["order"])
+        return rl
+
+    return {"shots_for": shot_list(side), "shots_against": shot_list(them),
+            "players_for": roster_list(side), "players_against": roster_list(them)}
+
+
 def fetch_understat():
     team_html = get_text(f"https://understat.com/team/{UNDERSTAT_TEAM_SLUG}/{UNDERSTAT_SEASON}")
     dates = _us_json(team_html, "datesData") or []
@@ -340,23 +372,34 @@ def fetch_understat():
                                  f"{rec['gf']}-{rec['ga']}", us))
         matches.append(rec)
     finished_matches = [m for m in matches if "gf" in m]
+    xg_by_mid = {m["match_id"]: m for m in finished_matches}
 
-    # shot maps for the most recent finished matches
-    shot_maps = []
-    for mid, opp, home, date, score, side in list(reversed(finished_ids))[:SHOT_MAP_MATCHES]:
+    # Full detail for every finished match (most recent first)
+    match_pages = []
+    for mid, opp, home, date, score, side in list(reversed(finished_ids)):
         try:
-            mh = get_text(f"https://understat.com/match/{mid}")
-            shots = _us_json(mh, "shotsData") or {}
-            ours = shots.get(side, [])
-            shot_maps.append({"match_id": mid, "opponent": opp, "home": home,
-                              "date": date, "score": score,
-                              "shots": [{"x": to_float(s["X"]), "y": to_float(s["Y"]),
-                                         "xg": to_float(s["xG"]), "result": s["result"],
-                                         "player": s["player"], "minute": int(s["minute"]),
-                                         "situation": s.get("situation", "")}
-                                        for s in ours]})
+            det = fetch_match_detail(mid, side)
         except requests.RequestException:
             continue
+        mm = xg_by_mid.get(mid, {})
+        gf, ga = mm.get("gf", 0), mm.get("ga", 0)
+        goals = ([{"minute": s["minute"], "player": s["player"], "assist": s["assist"], "side": "for"}
+                  for s in det["shots_for"] if s["result"] == "Goal"] +
+                 [{"minute": s["minute"], "player": s["player"], "assist": s["assist"], "side": "against"}
+                  for s in det["shots_against"] if s["result"] == "Goal"])
+        goals.sort(key=lambda g: g["minute"])
+        match_pages.append({"id": str(mid), "opponent": opp, "home": home, "date": date,
+                            "score": score, "gf": gf, "ga": ga,
+                            "xg_for": mm.get("xg_for"), "xg_against": mm.get("xg_against"),
+                            "result": "W" if gf > ga else "L" if gf < ga else "D",
+                            "goals": goals, **det})
+        time.sleep(0.2)  # be gentle with Understat
+
+    # shot maps (recent) for the Charts page, derived from the detail we already have
+    shot_maps = [{"match_id": m["id"], "opponent": m["opponent"], "home": m["home"],
+                  "date": m["date"], "score": m["score"], "xg_for": m["xg_for"],
+                  "xg_against": m["xg_against"], "shots": m["shots_for"]}
+                 for m in match_pages[:SHOT_MAP_MATCHES]]
 
     players = []
     for p in players_raw:
@@ -370,7 +413,8 @@ def fetch_understat():
                         "xgchain": to_float(p.get("xGChain", 0)), "xgbuildup": to_float(p.get("xGBuildup", 0))})
     players.sort(key=lambda x: -x["npxg"])
 
-    return {"matches": finished_matches, "shot_maps": shot_maps, "players": players}
+    return {"matches": finished_matches, "shot_maps": shot_maps,
+            "players": players, "match_pages": match_pages}
 
 
 # --------------------------------------------------------------------------- #
@@ -522,10 +566,27 @@ def fetch_match_stats():
             ips_home = TEAM_NAME_MATCH in h.lower()
             opp = a if ips_home else h
             pick = lambda hk, ak: gi(hk) if ips_home else gi(ak)
+
+            def odds():
+                try:
+                    oh, od, oa = float(r["B365H"]), float(r["B365D"]), float(r["B365A"])
+                    ph, pd, pa = 1 / oh, 1 / od, 1 / oa
+                    tot = ph + pd + pa
+                    win, opp_ = (ph, pa) if ips_home else (pa, ph)
+                    return {"win": round(win / tot * 100), "draw": round(pd / tot * 100),
+                            "opp": round(opp_ / tot * 100)}
+                except (KeyError, ValueError, TypeError, ZeroDivisionError):
+                    return None
+            hth, hta = gi("HTHG"), gi("HTAG")
             out.append({"date": _fbd_iso(r.get("Date", "")), "opponent": opp, "home": ips_home,
                         "shots_for": pick("HS", "AS"), "shots_against": pick("AS", "HS"),
                         "sot_for": pick("HST", "AST"), "sot_against": pick("AST", "HST"),
-                        "corners_for": pick("HC", "AC"), "corners_against": pick("AC", "HC")})
+                        "corners_for": pick("HC", "AC"), "corners_against": pick("AC", "HC"),
+                        "fouls_for": pick("HF", "AF"), "fouls_against": pick("AF", "HF"),
+                        "yellows_for": pick("HY", "AY"), "yellows_against": pick("AY", "HY"),
+                        "reds_for": pick("HR", "AR"), "reds_against": pick("AR", "HR"),
+                        "ht_for": hth if ips_home else hta, "ht_against": hta if ips_home else hth,
+                        "referee": r.get("Referee", ""), "odds": odds()})
         if out:
             break
     return out
@@ -740,6 +801,13 @@ def main():
     except Exception as e:
         print(f"  match stats: skipped ({e})")
 
+    meetings = {}
+    try:
+        meetings = fetch_h2h_history()
+        print(f"  football-data H2H: {sum(len(v) for v in meetings.values())} historical meetings")
+    except Exception as e:
+        print(f"  football-data H2H: skipped ({e})")
+
     # short-name + badge lookup for Understat team titles
     meta_by_norm = {_norm(t["name"]): (t["short_name"], badges.get(t["short_name"]))
                     for t in teams.values()}
@@ -852,19 +920,13 @@ def main():
     if next_opponent:
         opp_name = next_opponent["name"]
         home = next_opponent.get("home", True)
-        try:
-            meetings = fetch_h2h_history()
-            hist = sorted(meetings.get(canon(opp_name), []),
-                          key=lambda m: m["date"], reverse=True)[:6]
-            if hist:
-                next_opponent["h2h"] = hist
-                next_opponent["h2h_record"] = {
-                    "w": sum(m["result"] == "W" for m in hist),
-                    "d": sum(m["result"] == "D" for m in hist),
-                    "l": sum(m["result"] == "L" for m in hist)}
-            print(f"  football-data H2H: {len(hist)} meetings vs {opp_name}")
-        except Exception as e:
-            print(f"  football-data H2H: skipped ({e})")
+        hist = sorted(meetings.get(canon(opp_name), []), key=lambda m: m["date"], reverse=True)[:6]
+        if hist:
+            next_opponent["h2h"] = hist
+            next_opponent["h2h_record"] = {
+                "w": sum(m["result"] == "W" for m in hist),
+                "d": sum(m["result"] == "D" for m in hist),
+                "l": sum(m["result"] == "L" for m in hist)}
         try:
             elos = fetch_clubelo_elos()
             ei, eo = elos.get(canon("Ipswich")), elos.get(canon(opp_name))
@@ -878,6 +940,38 @@ def main():
         if not next_opponent.get("prob") and next_fixture and next_fixture.get("difficulty"):
             next_opponent["prob"] = fdr_win_probs(next_fixture["difficulty"])
             print(f"  win prob: FDR fallback (difficulty {next_fixture['difficulty']})")
+
+    # ---- assemble a full detail page for every finished match ------------ #
+    match_pages = understat.get("match_pages", [])
+    fbd_by_key = {(canon(m["opponent"]), m["home"]): m for m in match_stats}
+    hist_by_date = {h["date"]: h for h in ips_history}
+    ips_badge = badge_for(ipswich["short_name"])
+    for mp in match_pages:
+        short, _ = team_meta(mp["opponent"])
+        mp["opponent_short"] = short
+        mp["opponent_badge"] = badge_for(short)
+        mp["team_badge"] = ips_badge
+        fb = fbd_by_key.get((canon(mp["opponent"]), mp["home"]))
+        if fb:
+            mp["ht_score"] = f"{fb['ht_for']}-{fb['ht_against']}"
+            mp["odds"] = fb.get("odds")
+            mp["referee"] = fb.get("referee", "")
+            mp["fbd"] = {k: fb[k] for k in (
+                "shots_for", "shots_against", "sot_for", "sot_against",
+                "corners_for", "corners_against", "fouls_for", "fouls_against",
+                "yellows_for", "yellows_against", "reds_for", "reds_against")}
+        hh = hist_by_date.get(mp["date"])
+        if hh:
+            mp.update({"xpts": hh["xpts"], "deep": hh["deep"], "deep_allowed": hh["deep_allowed"],
+                       "ppda": hh["ppda"], "ppda_allowed": hh["ppda_allowed"]})
+        mp["h2h"] = sorted(meetings.get(canon(mp["opponent"]), []),
+                           key=lambda m: m["date"], reverse=True)[:5]
+    print(f"  match pages: {len(match_pages)} assembled")
+
+    # link each result row to its match page
+    mpid_by_key = {(canon(mp["opponent"]), mp["home"]): mp["id"] for mp in match_pages}
+    for r in fpl["results"]:
+        r["match_id"] = mpid_by_key.get((canon(r["opponent"]), r["home"]))
 
     news = []
     try:
@@ -906,6 +1000,7 @@ def main():
         "understat_history": ips_history,
         "match_stats": match_stats,
         "shot_maps": understat["shot_maps"],
+        "match_pages": match_pages,
         "understat_players": understat["players"][:14],
         "upcoming": upcoming,
         "fixtures": fpl["fixtures"],
