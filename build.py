@@ -419,6 +419,22 @@ def build_player_pages(data):
     return pages
 
 
+def projected_table(data):
+    """Every club's projected final points, from current points-per-game over 38 games."""
+    tbl = data.get("table") or []
+    rows = []
+    for r in tbl:
+        played, pts = r.get("played", 0), r.get("points", 0)
+        ppg = pts / played if played else 0
+        proj = round(pts + ppg * (38 - played)) if played else None
+        rows.append({**r, "proj": proj, "ppg": round(ppg, 2)})
+    if any(x["proj"] is not None for x in rows):
+        rows.sort(key=lambda x: (-(x["proj"] or 0), -(x.get("gd") or 0), x.get("team", "")))
+        for i, x in enumerate(rows, 1):
+            x["proj_rank"] = i
+    return rows
+
+
 def _make_env():
     env = Environment(loader=FileSystemLoader(str(TEMPLATES)),
                       autoescape=select_autoescape(["html"]))
@@ -436,11 +452,12 @@ def render_site(template, match_template, player_template, data, preview):
     player_pages = build_player_pages(data)     # stamps slug on each squad entry
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)
+    predicted = projected_table(data)
     for page_id, filename, _label in PAGES:
         toggle_href = f"../{filename}" if preview else f"preview/{filename}"
         html = template.render(data_json=data_json, page=page_id, current=page_id,
                                pages=PAGES, preview=preview, toggle_href=toggle_href,
-                               summary_text=summary_text, **data)
+                               summary_text=summary_text, predicted=predicted, **data)
         (outdir / filename).write_text(html)
     (outdir / "data" / "itfc.json").write_text(json.dumps(data))
 
@@ -454,7 +471,8 @@ def render_site(template, match_template, player_template, data, preview):
                                      "shots_against": mp.get("shots_against", [])}).replace("<", "\\u003c")
             html = match_template.render(m=mp, season=data.get("season", ""),
                                          generated_at=data.get("generated_at", ""),
-                                         preview=preview, match_json=match_json)
+                                         preview=preview, match_json=match_json,
+                                         pages=PAGES, nav_prefix="../")
             (outdir / "match" / f"{mp['id']}.html").write_text(html)
 
     # a page per squad player
@@ -464,7 +482,8 @@ def render_site(template, match_template, player_template, data, preview):
             player_json = json.dumps({"shots": pp["shots"],
                                       "log": list(reversed(pp["log"]))}).replace("<", "\\u003c")
             html = player_template.render(p=pp, season=data.get("season", ""),
-                                          preview=preview, player_json=player_json)
+                                          preview=preview, player_json=player_json,
+                                          pages=PAGES, nav_prefix="../")
             (outdir / "player" / f"{pp['slug']}.html").write_text(html)
 
 
