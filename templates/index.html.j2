@@ -451,6 +451,29 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
       <span><i style="background:#eaf1fc;border:1px solid var(--line)"></i> Ipswich</span>
     </div>
     {% else %}<p class="empty-note">League table unavailable right now — it will appear on the next successful update.</p>{% endif %}
+
+    <p class="label" style="margin-top:26px">Projected final table</p>
+    {% if predicted and predicted[0].proj is not none %}
+    <p class="empty-note" style="padding:0 2px 12px">Where the season ends if every club keeps its current points-per-game — a projection, not a prediction.</p>
+    <div class="tablewrap">
+      <table class="ltable">
+        <thead><tr>
+          <th class="rk">#</th><th class="tm">Team</th>
+          <th>P</th><th>Pts</th><th>PPG</th><th>Proj</th>
+        </tr></thead>
+        <tbody>
+          {% for row in predicted %}
+          <tr class="{{ 'ips ' if row.is_ipswich }}{{ 'eur' if row.proj_rank<=5 else 'rel' if row.proj_rank>=18 else '' }}">
+            <td class="rk">{{ row.proj_rank }}</td>
+            <td class="tm">{% if row.badge %}<img class="badge" src="{{ row.badge }}" alt="">{% endif %}{{ row.team }}</td>
+            <td>{{ row.played }}</td><td>{{ row.points }}</td><td>{{ '%.2f'|format(row.ppg) }}</td>
+            <td><b>{{ row.proj }}</b></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="empty-note">Available once the season is under way.</p>{% endif %}
   </section>
 
   <!-- CHARTS -->
@@ -459,15 +482,15 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   <section class="panel">
     <div class="chartgrid">
       <div class="chartcard wide">
-        <h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at your current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p>
+        <h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at the club's current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p>
         <div class="canvas-holder"><canvas id="c-points"></canvas></div><div class="note" id="n-points" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Expected points vs actual</h3><p class="sub">Cumulative points vs the points your performances "deserved" (Understat xPts). Above the line = picking up more than the underlying play merits.</p>
+        <h3>Expected points vs actual</h3><p class="sub">Cumulative points vs the points the club's performances "deserved" (Understat xPts). Above the line = picking up more than the underlying play merits.</p>
         <div class="canvas-holder"><canvas id="c-xpts"></canvas></div><div class="note" id="n-xpts" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of your best and worst weeks.</p>
+        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of the club's best and worst weeks.</p>
         <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
       </div>
       <div class="chartcard">
@@ -475,7 +498,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <div class="canvas-holder"><canvas id="c-xg"></canvas></div><div class="note" id="n-xg" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances you'd expect to concede.</p>
+        <h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances the club would expect to concede.</p>
         <div class="canvas-holder"><canvas id="c-xga"></canvas></div><div class="note" id="n-xga" hidden></div>
       </div>
       <div class="chartcard">
@@ -487,7 +510,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <div class="canvas-holder"><canvas id="c-xgd"></canvas></div><div class="note" id="n-xgd" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Pressing intensity (PPDA)</h3><p class="sub">Passes the opponent completes per defensive action you make, 5-game average. Lower = pressing higher and harder.</p>
+        <h3>Pressing intensity (PPDA)</h3><p class="sub">Passes the opponent completes per defensive action the club makes, 5-game average. Lower = pressing higher and harder.</p>
         <div class="canvas-holder"><canvas id="c-ppda"></canvas></div><div class="note" id="n-ppda" hidden></div>
       </div>
       <div class="chartcard wide">
