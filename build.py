@@ -10,7 +10,9 @@ Run:  python build.py
 """
 
 import json
+import re
 import shutil
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -352,6 +354,71 @@ def sample_data(live=None):
 
 
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+def _pnorm(name):
+    s = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+def _pslug(name):
+    s = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-") or "player"
+
+
+def build_player_pages(data):
+    """One page's data per squad player: FPL + Understat totals, percentile profile,
+    match-by-match log and personal shot map. Stamps a slug on each squad entry so
+    the squad table can link out."""
+    squad = data.get("squad") or []
+    us_by = {_pnorm(p["name"]): p for p in (data.get("understat_players") or [])}
+    prof_by = {_pnorm(p["name"]): p for p in (data.get("player_profiles") or [])}
+    matches = data.get("match_pages") or []
+
+    def find(d, full):
+        k = _pnorm(full)
+        if k in d:
+            return d[k]
+        ln = _pnorm(full.split()[-1]) if full and full.split() else ""
+        for kk, v in d.items():
+            if ln and len(ln) > 2 and (kk.endswith(ln) or ln in kk):
+                return v
+        return None
+
+    pages, used = [], {}
+    for sp in squad:
+        full = sp.get("full_name") or sp.get("name") or "Player"
+        slug = _pslug(full)
+        used[slug] = used.get(slug, 0) + 1
+        if used[slug] > 1:
+            slug = f"{slug}-{used[slug]}"
+        sp["slug"] = slug
+        key = _pnorm(full)
+        ln = _pnorm(full.split()[-1]) if full.split() else ""
+
+        def same(nm, _key=key, _ln=ln):
+            k = _pnorm(nm)
+            return k == _key or (_ln and len(_ln) > 2 and (k.endswith(_ln) or _ln in k))
+
+        log, shots = [], []
+        for m in matches:
+            pl = next((x for x in m.get("players_for", []) if same(x["name"])), None)
+            if pl:
+                log.append({"opponent": m["opponent"], "opponent_badge": m.get("opponent_badge"),
+                            "home": m["home"], "result": m["result"], "score": m["score"],
+                            "date": m["date"], "match_id": m["id"], "minutes": pl["minutes"],
+                            "goals": pl["goals"], "assists": pl["assists"], "shots": pl["shots"],
+                            "xg": pl["xg"], "xa": pl["xa"], "key_passes": pl.get("key_passes", 0)})
+            for s in m.get("shots_for", []):
+                if same(s["player"]):
+                    shots.append({"x": s["x"], "y": s["y"], "xg": s["xg"], "result": s["result"],
+                                  "minute": s["minute"], "situation": s.get("situation", ""),
+                                  "opponent": m["opponent"]})
+        pages.append({"slug": slug, "name": full, "web_name": sp.get("name"), "pos": sp.get("pos"),
+                      "fpl": sp, "us": find(us_by, full), "profile": find(prof_by, full),
+                      "log": log, "shots": shots})
+    return pages
+
+
 def _make_env():
     env = Environment(loader=FileSystemLoader(str(TEMPLATES)),
                       autoescape=select_autoescape(["html"]))
@@ -363,9 +430,10 @@ def _make_env():
     return env
 
 
-def render_site(template, match_template, data, preview):
+def render_site(template, match_template, player_template, data, preview):
     outdir = SITE / "preview" if preview else SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
+    player_pages = build_player_pages(data)     # stamps slug on each squad entry
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)
     for page_id, filename, _label in PAGES:
@@ -389,21 +457,32 @@ def render_site(template, match_template, data, preview):
                                          preview=preview, match_json=match_json)
             (outdir / "match" / f"{mp['id']}.html").write_text(html)
 
+    # a page per squad player
+    if player_pages:
+        (outdir / "player").mkdir(exist_ok=True)
+        for pp in player_pages:
+            player_json = json.dumps({"shots": pp["shots"],
+                                      "log": list(reversed(pp["log"]))}).replace("<", "\\u003c")
+            html = player_template.render(p=pp, season=data.get("season", ""),
+                                          preview=preview, player_json=player_json)
+            (outdir / "player" / f"{pp['slug']}.html").write_text(html)
+
 
 def main():
     real = json.loads(DATA.read_text())
     env = _make_env()
     template = env.get_template("index.html.j2")
     match_template = env.get_template("match.html.j2")
+    player_template = env.get_template("player.html.j2")
 
     if SITE.exists():
         shutil.rmtree(SITE)
     SITE.mkdir(parents=True)
-    render_site(template, match_template, real, preview=False)              # live
-    render_site(template, match_template, sample_data(real), preview=True)  # dummy preview
+    render_site(template, match_template, player_template, real, preview=False)
+    render_site(template, match_template, player_template, sample_data(real), preview=True)
     (SITE / ".nojekyll").write_text("")
     n = len(real.get("match_pages", []))
-    print(f"Built {len(PAGES)} pages + {n} match pages (+ preview) into site/.")
+    print(f"Built {len(PAGES)} pages + {n} match pages + {len(real.get('squad', []))} player pages (+ preview).")
 
 
 if __name__ == "__main__":
