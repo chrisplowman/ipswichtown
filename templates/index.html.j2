@@ -163,6 +163,8 @@ ul.list li.has-link .opp{color:var(--primary)}
 .score{font-weight:600;font-size:14px}
 .empty-note{padding:22px 18px;color:var(--steel);font-size:14px}
 .snapshot{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
+.playerlink{color:var(--primary);text-decoration:none;font-weight:500}
+.playerlink:hover{text-decoration:underline}
 .snapshot-label{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--brand-orange);margin-bottom:8px}
 .snapshot p{margin:0;font-size:16px;line-height:1.55;color:#eef1f7;font-weight:400}
 @media(max-width:600px){.snapshot p{font-size:15px}}
@@ -560,7 +562,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <tbody>
           {% for p in squad %}
           <tr data-min="{{ p.minutes }}">
-            <td class="player" title="{{ p.full_name }}">{{ p.name }}</td>
+            <td class="player" title="{{ p.full_name }}">{% if p.slug %}<a class="playerlink" href="player/{{ p.slug }}.html">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</td>
             <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
             <td>{{ p.minutes }}</td>
             <td class="per90" data-raw="{{ p.goals }}" data-dec="0">{{ p.goals }}</td>

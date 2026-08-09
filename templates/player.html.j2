@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ p.name }} · Ipswich Town player profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-navy:#0a1530;--brand-orange:#dd5b00;--surface:#f6f5f4;--canvas:#ffffff;
+  --ink:#1d1c1a;--steel:#6b6862;--stone:#9a968f;--slate:#4a4844;--primary:#5645d4;
+  --win:#1aae39;--draw:#a4a097;--loss:#e03131;
+  --hairline:#e9e7e3;--hairline-soft:#f0eeeb;--hairline-strong:#dcd9d4;
+  --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-full:999px;
+  --shadow-card:0 1px 2px rgba(20,20,20,.04),0 2px 8px rgba(20,20,20,.03);
+  --on-dark:#fff;--on-dark-muted:#aeb7cc;--chart-grid:#eeece9;
+  --pos-GKP:#8a6d00;--pos-DEF:#0a6b4e;--pos-MID:#154a9c;--pos-FWD:#8a2b2b;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--surface);color:var(--ink);
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+a{color:inherit}
+.masthead{background:var(--brand-navy);color:var(--on-dark)}
+.masthead .wrap{display:flex;align-items:center;justify-content:space-between;padding:16px 24px}
+.back{display:inline-flex;align-items:center;gap:8px;color:var(--on-dark);text-decoration:none;font-weight:500;font-size:14px}
+.back:hover{text-decoration:underline}
+.masthead .season{font-size:13px;color:var(--on-dark-muted)}
+main{padding:26px 0 60px}
+.block{margin-bottom:22px}
+.label{font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--steel);
+  border-bottom:1px solid var(--hairline);padding-bottom:8px;margin:0 0 14px}
+.card{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:18px 20px}
+h3{margin:0 0 4px;font-size:15px;font-weight:600}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+
+/* hero */
+.hero{background:var(--brand-navy);color:#fff;border-radius:var(--radius-lg);padding:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.hero .nm{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.hero .pos{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:3px 9px;border-radius:var(--radius-full);color:#fff;margin-top:6px}
+.p-GKP{background:var(--pos-GKP)}.p-DEF{background:var(--pos-DEF)}.p-MID{background:var(--pos-MID)}.p-FWD{background:var(--pos-FWD)}
+.hero .fpl{margin-left:auto;display:flex;gap:24px;flex-wrap:wrap}
+.hero .fpl .k{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--on-dark-muted)}
+.hero .fpl .v{font-size:20px;font-weight:700}
+
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+.tile{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-md);padding:14px;text-align:center;box-shadow:var(--shadow-card)}
+.tile .v{font-size:22px;font-weight:700}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--steel);margin-top:3px}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:right;padding:8px;border-bottom:1px solid var(--hairline-soft)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.linked{cursor:pointer}
+tbody tr.linked:hover{background:var(--surface)}
+td .oppcell{display:flex;align-items:center;gap:8px}
+td .oppcell img{width:18px;height:18px;object-fit:contain}
+.res{font-weight:700;border-radius:var(--radius-sm);padding:1px 7px;font-size:11px;color:#fff}
+.res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
+
+.canvas-holder{position:relative;height:300px}
+.pitch-holder{width:100%}
+svg.pitch{width:100%;height:auto;display:block}
+.empty-note{color:var(--steel);font-size:14px;padding:8px 2px}
+footer{color:var(--steel);font-size:12px;text-align:center;padding:24px;border-top:1px solid var(--hairline)}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <a class="back" href="../squad.html">← Squad</a>
+    <span class="season">Ipswich Town · {{ season }}</span>
+  </div>
+</header>
+
+<main class="wrap">
+  {% set f = p.fpl %}{% set u = p.us %}
+  <!-- HERO -->
+  <div class="block">
+    <div class="hero">
+      <div>
+        <div class="nm">{{ p.name }}</div>
+        <span class="pos p-{{ p.pos }}">{{ p.pos }}</span>
+      </div>
+      <div class="fpl">
+        {% if f.price %}<div><div class="v">£{{ '%.1f'|format(f.price) }}m</div><div class="k">Price</div></div>{% endif %}
+        {% if f.selected %}<div><div class="v">{{ '%.1f'|format(f.selected) }}%</div><div class="k">Owned</div></div>{% endif %}
+        {% if f.form is not none %}<div><div class="v">{{ '%.1f'|format(f.form) }}</div><div class="k">Form</div></div>{% endif %}
+        <div><div class="v">{{ f.points }}</div><div class="k">FPL pts</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEASON TOTALS -->
+  <div class="block">
+    <p class="label">Season totals</p>
+    <div class="tiles">
+      <div class="tile"><div class="v">{{ f.minutes }}</div><div class="k">Minutes</div></div>
+      <div class="tile"><div class="v">{{ f.starts }}</div><div class="k">Starts</div></div>
+      <div class="tile"><div class="v">{{ f.goals }}</div><div class="k">Goals</div></div>
+      <div class="tile"><div class="v">{{ f.assists }}</div><div class="k">Assists</div></div>
+      <div class="tile"><div class="v">{{ '%.2f'|format((u.xg if u else f.xg)) }}</div><div class="k">xG</div></div>
+      <div class="tile"><div class="v">{{ '%.2f'|format((u.xa if u else f.xa)) }}</div><div class="k">xA</div></div>
+      {% if u %}
+      <div class="tile"><div class="v">{{ u.shots }}</div><div class="k">Shots</div></div>
+      <div class="tile"><div class="v">{{ '%.2f'|format(u.npxg) }}</div><div class="k">npxG</div></div>
+      <div class="tile"><div class="v">{{ '%.2f'|format(u.xgchain) }}</div><div class="k">xGChain</div></div>
+      <div class="tile"><div class="v">{{ '%.2f'|format(u.xgbuildup) }}</div><div class="k">xGBuildup</div></div>
+      {% endif %}
+      {% if p.pos in ['GKP','DEF'] %}<div class="tile"><div class="v">{{ f.clean_sheets }}</div><div class="k">Clean sheets</div></div>{% endif %}
+    </div>
+  </div>
+
+  <!-- PROFILE + CONTRIBUTION -->
+  <div class="block">
+    <div class="cols">
+      <div class="card">
+        <h3>Percentile profile</h3><p class="empty-note" style="padding-top:0">Per-90 ranks vs positional peers across the Premier League.</p>
+        {% if p.profile and p.profile.pct %}
+        <div class="canvas-holder"><canvas id="c-radar"></canvas></div>
+        {% else %}<p class="empty-note">Not enough minutes yet for a percentile profile.</p>{% endif %}
+      </div>
+      <div class="card">
+        <h3>Goal involvements</h3><p class="empty-note" style="padding-top:0">Cumulative goals and assists through the season.</p>
+        {% if p.log %}<div class="canvas-holder"><canvas id="c-ga"></canvas></div>
+        {% else %}<p class="empty-note">No match minutes yet.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- MATCH LOG + SHOT MAP -->
+  <div class="block">
+    <div class="cols">
+      <div class="card">
+        <h3>Match-by-match</h3>
+        {% if p.log %}
+        <table>
+          <thead><tr><th>Opponent</th><th>Min</th><th>G</th><th>A</th><th>Sh</th><th>xG</th><th>xA</th><th>KP</th></tr></thead>
+          <tbody>
+            {% for g in p.log %}
+            <tr class="linked" onclick="location.href='../match/{{ g.match_id }}.html'">
+              <td><div class="oppcell"><span class="res {{ g.result }}">{{ g.result }}</span>{% if g.opponent_badge %}<img src="{{ g.opponent_badge }}" alt="">{% endif %}{{ g.opponent }} <span style="color:var(--stone)">{{ '(H)' if g.home else '(A)' }}</span></div></td>
+              <td>{{ g.minutes }}</td><td>{{ g.goals }}</td><td>{{ g.assists }}</td><td>{{ g.shots }}</td>
+              <td>{{ '%.2f'|format(g.xg) }}</td><td>{{ '%.2f'|format(g.xa) }}</td><td>{{ g.key_passes }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}<p class="empty-note">No match appearances recorded yet.</p>{% endif %}
+      </div>
+      <div class="card">
+        <h3>Shot map</h3><p class="empty-note" style="padding-top:0">Every shot this season. Circle size = xG; filled = goal.</p>
+        {% if p.shots %}<div class="pitch-holder" id="pitch"></div>
+        {% else %}<p class="empty-note">No shots recorded yet.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>Data from the FPL API and Understat · a reference page, not affiliated with Ipswich Town FC.</footer>
+
+<script id="player-data" type="application/json">{{ player_json|safe }}</script>
+{% if p.profile and p.profile.pct %}<script id="profile-data" type="application/json">{{ p.profile|tojson }}</script>{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  var P = JSON.parse(document.getElementById('player-data').textContent);
+  var css=getComputedStyle(document.documentElement); function cv(n){return css.getPropertyValue(n).trim();}
+  var BLUE=cv('--primary'), GREEN=cv('--win'), ORANGE=cv('--brand-orange'), GRID=cv('--chart-grid'), LINE=cv('--hairline-strong'), MINT='#eef6f0';
+  var ord=function(n){n=Math.round(n);var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
+
+  // radar
+  var pd=document.getElementById('profile-data');
+  if(pd && window.Chart){
+    var prof=JSON.parse(pd.textContent);
+    var M=[['goals','Goals'],['assists','Assists'],['npxg','npxG'],['xa','xA'],['shots','Shots'],['key_passes','Key passes'],['xgchain','xGChain'],['xgbuildup','xGBuildup']];
+    new Chart(document.getElementById('c-radar'),{type:'radar',
+      data:{labels:M.map(function(m){return m[1];}),datasets:[{label:P_name(),data:M.map(function(m){return prof.pct[m[0]];}),
+        borderColor:BLUE,backgroundColor:BLUE+'33',pointBackgroundColor:BLUE,borderWidth:2,
+        _p90:M.map(function(m){return prof.per90?prof.per90[m[0]]:null;})}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        scales:{r:{min:0,max:100,ticks:{stepSize:20,backdropColor:'transparent',font:{size:9}},grid:{color:GRID},angleLines:{color:GRID},pointLabels:{font:{size:11}}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var p9=ctx.dataset._p90?ctx.dataset._p90[ctx.dataIndex]:null;return ord(ctx.raw)+' pct'+(p9!=null?' ('+p9+' /90)':'');}}}}}});
+  }
+  function P_name(){return document.title.split(' · ')[0];}
+
+  // cumulative goals + assists
+  if(P.log && P.log.length && window.Chart){
+    var g=0,a=0; var labels=[],gd=[],ad=[];
+    P.log.forEach(function(m,i){g+=m.goals;a+=m.assists;labels.push((m.opponent||'').slice(0,3).toUpperCase());gd.push(g);ad.push(a);});
+    new Chart(document.getElementById('c-ga'),{type:'line',
+      data:{labels:labels,datasets:[
+        {label:'Goals',data:gd,borderColor:GREEN,backgroundColor:GREEN+'22',fill:true,tension:.2,pointRadius:2,stepped:true},
+        {label:'Assists',data:ad,borderColor:ORANGE,tension:.2,pointRadius:2,stepped:true}]},
+      options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:GRID},ticks:{precision:0}}},plugins:{legend:{position:'bottom',labels:{boxWidth:12}}}}});
+  }
+
+  // shot map (attacking right)
+  if(P.shots && P.shots.length){
+    var W=520,H=340;
+    var s='<svg class="pitch" viewBox="0 0 '+W+' '+H+'"><rect x="1" y="1" width="'+(W-2)+'" height="'+(H-2)+'" fill="'+MINT+'" stroke="'+LINE+'"/>';
+    var bh=H*0.55, by=(H-bh)/2, bw=W*0.16;
+    s+='<rect x="'+(W-1-bw)+'" y="'+by+'" width="'+bw+'" height="'+bh+'" fill="none" stroke="'+LINE+'"/>';
+    s+='<line x1="'+(W/2)+'" y1="1" x2="'+(W/2)+'" y2="'+(H-1)+'" stroke="'+LINE+'"/>';
+    P.shots.forEach(function(sh){
+      var x=sh.x*W, y=sh.y*H, r=3+Math.sqrt(sh.xg)*14, goal=sh.result==='Goal';
+      s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+(goal?BLUE:'none')+'" stroke="'+BLUE+'" stroke-width="1.6" fill-opacity="'+(goal?0.9:0)+'"><title>'+sh.minute+"' vs "+sh.opponent+' · xG '+sh.xg.toFixed(2)+' · '+sh.result+'</title></circle>';
+    });
+    document.getElementById('pitch').innerHTML=s+'</svg>';
+  }
+})();
+</script>
+</body>
+</html>
