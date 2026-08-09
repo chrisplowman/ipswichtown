@@ -60,6 +60,82 @@ def fmt_updated(iso):
     return dt.strftime("%d %b %Y, %H:%M UTC")
 
 
+def season_summary(data):
+    """A short, plain-language read on how the season is going, composed from the
+    live numbers (projection, xPts, form, next fixture) so it updates every build."""
+    def _an(n):  # "an 8/11/18/80s%" vs "a 45%"
+        n = int(n)
+        return "an" if n in (8, 11, 18) or 80 <= n <= 89 else "a"
+    s = data.get("summary") or {}
+    played = s.get("played", 0)
+    team = (data.get("team") or {}).get("name", "Ipswich Town")
+    nf, no = data.get("next_fixture"), data.get("next_opponent")
+
+    if not played:  # pre-season
+        bits = [f"The {data.get('season', '2026/27')} Premier League season is about to get under way."]
+        if nf:
+            venue = "at home to" if nf.get("home") else "away to"
+            bits.append(f"{team} open {venue} {nf.get('opponent', 'their first opponents')} "
+                        f"({fmt_kickoff(nf.get('kickoff', ''))}).")
+        if no and no.get("prob"):
+            bits.append(f"The model makes it {_an(no['prob']['ipswich'])} {no['prob']['ipswich']}% chance of a winning start.")
+        return " ".join(bits)
+
+    pts, pos = s.get("points", 0), data.get("position")
+    won, drawn, lost = s.get("won", 0), s.get("drawn", 0), s.get("lost", 0)
+    ppg = pts / played
+    projected = round(ppg * 38)
+    posx = f"{pos}{_ord(pos)}" if pos else "mid-table"
+
+    parts = []
+    # standing + recent form
+    uh = data.get("understat_history") or []
+    last5 = uh[-5:]
+    if last5:
+        pts5 = sum(3 if h.get("pts") == 3 else 1 if h.get("pts") == 1 else 0 for h in last5)
+        parts.append(f"{team} sit {posx} after {played} games on {pts} points "
+                     f"({won}W {drawn}D {lost}L), with {pts5} from the last five.")
+    else:
+        parts.append(f"{team} sit {posx} after {played} games on {pts} points ({won}W {drawn}D {lost}L).")
+
+    # projection vs survival / euro line
+    table = data.get("table") or []
+    safe = next((r for r in table if r.get("rank") == 17), None)
+    survival = round(safe["points"] / safe["played"] * 38) if safe and safe.get("played") else None
+    if survival:
+        if projected >= 66:
+            parts.append(f"At that rate they'd finish on about {projected} points — a pace that would put them in the European conversation.")
+        elif projected >= survival + 8:
+            parts.append(f"That pace projects to around {projected} points, comfortably clear of the ~{survival} the drop looks likely to demand.")
+        elif projected >= survival + 3:
+            parts.append(f"That pace projects to around {projected} points, a cushion above the ~{survival} likely needed to stay up.")
+        elif projected >= survival - 2:
+            parts.append(f"That pace projects to around {projected} points — right on the ~{survival} likely needed for safety, so survival is finely balanced.")
+        else:
+            parts.append(f"That pace projects to around {projected} points, short of the ~{survival} likely needed to survive — a relegation fight as things stand.")
+    else:
+        parts.append(f"At their current rate that projects to around {projected} points over the season.")
+
+    # underlying quality (xPts)
+    if uh:
+        xpts = round(sum(h.get("xpts", 0) for h in uh))
+        diff = pts - xpts
+        if diff >= 4:
+            parts.append(f"They've outrun the underlying numbers — {pts} points from an expected {xpts} — so some regression may be due.")
+        elif diff <= -4:
+            parts.append(f"The performances merit more: an expected {xpts} points against {pts} banked suggests they've been unlucky.")
+        else:
+            parts.append(f"Points and expected points line up closely ({pts} vs {xpts}), so the table looks about deserved.")
+
+    # next up
+    if nf and no:
+        prob = (no.get("prob") or {}).get("ipswich")
+        tail = f", where the model gives them {_an(prob)} {prob}% win chance" if prob else ""
+        parts.append(f"Next up: {nf.get('opponent')} ({'home' if nf.get('home') else 'away'}){tail}.")
+
+    return " ".join(parts)
+
+
 # --------------------------------------------------------------------------- #
 #  Dummy data for the preview — plausible mid-season values for every section  #
 # --------------------------------------------------------------------------- #
@@ -291,10 +367,12 @@ def render_site(template, match_template, data, preview):
     outdir = SITE / "preview" if preview else SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
     data_json = json.dumps(data).replace("<", "\\u003c")
+    summary_text = season_summary(data)
     for page_id, filename, _label in PAGES:
         toggle_href = f"../{filename}" if preview else f"preview/{filename}"
         html = template.render(data_json=data_json, page=page_id, current=page_id,
-                               pages=PAGES, preview=preview, toggle_href=toggle_href, **data)
+                               pages=PAGES, preview=preview, toggle_href=toggle_href,
+                               summary_text=summary_text, **data)
         (outdir / filename).write_text(html)
     (outdir / "data" / "itfc.json").write_text(json.dumps(data))
 
