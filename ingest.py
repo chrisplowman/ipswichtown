@@ -544,51 +544,132 @@ def fetch_h2h_history():
     return meetings
 
 
-def fetch_match_stats():
-    """Ipswich's current-season per-match shots/on-target/corners from football-data.co.uk
-    (Premier League, then Championship as a fallback if not yet in the top flight)."""
-    out = []
+def _fbd_rows():
+    """The full current-season football-data CSV (PL, else Championship) as dict rows."""
     for div in FBD_DIVS:
         try:
             text = get_text(f"https://www.football-data.co.uk/mmz4281/{FBD_CURRENT}/{div}.csv")
         except requests.RequestException:
             continue
-        for r in csv.DictReader(io.StringIO(text)):
-            h, a = r.get("HomeTeam", ""), r.get("AwayTeam", "")
-            if TEAM_NAME_MATCH not in f"{h}{a}".lower():
+        rows = list(csv.DictReader(io.StringIO(text)))
+        if any(TEAM_NAME_MATCH in (r.get("HomeTeam", "") + r.get("AwayTeam", "")).lower() for r in rows):
+            return rows
+    return []
+
+
+def fetch_match_stats(rows):
+    """Ipswich's current-season per-match shots/cards/odds/result from football-data.co.uk."""
+    out = []
+    for r in rows:
+        h, a = r.get("HomeTeam", ""), r.get("AwayTeam", "")
+        if TEAM_NAME_MATCH not in f"{h}{a}".lower():
+            continue
+
+        def gi(k):
+            try:
+                return int(r.get(k, "") or 0)
+            except (ValueError, TypeError):
+                return 0
+        ips_home = TEAM_NAME_MATCH in h.lower()
+        opp = a if ips_home else h
+        pick = lambda hk, ak: gi(hk) if ips_home else gi(ak)
+
+        def odds():
+            try:
+                oh, od, oa = float(r["B365H"]), float(r["B365D"]), float(r["B365A"])
+                ph, pd, pa = 1 / oh, 1 / od, 1 / oa
+                tot = ph + pd + pa
+                win, opp_ = (ph, pa) if ips_home else (pa, ph)
+                return {"win": round(win / tot * 100), "draw": round(pd / tot * 100),
+                        "opp": round(opp_ / tot * 100)}
+            except (KeyError, ValueError, TypeError, ZeroDivisionError):
+                return None
+        hth, hta = gi("HTHG"), gi("HTAG")
+        gf, ga = pick("FTHG", "FTAG"), pick("FTAG", "FTHG")
+        htf, hta_ = (hth, hta) if ips_home else (hta, hth)
+        out.append({"date": _fbd_iso(r.get("Date", "")), "opponent": opp, "home": ips_home,
+                    "gf": gf, "ga": ga, "result": "W" if gf > ga else "L" if gf < ga else "D",
+                    "shots_for": pick("HS", "AS"), "shots_against": pick("AS", "HS"),
+                    "sot_for": pick("HST", "AST"), "sot_against": pick("AST", "HST"),
+                    "corners_for": pick("HC", "AC"), "corners_against": pick("AC", "HC"),
+                    "fouls_for": pick("HF", "AF"), "fouls_against": pick("AF", "HF"),
+                    "yellows_for": pick("HY", "AY"), "yellows_against": pick("AY", "HY"),
+                    "reds_for": pick("HR", "AR"), "reds_against": pick("AR", "HR"),
+                    "ht_for": htf, "ht_against": hta_, "ht_state": (
+                        "ahead" if htf > hta_ else "behind" if htf < hta_ else "level"),
+                    "referee": r.get("Referee", ""), "odds": odds()})
+    return out
+
+
+def fetch_league_tables(rows):
+    """Home-only and away-only tables plus each club's last-five form, from the full
+    current-season football-data CSV."""
+    teams, hist = {}, {}
+
+    def rec(k, name):
+        return teams.setdefault(k, {"team": name, "hp": 0, "hw": 0, "hd": 0, "hl": 0, "hgf": 0,
+                                    "hga": 0, "ap": 0, "aw": 0, "ad": 0, "al": 0, "agf": 0, "aga": 0})
+    for r in rows:
+        h, a = r.get("HomeTeam", ""), r.get("AwayTeam", "")
+        try:
+            hg, ag = int(r["FTHG"]), int(r["FTAG"])
+        except (KeyError, ValueError):
+            continue
+        if not h or not a:
+            continue
+        hk, ak = canon(h), canon(a)
+        H, A = rec(hk, h), rec(ak, a)
+        H["hp"] += 1; H["hgf"] += hg; H["hga"] += ag
+        A["ap"] += 1; A["agf"] += ag; A["aga"] += hg
+        if hg > ag:
+            H["hw"] += 1; A["al"] += 1; hr, ar = "W", "L"
+        elif hg < ag:
+            H["hl"] += 1; A["aw"] += 1; hr, ar = "L", "W"
+        else:
+            H["hd"] += 1; A["ad"] += 1; hr, ar = "D", "D"
+        d = _fbd_iso(r.get("Date", ""))
+        hist.setdefault(hk, []).append((d, hr))
+        hist.setdefault(ak, []).append((d, ar))
+
+    def build(side):
+        out = []
+        for t in teams.values():
+            p, w, dr, l, gf, ga = (t["hp"], t["hw"], t["hd"], t["hl"], t["hgf"], t["hga"]) if side == "h" \
+                else (t["ap"], t["aw"], t["ad"], t["al"], t["agf"], t["aga"])
+            if not p:
                 continue
+            out.append({"team": t["team"], "played": p, "won": w, "drawn": dr, "lost": l,
+                        "gf": gf, "ga": ga, "gd": gf - ga, "points": w * 3 + dr})
+        out.sort(key=lambda x: (-x["points"], -x["gd"], -x["gf"]))
+        for i, x in enumerate(out, 1):
+            x["rank"] = i
+        return out
 
-            def gi(k):
-                try:
-                    return int(r.get(k, "") or 0)
-                except (ValueError, TypeError):
-                    return 0
-            ips_home = TEAM_NAME_MATCH in h.lower()
-            opp = a if ips_home else h
-            pick = lambda hk, ak: gi(hk) if ips_home else gi(ak)
+    form = {}
+    for k, lst in hist.items():
+        form[k] = [c for _, c in sorted(lst, key=lambda x: x[0])[-5:]]
+    return build("h"), build("a"), form
 
-            def odds():
-                try:
-                    oh, od, oa = float(r["B365H"]), float(r["B365D"]), float(r["B365A"])
-                    ph, pd, pa = 1 / oh, 1 / od, 1 / oa
-                    tot = ph + pd + pa
-                    win, opp_ = (ph, pa) if ips_home else (pa, ph)
-                    return {"win": round(win / tot * 100), "draw": round(pd / tot * 100),
-                            "opp": round(opp_ / tot * 100)}
-                except (KeyError, ValueError, TypeError, ZeroDivisionError):
-                    return None
-            hth, hta = gi("HTHG"), gi("HTAG")
-            out.append({"date": _fbd_iso(r.get("Date", "")), "opponent": opp, "home": ips_home,
-                        "shots_for": pick("HS", "AS"), "shots_against": pick("AS", "HS"),
-                        "sot_for": pick("HST", "AST"), "sot_against": pick("AST", "HST"),
-                        "corners_for": pick("HC", "AC"), "corners_against": pick("AC", "HC"),
-                        "fouls_for": pick("HF", "AF"), "fouls_against": pick("AF", "HF"),
-                        "yellows_for": pick("HY", "AY"), "yellows_against": pick("AY", "HY"),
-                        "reds_for": pick("HR", "AR"), "reds_against": pick("AR", "HR"),
-                        "ht_for": hth if ips_home else hta, "ht_against": hta if ips_home else hth,
-                        "referee": r.get("Referee", ""), "odds": odds()})
-        if out:
+
+def fetch_elo_history(cutoff="2026-07-01"):
+    """Ipswich's ClubElo rating trajectory across the current season."""
+    text = None
+    for scheme in ("http", "https"):
+        try:
+            text = get_text(f"{scheme}://api.clubelo.com/Ipswich")
             break
+        except requests.RequestException:
+            continue
+    if not text:
+        return []
+    out = []
+    for r in csv.DictReader(io.StringIO(text)):
+        frm, elo = r.get("From", ""), r.get("Elo", "")
+        if frm >= cutoff and elo:
+            try:
+                out.append({"date": frm, "elo": round(float(elo))})
+            except ValueError:
+                continue
     return out
 
 
@@ -794,12 +875,34 @@ def main():
     except Exception as e:
         print(f"  understat league: skipped ({e})")
 
-    match_stats = []
+    match_stats, home_table, away_table, league_form = [], [], [], {}
     try:
-        match_stats = fetch_match_stats()
-        print(f"  match stats: {len(match_stats)} matches (shots/corners)")
+        fbd_rows = _fbd_rows()
+        match_stats = fetch_match_stats(fbd_rows)
+        home_table, away_table, league_form = fetch_league_tables(fbd_rows)
+        print(f"  match stats: {len(match_stats)} Ipswich matches; "
+              f"home/away tables {len(home_table)}/{len(away_table)} clubs")
     except Exception as e:
         print(f"  match stats: skipped ({e})")
+
+    elo_history = []
+    try:
+        elo_history = fetch_elo_history()
+        print(f"  elo history: {len(elo_history)} points")
+    except Exception as e:
+        print(f"  elo history: skipped ({e})")
+
+    # Ipswich's FPL strength ratings as percentiles vs the league (attack/defence, home/away)
+    STR_KEYS = [("strength_attack_home", "Attack home"), ("strength_attack_away", "Attack away"),
+                ("strength_defence_home", "Defence home"), ("strength_defence_away", "Defence away"),
+                ("strength_overall_home", "Overall home"), ("strength_overall_away", "Overall away")]
+    team_strength = []
+    all_fpl_teams = list(teams.values())
+    for key, label in STR_KEYS:
+        vals = [t.get(key, 0) for t in all_fpl_teams if t.get(key)]
+        v = ipswich.get(key, 0)
+        pct = round(sum(1 for x in vals if x <= v) / len(vals) * 100) if vals else 50
+        team_strength.append({"label": label, "value": v, "pct": pct})
 
     meetings = {}
     try:
@@ -973,6 +1076,16 @@ def main():
     for r in fpl["results"]:
         r["match_id"] = mpid_by_key.get((canon(r["opponent"]), r["home"]))
 
+    # league form (last five) + home/away sub-tables
+    for row in (table or []):
+        row["form"] = league_form.get(canon(row["team"]), [])
+    for tbl in (home_table, away_table):
+        for row in tbl:
+            short, _ = team_meta(row["team"])
+            row["short"] = short
+            row["badge"] = badge_for(short)
+            row["is_ipswich"] = TEAM_NAME_MATCH in row["team"].lower()
+
     news = []
     try:
         news = fetch_news()
@@ -999,6 +1112,9 @@ def main():
         "understat_matches": understat["matches"],
         "understat_history": ips_history,
         "match_stats": match_stats,
+        "elo_history": elo_history,
+        "home_table": home_table, "away_table": away_table,
+        "team_strength": team_strength,
         "shot_maps": understat["shot_maps"],
         "match_pages": match_pages,
         "understat_players": understat["players"][:14],

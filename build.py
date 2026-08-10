@@ -175,7 +175,9 @@ def sample_data(live=None):
         gf, ga = max(4, 27 - i), 8 + i
         table.append({"rank": i, "team": c["name"], "short": c["short"], "played": won + drawn + lost,
                       "won": won, "drawn": drawn, "lost": lost, "gf": gf, "ga": ga, "gd": gf - ga,
-                      "points": pts, "is_ipswich": c["short"] == ips_short, "badge": c["badge"]})
+                      "points": pts, "is_ipswich": c["short"] == ips_short, "badge": c["badge"],
+                      "form": (["W", "W", "D", "L", "W"] if i <= 6 else
+                               ["L", "D", "L", "W", "D"] if i >= 15 else ["W", "L", "D", "W", "L"])})
     ipr = next((r for r in table if r["is_ipswich"]), table[-1])
     summary = {k: ipr[k] for k in ("played", "won", "drawn", "lost", "gf", "ga", "gd", "points")}
 
@@ -290,9 +292,16 @@ def sample_data(live=None):
             "scored": g["gf"], "conceded": g["ga"], "xpts": round(1.0 + (i % 3)*0.6, 2),
             "pts": g["pts"], "ppda": round(9.0 + (i % 5), 2), "ppda_allowed": round(11.0 - (i % 4), 2)})
         match_stats.append({"date": "2026-09-01", "opponent": g.get("opponent", "Opp"), "home": bool(i % 2),
+            "gf": g["gf"], "ga": g["ga"], "result": "W" if g["pts"] == 3 else "D" if g["pts"] == 1 else "L",
+            "ht_for": min(g["gf"], 1), "ht_against": min(g["ga"], 1),
+            "ht_state": "ahead" if min(g["gf"], 1) > min(g["ga"], 1) else "behind" if min(g["gf"], 1) < min(g["ga"], 1) else "level",
+            "referee": ["M. Oliver", "A. Taylor", "P. Tierney", "S. Attwell"][i % 4],
             "shots_for": 10 + (i*3) % 8, "shots_against": 8 + (i*2) % 7,
             "sot_for": 3 + (i*2) % 5, "sot_against": 2 + i % 4,
-            "corners_for": 4 + i % 5, "corners_against": 3 + i % 4})
+            "corners_for": 4 + i % 5, "corners_against": 3 + i % 4,
+            "fouls_for": 9 + i % 5, "fouls_against": 10 + i % 6,
+            "yellows_for": 1 + i % 3, "yellows_against": 2 + i % 2,
+            "reds_for": 1 if i % 7 == 0 else 0, "reds_against": 0})
 
     # full detail match pages (dummy) for the most recent results, and link them in
     def _shot(x, y, xg, res, pl, mn, sit):
@@ -334,6 +343,28 @@ def sample_data(live=None):
     for r in results:
         r["match_id"] = mpid.get((r["opponent_short"], r["home"]))
 
+    # home / away sub-tables (split each club's dummy record) + Elo trend + strength
+    def half_table(is_home):
+        rows = []
+        for r in table:
+            p = (r["played"] + (1 if is_home else 0)) // 2
+            w = r["won"] // 2 + (1 if is_home and r["won"] % 2 else 0)
+            d, l = r["drawn"] // 2, max(0, p - (r["won"] // 2) - (r["drawn"] // 2))
+            gf, ga = r["gf"] // 2, r["ga"] // 2
+            rows.append({"team": r["team"], "short": r["short"], "badge": r["badge"],
+                         "is_ipswich": r["is_ipswich"], "played": p, "won": w, "drawn": d, "lost": l,
+                         "gf": gf, "ga": ga, "gd": gf - ga, "points": w * 3 + d})
+        rows.sort(key=lambda x: (-x["points"], -x["gd"]))
+        for i, x in enumerate(rows, 1):
+            x["rank"] = i
+        return rows
+    home_table, away_table = half_table(True), half_table(False)
+    elo_history = [{"date": f"2026-{m:02d}-01", "elo": 1500 + (i - 3) * 8 + (i % 2) * 6}
+                   for i, m in enumerate(range(8, 8 + len(by_gameweek) + 1))]
+    team_strength = [{"label": lab, "value": v, "pct": pc} for lab, v, pc in [
+        ("Attack home", 1180, 35), ("Attack away", 1120, 30), ("Defence home", 1150, 40),
+        ("Defence away", 1090, 25), ("Overall home", 1165, 38), ("Overall away", 1105, 28)]]
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "season": live.get("season", "2026/27"),
@@ -348,6 +379,8 @@ def sample_data(live=None):
         "by_gameweek": by_gameweek, "understat_matches": understat_matches, "shot_maps": shot_maps,
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
         "understat_history": understat_history, "match_stats": match_stats,
+        "elo_history": elo_history, "home_table": home_table, "away_table": away_table,
+        "team_strength": team_strength,
         "results": results, "squad": squad, "news": live.get("news") or [],
         "match_pages": match_pages,
     }
