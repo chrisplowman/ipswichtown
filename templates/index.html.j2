@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ipswich Town · {{ season }} Reference</title>
+<meta name="description" content="Ipswich Town Premier League {{ season }} — table, record, fixtures, results, squad stats, xG charts and shot maps. Rebuilt automatically from free football data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================================
+   DESIGN TOKENS  ·  edit these to restyle the whole page.
+   Names mirror DESIGN.md. Components below reference these variables only,
+   and the charts read them at runtime — so changing a value here is enough.
+   ============================================================================ */
+:root{
+  /* brand & accent */
+  --primary:#5645d4; --primary-pressed:#4534b3; --on-primary:#ffffff;
+  --brand-navy:#0a1530; --brand-navy-deep:#070f24; --brand-navy-mid:#1a2a52;
+  --link-blue:#0075de; --brand-orange:#dd5b00; --brand-orange-deep:#793400;
+  --brand-pink:#ff64c8; --brand-purple-800:#391c57; --brand-green:#1aae39; --brand-teal:#2a9d99;
+  /* pastel tints */
+  --tint-peach:#ffe8d4; --tint-rose:#fde0ec; --tint-mint:#d9f3e1; --tint-lavender:#e6e0f5;
+  --tint-sky:#dcecfa; --tint-yellow:#fef7d6; --tint-cream:#f8f5e8; --tint-gray:#f0eeec;
+  /* surfaces & ink */
+  --canvas:#ffffff; --surface:#f6f5f4; --surface-soft:#fafaf9;
+  --hairline:#e5e3df; --hairline-soft:#ede9e4; --hairline-strong:#c8c4be;
+  --ink-deep:#000000; --ink:#1a1a1a; --charcoal:#37352f; --slate:#5d5b54;
+  --steel:#787671; --stone:#a4a097; --muted:#bbb8b1;
+  --on-dark:#ffffff; --on-dark-muted:#a4a097;
+  --success:#1aae39; --warning:#dd5b00; --error:#e03131;
+  /* football semantics (direct hex so charts can read them) */
+  --win:#1aae39; --draw:#a4a097; --loss:#e03131;
+  --fdr-1:#1aae39; --fdr-2:#2a9d99; --fdr-3:#c98a2b; --fdr-4:#dd5b00; --fdr-5:#e03131;
+  --chart-grid:#ede9e4;
+  /* radii · spacing · type · elevation */
+  --radius-xs:4px; --radius-sm:6px; --radius-md:8px; --radius-lg:12px; --radius-full:9999px;
+  --space-xs:8px; --space-sm:12px; --space-md:16px; --space-lg:20px; --space-xl:24px; --space-xxl:32px;
+  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --shadow-card:0 1px 2px rgba(15,15,15,.04); --shadow-md:0 4px 14px rgba(15,15,15,.06);
+}
+
+/* base */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--link-blue);text-decoration:none}
+.wrap{max-width:1080px;margin:0 auto;padding:0 var(--space-lg)}
+img.badge{width:20px;height:20px;object-fit:contain;flex:none;vertical-align:middle}
+td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nums}
+
+/* shared card surface */
+.card,.board,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
+
+/* masthead — deep navy hero band */
+.masthead{background:var(--brand-navy);color:var(--on-dark)}
+.masthead .wrap{padding:26px var(--space-lg) 24px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.crest{display:flex;align-items:center;gap:14px}
+.crest .mark{width:46px;height:46px;border-radius:var(--radius-md);background:#fff;flex:none;display:flex;align-items:center;justify-content:center;color:var(--brand-navy);font-weight:700;font-size:18px;letter-spacing:-.5px}
+.crest .mark img{width:38px;height:38px;object-fit:contain}
+.wordmark{font-weight:600;font-size:clamp(26px,4vw,34px);line-height:1.05;letter-spacing:-1px}
+.eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--on-dark-muted);font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.eyebrow .pos{color:var(--on-primary);background:var(--primary);border-radius:var(--radius-full);padding:3px 10px;letter-spacing:.3px}
+.updated{font-size:13px;color:var(--on-dark-muted);text-align:right}
+.updated b{color:var(--on-dark);font-weight:600}
+.headright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.previewtoggle{font-size:12px;font-weight:600;color:var(--on-dark);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-full);padding:6px 13px;text-decoration:none;white-space:nowrap}
+.previewtoggle:hover{background:rgba(255,255,255,.2)}
+.previewtoggle.on{background:var(--brand-orange);border-color:var(--brand-orange)}
+.previewbanner{background:var(--brand-orange);color:#fff;text-align:center;font-size:13px;font-weight:500;padding:9px 16px}
+.previewbanner a{color:#fff;text-decoration:underline}
+
+/* tabs — light sticky pill nav */
+.tabs{background:var(--canvas);border-bottom:1px solid var(--hairline);position:sticky;top:0;z-index:20}
+.tabs .wrap{display:flex;gap:8px;padding:12px var(--space-lg)}
+.tabs a{cursor:pointer;font-weight:500;font-size:14px;color:var(--steel);padding:8px 16px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
+.tabs a:hover{color:var(--ink);background:var(--surface)}
+.tabs a.active{background:var(--ink-deep);color:var(--on-dark);border-color:var(--ink-deep)}
+.tabs a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+section.panel{padding:28px 0}
+section.panel[hidden]{display:none}
+.block{margin-bottom:28px}
+.label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px}
+.label::after{content:"";height:1px;background:var(--hairline);flex:1}
+
+/* next-fixture board */
+.board{overflow:hidden;position:relative}
+.board::before{content:"NEXT";position:absolute;top:16px;left:18px;font-size:11px;letter-spacing:1px;font-weight:600;color:var(--steel)}
+.board .row{display:flex;align-items:center;justify-content:center;gap:clamp(16px,5vw,54px);padding:32px 20px 24px;text-align:center;flex-wrap:wrap}
+.board .side{min-width:96px}
+.board .side .badge-lg{width:40px;height:40px;object-fit:contain;margin:0 auto 8px;display:block}
+.board .side .abbr{font-weight:700;font-size:clamp(28px,6vw,44px);line-height:1;letter-spacing:-1px;color:var(--ink)}
+.board .side .full{font-size:13px;color:var(--steel);margin-top:6px}
+.board .vs{font-size:12px;font-weight:600;letter-spacing:.5px;color:var(--on-primary);background:var(--primary);border-radius:var(--radius-full);padding:6px 14px}
+.board .when{border-top:1px solid var(--hairline);text-align:center;padding:13px;font-size:13.5px;color:var(--slate)}
+.board .venue{color:var(--steel)}
+.board.empty .row{padding:34px 20px;color:var(--steel);font-size:15px}
+
+/* next opponent */
+.board .oppdetail{border-top:1px solid var(--hairline);padding:16px 20px 18px}
+.oppdetail .opprow{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:2px}
+.who{flex:1;min-width:150px}
+.who .nm{font-weight:600;font-size:16px;letter-spacing:-.2px}
+.who .sub{font-size:13px;color:var(--steel)}
+.metrics{display:flex;gap:22px;flex-wrap:wrap}
+.metric{text-align:center}
+.metric .v{font-weight:600;font-size:16px}
+.metric .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--steel);margin-top:2px}
+.formdots{display:flex;gap:4px}
+.formdots i,.h2h-dots i{width:20px;height:20px;border-radius:var(--radius-sm);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.formdots i.W,.h2h-dots i.W{background:var(--win)}.formdots i.D,.h2h-dots i.D{background:var(--draw)}.formdots i.L,.h2h-dots i.L{background:var(--loss)}
+
+/* win prob + h2h */
+.winprob{flex-basis:100%;margin-top:6px}
+.wp-bar{display:flex;height:28px;border-radius:var(--radius-md);overflow:hidden;font-size:12px;font-weight:600;color:#fff}
+.wp-bar span{display:flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:0;overflow:hidden;white-space:nowrap;padding:0 2px}
+.wp-w{background:var(--win)}.wp-d{background:var(--draw)}.wp-l{background:var(--loss)}
+.wp-key{display:flex;justify-content:space-between;font-size:11px;color:var(--steel);margin-top:5px}
+.h2h{flex-basis:100%;display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;font-size:13px}
+.h2h-label{color:var(--steel);font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:600}
+.h2h-rec{font-weight:600}
+.h2h-dots{display:flex;gap:4px}
+
+/* team news */
+ul.news li{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--hairline-soft)}
+ul.news li:last-child{border-bottom:0}
+ul.news .nm{flex:1;font-weight:500}
+ul.news .reason{font-size:13px;color:var(--steel)}
+ul.news .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:var(--radius-sm);white-space:nowrap;background:var(--tint-gray);color:var(--charcoal)}
+ul.news .tag.out{background:var(--tint-rose);color:#a02020}
+ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
+
+/* season record */
+.stats{display:grid;grid-template-columns:repeat(8,1fr);gap:10px}
+.stat{padding:16px 8px;text-align:center}
+.stat .v{font-weight:600;font-size:26px;line-height:1;letter-spacing:-.5px}
+.stat .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--steel);margin-top:6px}
+.stat.accent .v{color:var(--primary)}
+.stat .v.pos{color:var(--win)}.stat .v.neg{color:var(--loss)}
+
+/* two columns */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.card{overflow:hidden}
+.card h3,.chartcard h3{font-weight:600;font-size:16px;letter-spacing:-.2px;color:var(--charcoal)}
+.card h3{margin:0;padding:14px 18px;border-bottom:1px solid var(--hairline);background:var(--surface-soft)}
+ul.list{list-style:none;margin:0;padding:4px 0}
+ul.list li{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--hairline-soft)}
+ul.list li:last-child{border-bottom:0}
+ul.list li.has-link{position:relative;cursor:pointer}
+ul.list li.has-link:hover{background:var(--surface)}
+ul.list li.has-link .opp{color:var(--primary)}
+.rowlink{position:absolute;inset:0;z-index:1}
+.opp{flex:1;font-weight:500;display:flex;align-items:center;gap:8px}
+.opp .ha{color:var(--steel);font-size:12px}
+.kick{font-size:12.5px;color:var(--steel)}
+.gw{font-size:11px;color:var(--stone);width:36px;flex:none;font-weight:600}
+.fdr{font-weight:600;font-size:12px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:#fff;flex:none}
+.fdr-1{background:var(--fdr-1)}.fdr-2{background:var(--fdr-2)}.fdr-3{background:var(--fdr-3)}.fdr-4{background:var(--fdr-4)}.fdr-5{background:var(--fdr-5)}
+.res{font-weight:700;font-size:12px;width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:#fff}
+.res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
+.score{font-weight:600;font-size:14px}
+.empty-note{padding:22px 18px;color:var(--steel);font-size:14px}
+.snapshot{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
+.playerlink{color:var(--primary);text-decoration:none;font-weight:500}
+.playerlink:hover{text-decoration:underline}
+.reftable{width:100%;border-collapse:collapse;font-size:13px}
+.reftable th,.reftable td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--hairline-soft)}
+.reftable th:first-child,.reftable td:first-child{text-align:left}
+.reftable thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
+.reftable tbody tr:last-child td{border-bottom:0}
+.fdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 1px;vertical-align:middle}
+.fdot.W{background:var(--win)}.fdot.D{background:var(--draw)}.fdot.L{background:var(--loss)}
+.formcol{white-space:nowrap}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:760px){.cols2{grid-template-columns:1fr}}
+.subhead{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--ink)}
+.ltable.compact th,.ltable.compact td{padding:6px 8px}
+.snapshot-label{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--brand-orange);margin-bottom:8px}
+.snapshot p{margin:0;font-size:16px;line-height:1.55;color:#eef1f7;font-weight:400}
+@media(max-width:600px){.snapshot p{font-size:15px}}
+ul.newslist li{display:flex;align-items:flex-start;gap:16px;padding:16px 18px;border-bottom:1px solid var(--hairline-soft)}
+ul.newslist li:last-child{border-bottom:0}
+.newslist .thumb{flex:none;width:132px;height:88px;object-fit:cover;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--hairline)}
+.newslist .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.newslist .meta{display:flex;align-items:center;gap:10px}
+.newslist .src{flex:none;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--steel);background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-sm);padding:3px 8px;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.newslist .date{font-size:12px;color:var(--stone);white-space:nowrap}
+.newslist .headline{font-weight:600;font-size:15px;color:var(--ink);line-height:1.35;text-decoration:none;letter-spacing:-.1px}
+.newslist .headline:hover{color:var(--primary);text-decoration:underline}
+.newslist .summary{margin:0;font-size:13.5px;color:var(--slate);line-height:1.45;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+@media(max-width:600px){.newslist .thumb{width:96px;height:72px}.newslist .summary{-webkit-line-clamp:3}}
+
+/* league table */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+.ltable{min-width:640px}
+.ltable thead th{background:var(--surface);color:var(--charcoal);font-weight:600;font-size:11px;letter-spacing:.5px;text-transform:uppercase;text-align:right;padding:12px 10px;white-space:nowrap;border-bottom:1px solid var(--hairline)}
+.ltable thead th.tm,.ltable thead th.rk{text-align:left}
+.ltable tbody td{padding:10px;text-align:right;border-bottom:1px solid var(--hairline-soft)}
+.ltable tbody td.tm{text-align:left;font-weight:500;display:flex;align-items:center;gap:9px}
+.ltable tbody td.rk{text-align:left;color:var(--stone);border-left:3px solid transparent}
+.ltable tbody tr.ips{background:var(--tint-sky)}
+.ltable tbody tr.ips td.tm{font-weight:700;color:var(--primary)}
+.ltable tbody tr.eur td.rk{border-left-color:var(--win)}
+.ltable tbody tr.rel td.rk{border-left-color:var(--loss)}
+.lkey{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--steel)}
+.lkey span{display:flex;align-items:center;gap:6px}
+.lkey i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* charts */
+.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.chartcard{padding:18px 20px 20px}
+.chartcard.wide{grid-column:1 / -1}
+.chartcard h3{margin:0 0 4px}
+.chartcard p.sub{margin:0 0 16px;font-size:13px;color:var(--steel)}
+.canvas-holder{position:relative;height:260px}
+.chartcard .note{color:var(--steel);font-size:14px;padding:40px 0;text-align:center}
+.shotbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.shotbar select,.profile-controls select{font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--hairline-strong);border-radius:var(--radius-md);background:var(--canvas);color:var(--ink)}
+.shotscore{font-weight:600;font-size:13px;color:var(--steel)}
+.matchreport{display:flex;gap:20px;flex-wrap:wrap;align-items:center;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-md);padding:10px 16px;margin-bottom:12px;font-size:13px}
+.matchreport .mr{display:flex;gap:7px;align-items:baseline}
+.matchreport .mr .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--steel)}
+.matchreport .mr .v{font-weight:600}
+.pitch-holder svg{width:100%;height:auto;display:block;border-radius:var(--radius-md)}
+.shotkey{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--steel)}
+.shotkey span{display:flex;align-items:center;gap:6px}
+.shotkey i{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.12)}
+
+/* rank bars */
+.ranks{display:grid;grid-template-columns:1fr 1fr;gap:14px 28px}
+.rankrow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+.rankrow .top .pos{color:var(--steel);font-size:12px}
+.rankbar{height:8px;background:var(--tint-gray);border-radius:var(--radius-full);overflow:hidden}
+.rankbar span{display:block;height:100%;border-radius:var(--radius-full);background:var(--primary)}
+.rankbar span.good{background:var(--win)}.rankbar span.bad{background:var(--loss)}
+
+/* squad table */
+#squad{min-width:720px}
+#squad thead th{position:sticky;top:0;background:var(--surface);color:var(--charcoal);font-weight:600;font-size:11px;letter-spacing:.5px;text-transform:uppercase;text-align:right;padding:0;white-space:nowrap;border-bottom:1px solid var(--hairline)}
+#squad thead th button{all:unset;cursor:pointer;padding:12px;width:100%;box-sizing:border-box;display:block;text-align:right}
+#squad thead th button:focus-visible{outline:2px solid var(--primary);outline-offset:-3px}
+#squad thead th.player button,#squad thead th.pos button{text-align:left}
+#squad thead th[aria-sort] button::after{content:" ↕";opacity:.4}
+#squad thead th[aria-sort="ascending"] button::after{content:" ↑";opacity:1}
+#squad thead th[aria-sort="descending"] button::after{content:" ↓";opacity:1}
+#squad tbody td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--hairline-soft)}
+#squad tbody td.player{text-align:left;font-weight:500}
+#squad tbody td.pos{text-align:left}
+#squad tbody tr:hover{background:var(--surface-soft)}
+.pill{font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--radius-sm)}
+.p-GKP{background:var(--tint-lavender);color:var(--brand-purple-800)}
+.p-DEF{background:var(--tint-mint);color:#1a6e33}
+.p-MID{background:var(--tint-sky);color:#005bab}
+.p-FWD{background:var(--tint-peach);color:var(--brand-orange-deep)}
+
+/* toolbar / toggle / profile */
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--slate);cursor:pointer}
+.toggle input{appearance:none;width:38px;height:22px;background:var(--hairline-strong);border-radius:var(--radius-full);position:relative;cursor:pointer;transition:.15s;flex:none}
+.toggle input:checked{background:var(--primary)}
+.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.15s}
+.toggle input:checked::after{transform:translateX(16px)}
+.profile-controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.profile-controls label{font-size:12px;color:var(--steel);display:flex;flex-direction:column;gap:5px}
+.profile-controls select,.profile-controls input{min-width:180px}
+.profile-controls input{font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--hairline-strong);border-radius:var(--radius-md);background:var(--canvas);color:var(--ink);min-width:240px}
+.profile-controls input:focus{outline:2px solid var(--primary);outline-offset:1px;border-color:var(--primary)}
+
+footer{padding:32px 0 50px;color:var(--steel);font-size:12.5px;text-align:center}
+footer code{background:var(--surface);border:1px solid var(--hairline);padding:1px 6px;border-radius:var(--radius-xs)}
+
+@media(max-width:760px){
+  .stats{grid-template-columns:repeat(4,1fr)}
+  .cols,.chartgrid,.ranks{grid-template-columns:1fr}
+  .tabs .wrap{overflow-x:auto}
+}
+@media(prefers-reduced-motion:no-preference){
+  .board,.stat,.card,.chartcard,.tablewrap,.oppcard{animation:rise .45s cubic-bezier(.2,.7,.3,1) both}
+}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<header class="masthead{% if preview %} is-preview{% endif %}">
+  <div class="wrap">
+    <div class="crest">
+      <div class="mark">{% if team.badge %}<img src="{{ team.badge }}" alt="Ipswich Town crest">{% else %}{{ team.short_name }}{% endif %}</div>
+      <div>
+        <div class="eyebrow">Premier League · {{ season }}{% if position %} <span class="pos">{{ position|ordinal }}</span>{% endif %}</div>
+        <div class="wordmark">Ipswich Town</div>
+      </div>
+    </div>
+    <div class="headright">
+      <a class="previewtoggle{% if preview %} on{% endif %}" href="{{ toggle_href }}">{% if preview %}← Live data{% else %}Preview mode{% endif %}</a>
+      <div class="updated">Updated<br><b>{{ generated_at|updated }}</b></div>
+    </div>
+  </div>
+</header>
+{% if preview %}<div class="previewbanner">Preview mode — every section is showing sample data. <a href="{{ toggle_href }}">Switch back to live data</a></div>{% endif %}
+
+<nav class="tabs">
+  <div class="wrap">
+    {% for pid, filename, label in pages %}
+    <a href="{{ filename }}"{% if pid == current %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- OVERVIEW -->
+  {% if page == 'overview' %}
+  <section class="panel">
+    {% if summary_text %}
+    <div class="block">
+      <div class="snapshot">
+        <div class="snapshot-label">Season snapshot</div>
+        <p>{{ summary_text }}</p>
+      </div>
+    </div>
+    {% endif %}
+    <div class="block">
+      <p class="label">Next fixture</p>
+      {% if next_fixture %}
+      <div class="board">
+        <div class="row">
+          <div class="side">{% if team.badge %}<img class="badge-lg" src="{{ team.badge }}" alt="">{% endif %}<div class="abbr">{{ team.short_name }}</div><div class="full">Ipswich Town</div></div>
+          <div class="vs">{{ "HOME" if next_fixture.home else "AWAY" }}</div>
+          <div class="side">{% if next_fixture.badge %}<img class="badge-lg" src="{{ next_fixture.badge }}" alt="">{% endif %}<div class="abbr">{{ next_fixture.opponent_short }}</div><div class="full">{{ next_fixture.opponent }}</div></div>
+        </div>
+        <div class="when">{{ next_fixture.kickoff|kickoff }} · <span class="venue">{{ "Portman Road" if next_fixture.home else "Away" }}</span>{% if next_fixture.event %} · GW{{ next_fixture.event }}{% endif %}</div>
+        {% if next_opponent and (next_opponent.position or next_opponent.xg_pg is not none or next_opponent.prob or next_opponent.h2h_record) %}
+        <div class="oppdetail">
+          <div class="opprow">
+            <div class="who">
+              <div class="nm">{{ next_opponent.name }}</div>
+              <div class="sub">{% if next_opponent.position %}{{ next_opponent.position|ordinal }}{% if next_opponent.points is not none %} · {{ next_opponent.points }} pts{% endif %}{% if next_opponent.gd is not none %} · {{ '%+d'|format(next_opponent.gd) }} GD{% endif %}{% endif %}</div>
+            </div>
+            {% if next_opponent.form %}
+            <div class="metric"><div class="formdots">{% for f in next_opponent.form %}<i class="{{ f }}">{{ f }}</i>{% endfor %}</div><div class="k">Last 5</div></div>
+            {% endif %}
+            <div class="metrics">
+              {% if next_opponent.xg_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xg_pg) }}</div><div class="k">xG / game</div></div>{% endif %}
+              {% if next_opponent.xga_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xga_pg) }}</div><div class="k">xGA / game</div></div>{% endif %}
+            </div>
+          </div>
+          {% if next_opponent.prob %}
+          <div class="winprob">
+            <div class="wp-bar">
+              <span class="wp-w" style="width:{{ next_opponent.prob.ipswich }}%">{{ next_opponent.prob.ipswich }}%</span>
+              <span class="wp-d" style="width:{{ next_opponent.prob.draw }}%">{{ next_opponent.prob.draw }}%</span>
+              <span class="wp-l" style="width:{{ next_opponent.prob.opponent }}%">{{ next_opponent.prob.opponent }}%</span>
+            </div>
+            <div class="wp-key"><span>Ipswich win</span><span>Draw</span><span>{{ next_opponent.short }} win</span></div>
+          </div>
+          {% endif %}
+          {% if next_opponent.h2h_record %}
+          <div class="h2h">
+            <span class="h2h-label">Recent meetings</span>
+            <span class="h2h-rec">{{ next_opponent.h2h_record.w }}W {{ next_opponent.h2h_record.d }}D {{ next_opponent.h2h_record.l }}L</span>
+            <span class="h2h-dots">{% for m in next_opponent.h2h %}<i class="{{ m.result }}" title="{{ m.date }} {{ '(H)' if m.home else '(A)' }} {{ m.score }}">{{ m.result }}</i>{% endfor %}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% else %}<div class="board empty"><div class="row">No upcoming fixtures scheduled yet.</div></div>{% endif %}
+    </div>
+
+    {% if team_news %}
+    <div class="block">
+      <p class="label">Team news</p>
+      <div class="card">
+        <ul class="list news">
+          {% for t in team_news %}
+          <li>
+            <span class="nm">{{ t.player }}</span>
+            <span class="reason">{{ t.news }}</span>
+            <span class="tag {{ t.sev }}">{{ t.tag }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="block">
+      <p class="label">Season record</p>
+      <div class="stats">
+        <div class="stat"><div class="v">{{ summary.played }}</div><div class="k">Played</div></div>
+        <div class="stat"><div class="v">{{ summary.won }}</div><div class="k">Won</div></div>
+        <div class="stat"><div class="v">{{ summary.drawn }}</div><div class="k">Drawn</div></div>
+        <div class="stat"><div class="v">{{ summary.lost }}</div><div class="k">Lost</div></div>
+        <div class="stat"><div class="v">{{ summary.gf }}</div><div class="k">For</div></div>
+        <div class="stat"><div class="v">{{ summary.ga }}</div><div class="k">Against</div></div>
+        <div class="stat"><div class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</div><div class="k">Goal diff</div></div>
+        <div class="stat accent"><div class="v">{{ summary.points }}</div><div class="k">Points</div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cols">
+        <div class="card">
+          <h3>Fixtures</h3>
+          {% set upcoming_fx = fixtures|rejectattr('finished')|list %}
+          {% if upcoming_fx %}
+          <ul class="list">
+            {% for f in upcoming_fx %}
+            <li>
+              <span class="gw">{{ ('GW'+f.event|string) if f.event else '' }}</span>
+              <span class="opp">{% if f.badge %}<img class="badge" src="{{ f.badge }}" alt="">{% endif %}{{ f.opponent }}<span class="ha">{{ '(H)' if f.home else '(A)' }}</span></span>
+              <span class="kick">{{ f.kickoff|kickoff }}</span><span class="fdr fdr-{{ f.difficulty or 3 }}" title="Fixture difficulty {{ f.difficulty }}/5">{{ f.difficulty or '–' }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}<p class="empty-note">No upcoming fixtures — the season is complete.</p>{% endif %}
+        </div>
+        <div class="card">
+          <h3>Results</h3>
+          {% if results %}
+          <ul class="list">
+            {% for r in results %}
+            <li{% if r.match_id %} class="has-link"{% endif %}>{% if r.match_id %}<a class="rowlink" href="match/{{ r.match_id }}.html" aria-label="Match report: Ipswich vs {{ r.opponent }}"></a>{% endif %}<span class="gw">{{ ('GW'+r.event|string) if r.event else '' }}</span><span class="res {{ r.result }}">{{ r.result }}</span><span class="opp">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.opponent }}<span class="ha">{{ '(H)' if r.home else '(A)' }}</span></span><span class="score">{{ r.score }}</span></li>
+            {% endfor %}
+          </ul>
+          {% else %}<p class="empty-note">No matches played yet. The season opens on 22 August.</p>{% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABLE -->
+  {% endif %}
+  {% if page == 'table' %}
+  <section class="panel">
+    <p class="label">Premier League table</p>
+    {% if table %}
+    <div class="tablewrap">
+      <table class="ltable">
+        <thead><tr>
+          <th class="rk">#</th><th class="tm">Team</th>
+          <th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th class="formcol">Form</th>
+        </tr></thead>
+        <tbody>
+          {% for row in table %}
+          <tr class="{{ 'ips ' if row.is_ipswich }}{{ 'eur' if row.rank<=5 else 'rel' if row.rank>=18 else '' }}">
+            <td class="rk">{{ row.rank }}</td>
+            <td class="tm">{% if row.badge %}<img class="badge" src="{{ row.badge }}" alt="">{% endif %}{{ row.team }}</td>
+            <td>{{ row.played }}</td><td>{{ row.won }}</td><td>{{ row.drawn }}</td><td>{{ row.lost }}</td>
+            <td>{{ row.gf }}</td><td>{{ row.ga }}</td><td>{{ '%+d'|format(row.gd) if row.gd else 0 }}</td>
+            <td><b>{{ row.points }}</b></td>
+            <td class="formcol">{% for r in row.form %}<span class="fdot {{ r }}" title="{{ r }}"></span>{% endfor %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="lkey">
+      <span><i style="background:var(--easy)"></i> Top 5</span>
+      <span><i style="background:var(--hard2)"></i> Relegation</span>
+      <span><i style="background:#eaf1fc;border:1px solid var(--line)"></i> Ipswich</span>
+    </div>
+    {% else %}<p class="empty-note">League table unavailable right now — it will appear on the next successful update.</p>{% endif %}
+
+    <p class="label" style="margin-top:26px">Projected final table</p>
+    {% if predicted and predicted[0].proj is not none %}
+    <p class="empty-note" style="padding:0 2px 12px">Where the season ends if every club keeps its current points-per-game — a projection, not a prediction.</p>
+    <div class="tablewrap">
+      <table class="ltable">
+        <thead><tr>
+          <th class="rk">#</th><th class="tm">Team</th>
+          <th>P</th><th>Pts</th><th>PPG</th><th>Proj</th>
+        </tr></thead>
+        <tbody>
+          {% for row in predicted %}
+          <tr class="{{ 'ips ' if row.is_ipswich }}{{ 'eur' if row.proj_rank<=5 else 'rel' if row.proj_rank>=18 else '' }}">
+            <td class="rk">{{ row.proj_rank }}</td>
+            <td class="tm">{% if row.badge %}<img class="badge" src="{{ row.badge }}" alt="">{% endif %}{{ row.team }}</td>
+            <td>{{ row.played }}</td><td>{{ row.points }}</td><td>{{ '%.2f'|format(row.ppg) }}</td>
+            <td><b>{{ row.proj }}</b></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="empty-note">Available once the season is under way.</p>{% endif %}
+
+    {% if home_table %}
+    <p class="label" style="margin-top:26px">Home &amp; away tables</p>
+    <div class="cols2">
+      {% for title, tbl in [('Home', home_table), ('Away', away_table)] %}
+      <div>
+        <h4 class="subhead">{{ title }}</h4>
+        <div class="tablewrap">
+          <table class="ltable compact">
+            <thead><tr><th class="rk">#</th><th class="tm">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
+            <tbody>
+              {% for row in tbl %}
+              <tr class="{{ 'ips ' if row.is_ipswich }}{{ 'eur' if row.rank<=5 else 'rel' if row.rank>=18 else '' }}">
+                <td class="rk">{{ row.rank }}</td>
+                <td class="tm">{% if row.badge %}<img class="badge" src="{{ row.badge }}" alt="">{% endif %}{{ row.team }}</td>
+                <td>{{ row.played }}</td><td>{{ row.won }}</td><td>{{ row.drawn }}</td><td>{{ row.lost }}</td>
+                <td>{{ '%+d'|format(row.gd) if row.gd else 0 }}</td><td><b>{{ row.points }}</b></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- CHARTS -->
+  {% endif %}
+  {% if page == 'charts' %}
+  <section class="panel">
+    <div class="chartgrid">
+      <div class="chartcard wide">
+        <h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at the club's current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p>
+        <div class="canvas-holder"><canvas id="c-points"></canvas></div><div class="note" id="n-points" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Expected points vs actual</h3><p class="sub">Cumulative points vs the points the club's performances "deserved" (Understat xPts). Above the line = picking up more than the underlying play merits.</p>
+        <div class="canvas-holder"><canvas id="c-xpts"></canvas></div><div class="note" id="n-xpts" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of the club's best and worst weeks.</p>
+        <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Attack: goals vs xG</h3><p class="sub">Cumulative goals vs expected goals (Understat). Above the line = finishing better than the chances created.</p>
+        <div class="canvas-holder"><canvas id="c-xg"></canvas></div><div class="note" id="n-xg" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances the club would expect to concede.</p>
+        <div class="canvas-holder"><canvas id="c-xga"></canvas></div><div class="note" id="n-xga" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Finishing: goals vs npxG</h3><p class="sub">Non-penalty. Above the dashed line = outscoring the model.</p>
+        <div class="canvas-holder"><canvas id="c-finish"></canvas></div><div class="note" id="n-finish" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Rolling xG difference</h3><p class="sub">xG created minus xG conceded, averaged over the last 5 games. Above zero = on top of matches; the slope shows momentum.</p>
+        <div class="canvas-holder"><canvas id="c-xgd"></canvas></div><div class="note" id="n-xgd" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Pressing intensity (PPDA)</h3><p class="sub">Passes the opponent completes per defensive action the club makes, 5-game average. Lower = pressing higher and harder.</p>
+        <div class="canvas-holder"><canvas id="c-ppda"></canvas></div><div class="note" id="n-ppda" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Territory: deep completions</h3><p class="sub">Passes completed near the opponent's box, for and against, per match. A read on which side controlled dangerous territory.</p>
+        <div class="canvas-holder"><canvas id="c-deep"></canvas></div><div class="note" id="n-deep" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Home &amp; away split</h3><p class="sub">Per-game points, goals and xG at home vs away — how differently the side performs by venue.</p>
+        <div class="canvas-holder"><canvas id="c-homeaway"></canvas></div><div class="note" id="n-homeaway" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Shots for &amp; against</h3><p class="sub">Actual shots (and shots on target) taken vs faced each match — real volume, not xG. Out-shooting opponents is a good sign.</p>
+        <div class="canvas-holder"><canvas id="c-shots"></canvas></div><div class="note" id="n-shots" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Where shots come from</h3><p class="sub">Breakdown of shots by situation across recent matches — open play, set pieces, corners and penalties.</p>
+        <div class="canvas-holder"><canvas id="c-situation"></canvas></div><div class="note" id="n-situation" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>League: chance creation vs concession</h3><p class="sub">Every club — xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
+        <div class="canvas-holder" style="height:340px"><canvas id="c-scatter"></canvas></div><div class="note" id="n-scatter" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>How Ipswich compare</h3><p class="sub">Ipswich's rank out of 20 on each measure — a longer bar is better.</p>
+        <div class="ranks" id="ranks"></div>
+        <div class="note" id="n-ranks" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Shot map</h3><p class="sub">Every shot from the selected match, placed by pitch location. Circle size = chance quality (xG), colour = outcome.</p>
+        <div class="shotbar">
+          <select id="shot-select" aria-label="Choose match"></select>
+          <span class="shotscore" id="shot-score"></span>
+        </div>
+        <div class="matchreport" id="match-report" hidden></div>
+        <div class="pitch-holder" id="pitch"></div>
+        <div class="note" id="n-shot" hidden></div>
+        <div class="shotkey">
+          <span><i style="background:#2e9e5b"></i> Goal</span>
+          <span><i style="background:#3f7ddb"></i> Saved</span>
+          <span><i style="background:#e0a53b"></i> Blocked</span>
+          <span><i style="background:#9aa6b8"></i> Off target</span>
+          <span style="margin-left:auto">Circle size = xG</span>
+        </div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Upcoming difficulty</h3><p class="sub">FPL difficulty of the next fixtures (1 easy → 5 hard) — a quick look at the run ahead.</p>
+        <div class="canvas-holder"><canvas id="c-fdr"></canvas></div><div class="note" id="n-fdr" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Elo trend</h3><p class="sub">The club's ClubElo rating through the season — a single-number measure of strength. Rising = getting stronger relative to the field.</p>
+        <div class="canvas-holder"><canvas id="c-elo"></canvas></div><div class="note" id="n-elo" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Goals by 15-minute phase</h3><p class="sub">When the club scores and concedes across the match — a read on fast starts, strong finishes and vulnerable spells.</p>
+        <div class="canvas-holder"><canvas id="c-timing"></canvas></div><div class="note" id="n-timing" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Points by half-time state</h3><p class="sub">Points won per game when ahead, level or behind at the break — how the club closes matches out.</p>
+        <div class="canvas-holder"><canvas id="c-gamestate"></canvas></div><div class="note" id="n-gamestate" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Discipline</h3><p class="sub">Fouls and cards per game, for and against — how the club's discipline compares with what it draws from opponents.</p>
+        <div class="canvas-holder"><canvas id="c-discipline"></canvas></div><div class="note" id="n-discipline" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Record by referee</h3><p class="sub">The club's results broken down by match official this season.</p>
+        <div id="ref-table"></div><div class="note" id="n-ref" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Team strength profile</h3><p class="sub">FPL's attack, defence and overall ratings (home and away) as a percentile vs the league — the club's stylistic fingerprint.</p>
+        <div class="canvas-holder"><canvas id="c-strength"></canvas></div><div class="note" id="n-strength" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SQUAD -->
+  {% endif %}
+  {% if page == 'squad' %}
+  <section class="panel">
+    <p class="label">Squad · {{ squad|length }} players</p>
+    <div class="toolbar">
+      <label class="toggle"><input type="checkbox" id="per90-toggle" aria-label="Show per 90 minutes"> Per 90 minutes</label>
+    </div>
+    <div class="tablewrap">
+      <table id="squad">
+        <thead><tr>
+          <th class="player" aria-sort="none"><button>Player</button></th>
+          <th class="pos" aria-sort="none"><button>Pos</button></th>
+          <th aria-sort="none"><button>Mins</button></th>
+          <th aria-sort="none"><button>G</button></th>
+          <th aria-sort="none"><button>A</button></th>
+          <th aria-sort="none"><button>xG</button></th>
+          <th aria-sort="none"><button>xA</button></th>
+          <th aria-sort="none"><button>xGI</button></th>
+        </tr></thead>
+        <tbody>
+          {% for p in squad %}
+          <tr data-min="{{ p.minutes }}">
+            <td class="player" title="{{ p.full_name }}">{% if p.slug %}<a class="playerlink" href="player/{{ p.slug }}.html">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</td>
+            <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
+            <td>{{ p.minutes }}</td>
+            <td class="per90" data-raw="{{ p.goals }}" data-dec="0">{{ p.goals }}</td>
+            <td class="per90" data-raw="{{ p.assists }}" data-dec="0">{{ p.assists }}</td>
+            <td class="per90" data-raw="{{ p.xg }}" data-dec="2">{{ '%.2f'|format(p.xg) }}</td>
+            <td class="per90" data-raw="{{ p.xa }}" data-dec="2">{{ '%.2f'|format(p.xa) }}</td>
+            <td class="per90" data-raw="{{ p.xgi }}" data-dec="2">{{ '%.2f'|format(p.xgi) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="block" style="margin-top:30px">
+      <p class="label">Player profiles</p>
+      <div class="chartcard wide">
+        <p class="sub">Per-90 percentile ranks vs positional peers across the Premier League. Search an Ipswich player, then any PL player to compare across the league.</p>
+        <div class="profile-controls">
+          <label>Ipswich player
+            <input id="prof-a" list="prof-a-list" placeholder="Search Ipswich players…" autocomplete="off" spellcheck="false">
+            <datalist id="prof-a-list"></datalist>
+          </label>
+          <label>Compare with (any PL player)
+            <input id="prof-b" list="prof-b-list" placeholder="Search all Premier League players…" autocomplete="off" spellcheck="false">
+            <datalist id="prof-b-list"></datalist>
+          </label>
+        </div>
+        <div class="canvas-holder" style="height:360px"><canvas id="c-radar"></canvas></div>
+        <div class="note" id="n-radar" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEWS -->
+  {% endif %}
+  {% if page == 'news' %}
+  <section class="panel">
+    <p class="label">Latest news</p>
+    {% if news %}
+    <div class="card">
+      <ul class="list newslist">
+        {% for a in news %}
+        <li>
+          {% if a.image %}<img class="thumb" src="{{ a.image|e }}" alt="" loading="lazy">{% endif %}
+          <div class="body">
+            <div class="meta"><span class="src">{{ a.source|e }}</span>{% if a.date_display %}<span class="date">{{ a.date_display|e }}</span>{% endif %}</div>
+            <a class="headline" href="{{ a.link|e }}" target="_blank" rel="noopener noreferrer">{{ a.title|e }}</a>
+            {% if a.summary %}<p class="summary">{{ a.summary|e }}</p>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <p class="empty-note" style="padding:14px 2px 0">Headlines from Ipswich-focused RSS feeds. Links open on the publisher's site.</p>
+    {% else %}<p class="empty-note">No news available right now.</p>{% endif %}
+  </section>
+{% endif %}
+</main>
+
+<footer class="wrap">
+  Data from the FPL API (squad &amp; team news), Understat (xG &amp; shots), ESPN (table), TheSportsDB (badges), football-data.co.uk (head-to-head), ClubElo (win probability) and Ipswich RSS feeds (news) · rebuilt automatically via GitHub Actions.<br>
+  Raw data: <code>data/itfc.json</code> · A reference page, not affiliated with Ipswich Town FC.
+</footer>
+
+{% if page in ['charts','squad'] %}
+<script id="itfc-data" type="application/json">{{ data_json|safe }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endif %}
+<script>
+(function(){
+  var _d = document.getElementById('itfc-data');
+  var DATA = _d ? JSON.parse(_d.textContent) : {};
+  // Drop any news thumbnail whose image fails to load (dead/hotlink-blocked URL).
+  [].forEach.call(document.querySelectorAll('.newslist .thumb'), function(img){
+    img.addEventListener('error', function(){ img.remove(); });
+  });
+  // Club badges come from the PL's full-colour set; hide (rather than show a broken
+  // "?") on the rare chance one fails to load.
+  [].forEach.call(document.querySelectorAll('img'), function(img){
+    if(img.src.indexOf('resources.premierleague.com') === -1) return;
+    img.addEventListener('error', function(){ img.style.visibility = 'hidden'; });
+  });
+  var css = getComputedStyle(document.documentElement);
+  function cv(n){ return css.getPropertyValue(n).trim(); }
+  var C = {blue:cv('--primary'),bright:cv('--brand-navy-mid'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid'),pink:cv('--brand-pink'),pitch:cv('--tint-mint'),pitchline:cv('--hairline-strong')};
+  var FDR = {1:cv('--fdr-1'),2:cv('--fdr-2'),3:cv('--fdr-3'),4:cv('--fdr-4'),5:cv('--fdr-5')};
+  var SHOT = {Goal:cv('--win'),SavedShot:cv('--link-blue'),BlockedShot:cv('--brand-orange'),MissedShots:cv('--stone'),ShotOnPost:cv('--loss'),OwnGoal:cv('--stone')};
+
+  // Each section is its own page now — build whatever this page contains.
+  if(document.getElementById('c-points')) buildCharts();
+  if(document.getElementById('c-radar')) buildProfiles();
+
+  function showNote(id,msg){ var c=document.getElementById('c-'+id); if(c)c.style.display='none';
+    var n=document.getElementById('n-'+id); if(n){n.hidden=false;n.textContent=msg;} }
+  function baseOpts(extra){
+    var o={responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:12,font:{size:12}}}},
+      scales:{x:{grid:{color:C.line},ticks:{font:{size:11}}},
+              y:{grid:{color:C.line},ticks:{font:{size:11}},beginAtZero:true}}};
+    return Object.assign(o, extra||{});
+  }
+
+  function buildCharts(){
+    if(!window.Chart){ ['points','xpts','goals','xg','xga','xgd','ppda','deep','homeaway','shots','situation','finish','fdr','elo','timing','gamestate','discipline','strength'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
+    else {
+      Chart.defaults.font.family="Inter, system-ui, sans-serif"; Chart.defaults.color=C.muted;
+      var gw = DATA.by_gameweek||[], labels = gw.map(function(d){return 'GW'+d.gw;});
+
+      // Points progression across the whole season: actual so far, projected to GW38
+      // at current points-per-game, vs the pace the 17th-placed team is on (survival).
+      var TOTAL_GW = 38;
+      var seasonLabels = []; for(var _g=1;_g<=TOTAL_GW;_g++) seasonLabels.push('GW'+_g);
+      if(gw.length){
+        var played = gw.length;
+        var cumPts = gw.map(function(d){return d.cum_points;});
+        var lastPts = cumPts[played-1], ppg = lastPts/played;
+        var actualData = seasonLabels.map(function(_,i){return i < played ? cumPts[i] : null;});
+        var projData = seasonLabels.map(function(_,i){var g=i+1;
+          if(g < played) return null;
+          if(g === played) return lastPts;
+          return +(lastPts + ppg*(g-played)).toFixed(1);});
+        var tbl = DATA.table||[], safe=null;
+        for(var _k=0;_k<tbl.length;_k++){ if(tbl[_k].rank===17){safe=tbl[_k];break;} }
+        if(!safe && tbl.length>=17) safe = tbl[16];
+        var dsets=[
+          {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
+          {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}];
+        if(safe && safe.played){
+          var sp = safe.points/safe.played, survFinal=Math.round(sp*TOTAL_GW);
+          dsets.push({label:'Survival pace (~'+survFinal+' pts)',
+            data:seasonLabels.map(function(_,i){return +(sp*(i+1)).toFixed(1);}),
+            borderColor:C.red,borderDash:[3,4],tension:0,pointRadius:0,fill:false});
+        }
+        new Chart(document.getElementById('c-points'),{type:'line',
+          data:{labels:seasonLabels,datasets:dsets},
+          options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:13}},
+            y:{beginAtZero:true,grid:{color:C.line}}}})});
+      } else showNote('points','No matches played yet.');
+
+      if(gw.length){ new Chart(document.getElementById('c-goals'),{type:'bar',
+        data:{labels:labels,datasets:[
+          {label:'For',data:gw.map(function(d){return d.gf;}),backgroundColor:C.blue},
+          {label:'Against',data:gw.map(function(d){return d.ga;}),backgroundColor:C.red}]},
+        options:baseOpts()}); } else showNote('goals','No matches played yet.');
+
+      // Understat match xG (fallback to FPL by_gameweek team_xg)
+      var um = DATA.understat_matches||[];
+      function cumFrom(arr,key){var t=0;return arr.map(function(d){t+=(d[key]||0);return +t.toFixed(2);});}
+      var xgLabels, gForCum, xgForCum, gAgCum, xgAgCum;
+      if(um.length){
+        xgLabels = um.map(function(m,i){return 'M'+(i+1);});
+        gForCum=cumFrom(um,'gf'); xgForCum=cumFrom(um,'xg_for');
+        gAgCum=cumFrom(um,'ga'); xgAgCum=cumFrom(um,'xg_against');
+      } else if(gw.length){
+        xgLabels=labels; gForCum=cumFrom(gw,'gf'); xgForCum=cumFrom(gw,'team_xg');
+        gAgCum=cumFrom(gw,'ga'); xgAgCum=cumFrom(gw,'team_xga');
+      }
+      if(xgLabels){ new Chart(document.getElementById('c-xg'),{type:'line',
+        data:{labels:xgLabels,datasets:[
+          {label:'Goals',data:gForCum,borderColor:C.blue,tension:.25,pointRadius:2},
+          {label:'xG',data:xgForCum,borderColor:C.amber,borderDash:[6,4],tension:.25,pointRadius:2}]},
+        options:baseOpts()}); } else showNote('xg','No matches played yet.');
+
+      if(xgLabels){ new Chart(document.getElementById('c-xga'),{type:'line',
+        data:{labels:xgLabels,datasets:[
+          {label:'Conceded',data:gAgCum,borderColor:C.red,tension:.25,pointRadius:2},
+          {label:'xG against',data:xgAgCum,borderColor:C.muted,borderDash:[6,4],tension:.25,pointRadius:2}]},
+        options:baseOpts()}); } else showNote('xga','No matches played yet.');
+
+      // Rolling xG difference (5-match average of xG for minus xG against)
+      var WIN = 5;
+      if(um.length){
+        var diff = um.map(function(m){return (m.xg_for||0)-(m.xg_against||0);});
+        var roll = diff.map(function(_,i){var s=Math.max(0,i-WIN+1),seg=diff.slice(s,i+1);
+          return +(seg.reduce(function(a,b){return a+b;},0)/seg.length).toFixed(2);});
+        new Chart(document.getElementById('c-xgd'),{type:'line',
+          data:{labels:um.map(function(m,i){return 'M'+(i+1);}),datasets:[
+            {label:'Rolling xGD',data:roll,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.12)',
+              fill:'origin',tension:.3,pointRadius:2}]},
+          options:baseOpts({plugins:{legend:{display:false}},
+            scales:{x:{grid:{display:false}},y:{grid:{color:C.line},
+              title:{display:true,text:'xG diff / game (5-match avg)'}}}})});
+      } else showNote('xgd','No match xG data yet.');
+
+      // Home / away split — per-game points, goals and xG by venue (from Understat matches)
+      var hm = DATA.understat_matches||[];
+      if(hm.length){
+        function agg(isHome){var m=hm.filter(function(x){return !!x.home===isHome;});
+          if(!m.length) return null; var n=m.length,gf=0,ga=0,xf=0,xa=0,pts=0;
+          m.forEach(function(x){gf+=x.gf||0;ga+=x.ga||0;xf+=x.xg_for||0;xa+=x.xg_against||0;
+            pts+=(x.gf>x.ga?3:(x.gf===x.ga?1:0));});
+          return [pts/n,gf/n,ga/n,xf/n,xa/n].map(function(v){return +v.toFixed(2);});}
+        var H=agg(true),A=agg(false);
+        new Chart(document.getElementById('c-homeaway'),{type:'bar',
+          data:{labels:['PPG','Goals for','Goals against','xG for','xGA'],datasets:[
+            {label:'Home',data:H||[0,0,0,0,0],backgroundColor:C.blue},
+            {label:'Away',data:A||[0,0,0,0,0],backgroundColor:C.amber}]},
+          options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})});
+      } else showNote('homeaway','No match data yet.');
+
+      // Expected points vs actual (Understat xPts), cumulative
+      var uh = DATA.understat_history||[];
+      function rollAvg(arr,w){return arr.map(function(_,i){var s=Math.max(0,i-w+1),
+        seg=arr.slice(s,i+1).filter(function(v){return v!=null;});
+        return seg.length? +(seg.reduce(function(a,b){return a+b;},0)/seg.length).toFixed(2):null;});}
+      if(uh.length){
+        var cp=0, cx=0;
+        new Chart(document.getElementById('c-xpts'),{type:'line',
+          data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+            {label:'Points',data:uh.map(function(h){cp+=(h.pts||0);return cp;}),
+              borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:2},
+            {label:'Expected points',data:uh.map(function(h){cx+=(h.xpts||0);return +cx.toFixed(1);}),
+              borderColor:C.amber,borderDash:[6,4],tension:.25,pointRadius:2}]},
+          options:baseOpts()});
+      } else showNote('xpts','No match data yet.');
+
+      // Pressing intensity — rolling PPDA (lower = press harder)
+      if(uh.length){ new Chart(document.getElementById('c-ppda'),{type:'line',
+        data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+          {label:'PPDA (5-game avg)',data:rollAvg(uh.map(function(h){return h.ppda;}),5),
+            borderColor:C.blue,tension:.3,pointRadius:2,spanGaps:true}]},
+        options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},
+          y:{grid:{color:C.line},title:{display:true,text:'PPDA — lower = press harder'}}}})}); }
+      else showNote('ppda','No pressing data yet.');
+
+      // Territory — deep completions for vs against
+      if(uh.length){ new Chart(document.getElementById('c-deep'),{type:'bar',
+        data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+          {label:'For',data:uh.map(function(h){return h.deep;}),backgroundColor:C.blue},
+          {label:'Against',data:uh.map(function(h){return h.deep_allowed;}),backgroundColor:C.red}]},
+        options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})}); }
+      else showNote('deep','No territory data yet.');
+
+      // Shots for & against, with shots on target (football-data)
+      var ms = DATA.match_stats||[];
+      if(ms.length){ new Chart(document.getElementById('c-shots'),{type:'bar',
+        data:{labels:ms.map(function(m){return (m.opponent||'').slice(0,3).toUpperCase()+(m.home?' (H)':' (A)');}),
+          datasets:[
+            {label:'Shots for',data:ms.map(function(m){return m.shots_for;}),backgroundColor:C.blue},
+            {label:'Shots against',data:ms.map(function(m){return m.shots_against;}),backgroundColor:C.red},
+            {type:'line',label:'On target (for)',data:ms.map(function(m){return m.sot_for;}),
+              borderColor:C.green,backgroundColor:C.green,pointRadius:3,fill:false,tension:.2}]},
+        options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})}); }
+      else showNote('shots','No shot-count data yet.');
+
+      // Where shots come from — situation breakdown (from recent shot maps)
+      var sit={}; (DATA.shot_maps||[]).forEach(function(m){(m.shots||[]).forEach(function(s){
+        var k=s.situation||'Unknown'; sit[k]=(sit[k]||0)+1; });});
+      var sk=Object.keys(sit);
+      if(sk.length){ var nice={OpenPlay:'Open play',FromCorner:'From corner',SetPiece:'Set piece',DirectFreekick:'Free kick',Penalty:'Penalty'};
+        new Chart(document.getElementById('c-situation'),{type:'doughnut',
+          data:{labels:sk.map(function(k){return nice[k]||k;}),datasets:[
+            {data:sk.map(function(k){return sit[k];}),
+              backgroundColor:[C.blue,C.amber,C.green,C.pink,C.red,C.muted],borderWidth:0}]},
+          options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:12}}}}}}); }
+      else showNote('situation','No shot-location data yet.');
+
+      // Elo trend
+      var eh = DATA.elo_history||[];
+      if(eh.length>1){ new Chart(document.getElementById('c-elo'),{type:'line',
+        data:{labels:eh.map(function(d){return d.date;}),datasets:[
+          {label:'Elo',data:eh.map(function(d){return d.elo;}),borderColor:C.blue,
+            backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:2}]},
+        options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},
+          y:{grid:{color:C.line},title:{display:true,text:'ClubElo rating'}}}})}); }
+      else showNote('elo','No Elo history yet.');
+
+      // Goals by 15-minute phase (from match-page shots)
+      var buckets=['0-15','16-30','31-45','46-60','61-75','76-90+'];
+      function bkt(mn){var i=Math.floor((mn-1)/15);return Math.max(0,Math.min(5,i));}
+      var gFor=[0,0,0,0,0,0], gAg=[0,0,0,0,0,0], anyGoal=false;
+      (DATA.match_pages||[]).forEach(function(m){
+        (m.shots_for||[]).forEach(function(s){if(s.result==='Goal'){gFor[bkt(s.minute)]++;anyGoal=true;}});
+        (m.shots_against||[]).forEach(function(s){if(s.result==='Goal'){gAg[bkt(s.minute)]++;anyGoal=true;}});
+      });
+      if(anyGoal){ new Chart(document.getElementById('c-timing'),{type:'bar',
+        data:{labels:buckets,datasets:[
+          {label:'Scored',data:gFor,backgroundColor:C.green},
+          {label:'Conceded',data:gAg,backgroundColor:C.red}]},
+        options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line},ticks:{precision:0}}}})}); }
+      else showNote('timing','No goal-timing data yet.');
+
+      // Points by half-time state
+      var ms = DATA.match_stats||[];
+      if(ms.length){
+        var st={ahead:[0,0],level:[0,0],behind:[0,0]};  // [points, games]
+        ms.forEach(function(m){var s=m.ht_state; if(!st[s])return;
+          st[s][0]+=(m.result==='W'?3:m.result==='D'?1:0); st[s][1]++;});
+        var order=['ahead','level','behind'], lab={ahead:'Leading at HT',level:'Level at HT',behind:'Behind at HT'};
+        new Chart(document.getElementById('c-gamestate'),{type:'bar',
+          data:{labels:order.map(function(k){return lab[k];}),datasets:[{label:'Points per game',
+            data:order.map(function(k){return st[k][1]? +(st[k][0]/st[k][1]).toFixed(2):0;}),
+            backgroundColor:[C.green,C.muted,C.red]}]},
+          options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:3,grid:{color:C.line}}}})});
+      } else showNote('gamestate','No half-time data yet.');
+
+      // Discipline: fouls & cards per game, for vs against
+      if(ms.length){var n=ms.length;
+        function avg(k){return +(ms.reduce(function(a,m){return a+(m[k]||0);},0)/n).toFixed(2);}
+        new Chart(document.getElementById('c-discipline'),{type:'bar',
+          data:{labels:['Fouls','Yellows','Reds'],datasets:[
+            {label:'The club',data:[avg('fouls_for'),avg('yellows_for'),avg('reds_for')],backgroundColor:C.blue},
+            {label:'Opponents',data:[avg('fouls_against'),avg('yellows_against'),avg('reds_against')],backgroundColor:C.red}]},
+          options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})});
+      } else showNote('discipline','No discipline data yet.');
+
+      // Record by referee (HTML table)
+      var refBox=document.getElementById('ref-table');
+      if(refBox && ms.length){
+        var refs={};
+        ms.forEach(function(m){var r=m.referee||'Unknown'; refs[r]=refs[r]||{w:0,d:0,l:0,p:0};
+          refs[r].p++; refs[r][m.result==='W'?'w':m.result==='D'?'d':'l']++;});
+        var keys=Object.keys(refs).sort(function(a,b){return refs[b].p-refs[a].p;});
+        var html='<table class="reftable"><thead><tr><th>Referee</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PPG</th></tr></thead><tbody>';
+        keys.forEach(function(r){var x=refs[r];var ppg=((x.w*3+x.d)/x.p).toFixed(2);
+          html+='<tr><td>'+r+'</td><td>'+x.p+'</td><td>'+x.w+'</td><td>'+x.d+'</td><td>'+x.l+'</td><td>'+ppg+'</td></tr>';});
+        refBox.innerHTML=html+'</tbody></table>';
+      } else if(refBox){ showNote('ref','No referee data yet.'); }
+
+      // Team strength radar (percentile vs league)
+      var ts=DATA.team_strength||[];
+      if(ts.length){ new Chart(document.getElementById('c-strength'),{type:'radar',
+        data:{labels:ts.map(function(t){return t.label;}),datasets:[{label:'Percentile vs league',
+          data:ts.map(function(t){return t.pct;}),borderColor:C.blue,backgroundColor:C.blue+'33',
+          pointBackgroundColor:C.blue,borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,
+          scales:{r:{min:0,max:100,ticks:{stepSize:20,backdropColor:'transparent',font:{size:9}},grid:{color:C.line},angleLines:{color:C.line},pointLabels:{font:{size:11}}}},
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ord(ctx.raw)+' percentile';}}}}}}); }
+      else showNote('strength','No strength ratings yet.');
+
+      // Finishing: npg vs npxg scatter with y=x reference
+      var pl = (DATA.understat_players||[]).filter(function(p){return p.shots>0;});
+      if(pl.length){
+        var mx = Math.max.apply(null, pl.map(function(p){return Math.max(p.npg,p.npxg);})).toFixed(1);
+        mx = Math.max(1, Math.ceil(mx));
+        new Chart(document.getElementById('c-finish'),{type:'scatter',
+          data:{datasets:[
+            {label:'Players',data:pl.map(function(p){return {x:p.npxg,y:p.npg,name:p.name};}),
+              backgroundColor:C.blue,pointRadius:5,pointHoverRadius:7},
+            {type:'line',label:'Expected',data:[{x:0,y:0},{x:mx,y:mx}],borderColor:C.muted,
+              borderDash:[5,4],pointRadius:0,fill:false}]},
+          options:baseOpts({
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){
+              return ctx.raw.name?(ctx.raw.name+' — '+ctx.raw.y+' G, '+ctx.raw.x.toFixed(2)+' npxG'):'';}}}},
+            scales:{x:{title:{display:true,text:'npxG'},beginAtZero:true,grid:{color:C.line}},
+                    y:{title:{display:true,text:'Goals'},beginAtZero:true,grid:{color:C.line}}}})});
+      } else showNote('finish','No shot data yet.');
+
+      var up = DATA.upcoming||[];
+      if(up.length){ new Chart(document.getElementById('c-fdr'),{type:'bar',
+        data:{labels:up.map(function(f){return f.opponent_short+(f.home?' (H)':' (A)');}),
+          datasets:[{label:'Difficulty',data:up.map(function(f){return f.difficulty||0;}),
+            backgroundColor:up.map(function(f){return FDR[f.difficulty]||C.muted;})}]},
+        options:baseOpts({plugins:{legend:{display:false}},
+          scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:5,ticks:{stepSize:1}}}})}); }
+      else showNote('fdr','No upcoming fixtures scheduled.');
+
+      // League team scatter: xG vs xGA per game
+      var ts = DATA.team_scatter||[];
+      if(ts.length){
+        var lbl={id:'lbl',afterDatasetsDraw:function(chart){
+          var ctx=chart.ctx; ctx.save(); ctx.font='10px Inter, sans-serif';
+          chart.data.datasets.forEach(function(ds,di){
+            chart.getDatasetMeta(di).data.forEach(function(pt,i){
+              var d=ds.data[i]; if(!d||!d.label)return;
+              ctx.fillStyle=d.ips?C.red:C.muted; ctx.fillText(d.label, pt.x+5, pt.y+3);
+            });
+          }); ctx.restore();
+        }};
+        var pts=ts.map(function(t){return {x:t.xg_pg,y:t.xga_pg,label:t.short,ips:t.is_ipswich};});
+        new Chart(document.getElementById('c-scatter'),{type:'scatter',
+          data:{datasets:[
+            {label:'Clubs',data:pts.filter(function(p){return !p.ips;}),backgroundColor:'#9aa6b8',pointRadius:5},
+            {label:'Ipswich',data:pts.filter(function(p){return p.ips;}),backgroundColor:C.red,pointRadius:7}]},
+          options:baseOpts({
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){
+              return ctx.raw.label+': '+ctx.raw.x.toFixed(2)+' xG, '+ctx.raw.y.toFixed(2)+' xGA';}}}},
+            scales:{x:{title:{display:true,text:'xG per game'},grid:{color:C.line},beginAtZero:true},
+                    y:{title:{display:true,text:'xGA per game'},grid:{color:C.line},beginAtZero:true}}}),
+          plugins:[lbl]});
+      } else showNote('scatter','No league xG data yet.');
+
+      // League rank bars
+      var tr = DATA.team_ranks||[], rc=document.getElementById('ranks');
+      if(tr.length && rc){
+        rc.innerHTML = tr.map(function(r){
+          var frac=(r.total-r.rank+1)/r.total, cls=r.rank<=6?'good':r.rank>=15?'bad':'';
+          return '<div class="rankrow"><div class="top"><span>'+r.label+'</span>'+
+            '<span><b>'+fmtVal(r.value)+'</b> <span class="pos">'+ord(r.rank)+'/'+r.total+'</span></span></div>'+
+            '<div class="rankbar"><span class="'+cls+'" style="width:'+(frac*100).toFixed(0)+'%"></span></div></div>';
+        }).join('');
+      } else showNote('ranks','League comparison unavailable yet.');
+    }
+    setupShotMap();
+  }
+
+  // Shot map (inline SVG pitch)
+  function setupShotMap(){
+    var maps = DATA.shot_maps||[];
+    var sel = document.getElementById('shot-select');
+    var scoreEl = document.getElementById('shot-score');
+    var holder = document.getElementById('pitch');
+    if(!maps.length){ document.querySelector('.shotbar').style.display='none';
+      document.querySelector('.shotkey').style.display='none'; showNote('shot','No shot data yet.'); return; }
+    maps.forEach(function(m,i){
+      var o=document.createElement('option'); o.value=i;
+      o.textContent=(m.home?'vs ':'at ')+m.opponent+' · '+m.date; sel.appendChild(o);
+    });
+    function draw(i){
+      var m=maps[i]; scoreEl.textContent=(m.home?'H ':'A ')+m.score;
+      holder.innerHTML = pitchSVG(m.shots);
+      var mr=document.getElementById('match-report');
+      if(m.xg_for!=null){
+        var top=m.shots.slice().sort(function(a,b){return b.xg-a.xg;})[0];
+        mr.hidden=false;
+        mr.innerHTML='<div class="mr"><span class="k">xG</span><span class="v">'+m.xg_for.toFixed(2)+'–'+m.xg_against.toFixed(2)+'</span></div>'+
+          '<div class="mr"><span class="k">Shots</span><span class="v">'+m.shots.length+'</span></div>'+
+          (top?'<div class="mr"><span class="k">Top chance</span><span class="v">'+esc(top.player)+' '+top.xg.toFixed(2)+'</span></div>':'');
+      } else mr.hidden=true;
+    }
+    sel.addEventListener('change', function(){ draw(+sel.value); });
+    draw(0);
+  }
+  function pitchSVG(shots){
+    var W=105,H=68, g=C.pitch, ln=C.pitchline;
+    function box(x,w){return '<rect x="'+x+'" y="'+((H-40)/2)+'" width="'+w+'" height="40" fill="none" stroke="'+ln+'" stroke-width="0.4"/>';}
+    var s='<svg viewBox="-2 -2 '+(W+4)+' '+(H+4)+'" xmlns="http://www.w3.org/2000/svg">';
+    s+='<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="'+g+'" stroke="'+ln+'" stroke-width="0.5"/>';
+    s+='<line x1="'+(W/2)+'" y1="0" x2="'+(W/2)+'" y2="'+H+'" stroke="'+ln+'" stroke-width="0.4"/>';
+    s+='<circle cx="'+(W/2)+'" cy="'+(H/2)+'" r="9.15" fill="none" stroke="'+ln+'" stroke-width="0.4"/>';
+    s+=box(0,16.5)+box(W-16.5,16.5);
+    shots.forEach(function(sh){
+      var cx=sh.x*W, cy=sh.y*H, r=2+Math.sqrt(sh.xg)*7;
+      var col=SHOT[sh.result]||'#9aa6b8';
+      s+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+col+'" fill-opacity="0.78" stroke="#0f1826" stroke-opacity="0.25" stroke-width="0.3">'+
+         '<title>'+esc(sh.player)+" · "+sh.minute+"' · xG "+sh.xg.toFixed(2)+' · '+esc(sh.result)+'</title></circle>';
+    });
+    s+='</svg>'; return s;
+  }
+  function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  // squad sort
+  var table=document.getElementById('squad');
+  if(table){
+    var heads=table.tHead.rows[0].cells, body=table.tBodies[0];
+    function val(row,i){var t=row.cells[i].textContent.trim().replace('%','');var n=parseFloat(t);return isNaN(n)?t.toLowerCase():n;}
+    [].forEach.call(heads,function(th,i){
+      th.querySelector('button').addEventListener('click',function(){
+        var dir=th.getAttribute('aria-sort')==='ascending'?'descending':'ascending';
+        [].forEach.call(heads,function(h){h.setAttribute('aria-sort','none');});
+        th.setAttribute('aria-sort',dir);
+        var rows=[].slice.call(body.rows);
+        rows.sort(function(a,b){var x=val(a,i),y=val(b,i);return x<y?(dir==='ascending'?-1:1):x>y?(dir==='ascending'?1:-1):0;});
+        rows.forEach(function(r){body.appendChild(r);});
+      });
+    });
+  }
+  // per-90 toggle
+  var per90=document.getElementById('per90-toggle');
+  if(per90){
+    per90.addEventListener('change',function(){
+      var on=per90.checked;
+      [].forEach.call(document.querySelectorAll('#squad tbody tr'),function(tr){
+        var min=+tr.getAttribute('data-min')||0;
+        [].forEach.call(tr.querySelectorAll('td.per90'),function(td){
+          var raw=+td.getAttribute('data-raw'), dec=+td.getAttribute('data-dec');
+          td.textContent = on ? (min>0?(raw/(min/90)).toFixed(2):'–') : raw.toFixed(dec);
+        });
+      });
+    });
+  }
+
+  // player profile radar (percentiles vs positional peers)
+  function buildProfiles(){
+    var profs=DATA.player_profiles||[];
+    var a=document.getElementById('prof-a'), b=document.getElementById('prof-b');
+    var la=document.getElementById('prof-a-list'), lb=document.getElementById('prof-b-list');
+    if(!profs.length){ var pc=document.querySelector('.profile-controls'); if(pc)pc.style.display='none';
+      showNote('radar','No player minutes yet — profiles appear once games are played.'); return; }
+    if(!window.Chart){ showNote('radar','Charts library did not load.'); return; }
+    var M=[['goals','Goals'],['assists','Assists'],['npxg','npxG'],['xa','xA'],
+           ['shots','Shots'],['key_passes','Key passes'],['xgchain','xGChain'],['xgbuildup','xGBuildup']];
+    // unique display key per player, plus datalist options (Ipswich list vs all-PL list)
+    function keyOf(p){return p.name + (p.team ? ' — ' + p.team : '');}
+    var byKey={};
+    profs.forEach(function(p){ byKey[keyOf(p)]=p; });
+    function opt(p){var o=document.createElement('option'); o.value=keyOf(p); o.label=p.pos; return o;}
+    profs.forEach(function(p){ if(p.is_ipswich) la.appendChild(opt(p)); lb.appendChild(opt(p)); });
+
+    var chart, curA=null, curB=null;
+    function ds(p,c){return {label:p.name,data:M.map(function(m){return p.pct[m[0]];}),
+      borderColor:c,backgroundColor:c+'33',pointBackgroundColor:c,borderWidth:2,
+      _p90:M.map(function(m){return (p.per90&&p.per90[m[0]]!=null)?p.per90[m[0]]:null;})};}
+    function draw(){
+      if(!curA && !curB){ return; }
+      var sets=[];
+      if(curA) sets.push(ds(curA,C.blue));
+      if(curB) sets.push(ds(curB,C.red));
+      var data={labels:M.map(function(m){return m[1];}),datasets:sets};
+      var opts={responsive:true,maintainAspectRatio:false,
+        scales:{r:{min:0,max:100,ticks:{stepSize:20,backdropColor:'transparent',font:{size:9}},
+          grid:{color:C.line},angleLines:{color:C.line},pointLabels:{font:{size:11}}}},
+        plugins:{legend:{position:'bottom',labels:{boxWidth:12}},
+          tooltip:{callbacks:{label:function(ctx){var p90=ctx.dataset._p90?ctx.dataset._p90[ctx.dataIndex]:null;
+            return ctx.dataset.label+': '+ord(ctx.raw)+' pct'+(p90!=null?' ('+p90+' /90)':'');}}}}};
+      if(chart){chart.data=data;chart.update();} else chart=new Chart(document.getElementById('c-radar'),{type:'radar',data:data,options:opts});
+    }
+    function pick(input,isA){
+      var p=byKey[input.value];
+      if(p){ if(isA) curA=p; else curB=p; draw(); }
+      else if(input.value===''){ if(isA) curA=null; else curB=null; draw(); }
+    }
+    a.addEventListener('change',function(){pick(a,true);});
+    a.addEventListener('input',function(){pick(a,true);});
+    b.addEventListener('change',function(){pick(b,false);});
+    b.addEventListener('input',function(){pick(b,false);});
+    var firstIps=profs.filter(function(p){return p.is_ipswich;})[0];
+    if(firstIps){ curA=firstIps; a.value=keyOf(firstIps); draw(); }
+    else showNote('radar','No Ipswich player minutes yet.');
+  }
+
+  function ord(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+  function fmtVal(v){return (Math.round(v)===v)?v:(+v).toFixed(2);}
+})();
+</script>
+</body>
+</html>
