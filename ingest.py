@@ -99,7 +99,7 @@ def to_float(v):
 # --------------------------------------------------------------------------- #
 def fetch_fpl():
     boot = get_json("bootstrap-static/", FPL)
-    fixtures = get_json("fixtures/", FPL)
+    all_fixtures = get_json("fixtures/", FPL)
 
     teams = {t["id"]: t for t in boot["teams"]}
     positions = {p["id"]: p["singular_name_short"] for p in boot["element_types"]}
@@ -116,7 +116,7 @@ def fetch_fpl():
     upcoming, results, finished_meta = [], [], []
     won = drawn = lost = gf = ga = 0
 
-    club = [f for f in fixtures if tid in (f["team_h"], f["team_a"])]
+    club = [f for f in all_fixtures if tid in (f["team_h"], f["team_a"])]
     club.sort(key=lambda f: (f["event"] or 999, f["kickoff_time"] or ""))
     for f in club:
         home = f["team_h"] == tid
@@ -218,7 +218,7 @@ def fetch_fpl():
     return {"teams": teams, "ipswich": ipswich, "tid": tid,
             "current": current, "next": nxt, "summary": summary, "team_news": team_news,
             "by_gameweek": by_gameweek, "upcoming": upcoming, "results": results,
-            "fixtures": fixtures, "squad": squad}
+            "fixtures": fixtures, "squad": squad, "all_fixtures": all_fixtures}
 
 
 # --------------------------------------------------------------------------- #
@@ -716,6 +716,59 @@ def fetch_clubelo_elos():
     return elos
 
 
+def monte_carlo(teams, all_fixtures, elos, ips_tid, n=10000):
+    """Simulate the rest of the season n times from current standings + Elo, returning
+    Ipswich's survival odds and every club's relegation probability."""
+    import random
+    base = {t["id"]: {"name": t["name"], "pts": t.get("points", 0) or 0} for t in teams.values()}
+    if ips_tid not in base:
+        return None, {}
+    # pre-compute home win / draw probabilities for each remaining fixture from Elo
+    fx = []
+    for f in all_fixtures:
+        if f.get("finished") or f["team_h"] not in base or f["team_a"] not in base:
+            continue
+        eh = elos.get(canon(base[f["team_h"]]["name"]), 1500)
+        ea = elos.get(canon(base[f["team_a"]]["name"]), 1500)
+        we = 1.0 / (1.0 + 10 ** (-(eh - ea + CLUBELO_HFA) / 400.0))
+        pd = 0.28 * (1 - abs(2 * we - 1))
+        pw = max(0.0, we - pd / 2)
+        pl = max(0.0, (1 - we) - pd / 2)
+        tot = pw + pd + pl or 1
+        fx.append((f["team_h"], f["team_a"], pw / tot, (pw + pd) / tot))
+    if not fx:
+        return None, {}
+    ids = list(base)
+    releg = {i: 0 for i in ids}
+    ips_pos, ips_pts = [], []
+    rnd = random.random
+    for _ in range(n):
+        pts = {i: base[i]["pts"] for i in ids}
+        for h, a, pw, pwd in fx:
+            r = rnd()
+            if r < pw:
+                pts[h] += 3
+            elif r < pwd:
+                pts[h] += 1; pts[a] += 1
+            else:
+                pts[a] += 3
+        order = sorted(ids, key=lambda i: (-pts[i], rnd()))   # GD unknown → random tie-break
+        for rank, i in enumerate(order, 1):
+            if rank >= 18:
+                releg[i] += 1
+        ips_pos.append(order.index(ips_tid) + 1)
+        ips_pts.append(pts[ips_tid])
+    ips_pts.sort(); ips_pos.sort()
+    pc = lambda arr, p: arr[min(len(arr) - 1, int(p * len(arr)))]
+    ips_releg = releg[ips_tid] / n * 100
+    survival = {"survive_pct": round(100 - ips_releg, 1), "releg_pct": round(ips_releg, 1),
+                "avg_points": round(sum(ips_pts) / n), "pts_lo": pc(ips_pts, 0.1), "pts_hi": pc(ips_pts, 0.9),
+                "avg_position": round(sum(ips_pos) / n, 1), "pos_lo": pc(ips_pos, 0.1),
+                "pos_hi": pc(ips_pos, 0.9), "sims": n}
+    releg_odds = {base[i]["name"]: round(releg[i] / n * 100, 1) for i in ids}
+    return survival, releg_odds
+
+
 def win_probs(elo_ips, elo_opp, home):
     """W/D/L probabilities estimated from an Elo difference (with home edge)."""
     dr = elo_ips - elo_opp + (CLUBELO_HFA if home else -CLUBELO_HFA)
@@ -923,6 +976,23 @@ def main():
         pct = round(sum(1 for x in vals if x <= v) / len(vals) * 100) if vals else 50
         team_strength.append({"label": label, "value": v, "pct": pct})
 
+    # current Elo for every club (reused for next-opponent probability and the sim)
+    elos = {}
+    try:
+        elos = fetch_clubelo_elos()
+    except Exception as e:
+        print(f"  clubelo: skipped ({e})")
+
+    # Monte Carlo: simulate the rest of the season for survival odds + relegation odds
+    survival, releg_odds = None, {}
+    try:
+        survival, releg_odds = monte_carlo(teams, fpl["all_fixtures"], elos, tid)
+        if survival:
+            print(f"  monte carlo: survival {survival['survive_pct']}% "
+                  f"(avg {survival['avg_points']} pts, ~{survival['avg_position']}th, {survival['sims']} sims)")
+    except Exception as e:
+        print(f"  monte carlo: skipped ({e})")
+
     meetings = {}
     try:
         meetings = fetch_h2h_history()
@@ -1049,19 +1119,13 @@ def main():
                 "w": sum(m["result"] == "W" for m in hist),
                 "d": sum(m["result"] == "D" for m in hist),
                 "l": sum(m["result"] == "L" for m in hist)}
-        try:
-            elos = fetch_clubelo_elos()
-            ei, eo = elos.get(canon("Ipswich")), elos.get(canon(opp_name))
-            if ei and eo:
-                next_opponent["prob"] = win_probs(ei, eo, home)
-            print(f"  clubelo: Ipswich {ei}, {opp_name} {eo}")
-        except Exception as e:
-            print(f"  clubelo: skipped ({e})")
+        ei, eo = elos.get(canon("Ipswich")), elos.get(canon(opp_name))
+        if ei and eo:
+            next_opponent["prob"] = win_probs(ei, eo, home)
         # Fallback so the win-probability bar always renders: derive from FPL
         # fixture difficulty when ClubElo gave us nothing.
         if not next_opponent.get("prob") and next_fixture and next_fixture.get("difficulty"):
             next_opponent["prob"] = fdr_win_probs(next_fixture["difficulty"])
-            print(f"  win prob: FDR fallback (difficulty {next_fixture['difficulty']})")
 
     # ---- assemble a full detail page for every finished match ------------ #
     match_pages = understat.get("match_pages", [])
@@ -1134,6 +1198,7 @@ def main():
         "elo_history": elo_history,
         "home_table": home_table, "away_table": away_table,
         "team_strength": team_strength,
+        "survival": survival, "releg_odds": releg_odds,
         "shot_maps": understat["shot_maps"],
         "match_pages": match_pages,
         "understat_players": understat["players"][:14],

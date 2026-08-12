@@ -33,13 +33,70 @@ PAGES = [
     ("overview", "index.html", "Overview"),
     ("table",    "table.html", "Table"),
     ("charts",   "charts.html", "Charts"),
+    ("matches",  "matches.html", "Matches"),
     ("squad",    "squad.html",  "Squad"),
     ("news",     "news.html",   "News"),
 ]
 
+# per-page Open Graph title/description
+OG = {
+    "overview": ("Ipswich Town — Premier League stats", "Live xG, form, the projected table and a survival forecast for Ipswich Town's Premier League season."),
+    "table":    ("Ipswich Town — Premier League table", "The live table, projected final standings and home/away splits."),
+    "charts":   ("Ipswich Town — season charts", "xG, expected points, pressing, discipline and more, chart by chart."),
+    "matches":  ("Ipswich Town — match results", "Every result this season with xG, and a full report for each match."),
+    "squad":    ("Ipswich Town — squad stats", "Per-90 stats and percentile profiles for the Ipswich squad."),
+    "news":     ("Ipswich Town — latest news", "The latest Ipswich Town headlines from across the web."),
+}
+
 
 def _ord(n):
     return "th" if 11 <= n % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+    _PIL = True
+except Exception:  # pragma: no cover
+    _PIL = False
+
+SITE_URL = "https://chrisplowman.github.io/ipswichtown"
+
+
+def _font(size, bold=False):
+    for p in ["/usr/share/fonts/truetype/dejavu/DejaVuSans%s.ttf" % ("-Bold" if bold else ""),
+              "/usr/share/fonts/truetype/liberation/LiberationSans%s.ttf" % ("-Bold" if bold else "")]:
+        try:
+            return ImageFont.truetype(p, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def _og_image(path, title, subtitle):
+    """Draw a 1200x630 branded share card (best-effort; skipped if Pillow is absent)."""
+    if not _PIL:
+        return False
+    try:
+        img = Image.new("RGB", (1200, 630), (10, 21, 48))
+        d = ImageDraw.Draw(img)
+        d.rectangle([0, 0, 1200, 12], fill=(221, 91, 0))
+        d.text((70, 88), "IPSWICH TOWN", font=_font(34, True), fill=(174, 183, 204))
+        words, lines, cur, f = title.split(), [], "", _font(74, True)
+        for w in words:
+            test = (cur + " " + w).strip()
+            if d.textlength(test, font=f) > 1060 and cur:
+                lines.append(cur); cur = w
+            else:
+                cur = test
+        lines.append(cur)
+        y = 175
+        for ln in lines[:4]:
+            d.text((70, y), ln, font=f, fill=(255, 255, 255)); y += 90
+        d.text((70, 548), subtitle, font=_font(29), fill=(174, 183, 204))
+        img.save(path)
+        return True
+    except Exception:
+        return False
 
 
 def fmt_kickoff(iso):
@@ -364,6 +421,10 @@ def sample_data(live=None):
     team_strength = [{"label": lab, "value": v, "pct": pc} for lab, v, pc in [
         ("Attack home", 1180, 35), ("Attack away", 1120, 30), ("Defence home", 1150, 40),
         ("Defence away", 1090, 25), ("Overall home", 1165, 38), ("Overall away", 1105, 28)]]
+    survival = {"survive_pct": 71.4, "releg_pct": 28.6, "avg_points": 41, "pts_lo": 33, "pts_hi": 49,
+                "avg_position": 15.2, "pos_lo": 11, "pos_hi": 19, "sims": 10000}
+    releg_odds = {r["team"]: round(max(0.2, (r["rank"] - 12) * 9 + (r["rank"] - 12)**2), 1)
+                  if r["rank"] >= 12 else 0.2 for r in table}
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -380,7 +441,7 @@ def sample_data(live=None):
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
         "understat_history": understat_history, "match_stats": match_stats,
         "elo_history": elo_history, "home_table": home_table, "away_table": away_table,
-        "team_strength": team_strength,
+        "team_strength": team_strength, "survival": survival, "releg_odds": releg_odds,
         "results": results, "squad": squad, "news": live.get("news") or [],
         "match_pages": match_pages,
     }
@@ -479,6 +540,24 @@ def _make_env():
     return env
 
 
+def rival_tracker(data):
+    """Clubs immediately around Ipswich, with form and relegation odds."""
+    table = data.get("table") or []
+    odds = data.get("releg_odds") or {}
+    ips = next((r for r in table if r.get("is_ipswich")), None)
+    if not ips:
+        return []
+    lo, hi = ips["rank"] - 3, ips["rank"] + 3
+    out = []
+    for r in table:
+        if lo <= r["rank"] <= hi:
+            key = _pnorm(r["team"])
+            releg = next((v for k, v in odds.items() if _pnorm(k) == key
+                          or _pnorm(k).endswith(key) or key.endswith(_pnorm(k))), None)
+            out.append({**r, "releg": releg})
+    return out
+
+
 def render_site(template, match_template, player_template, data, preview):
     outdir = SITE / "preview" if preview else SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
@@ -486,26 +565,45 @@ def render_site(template, match_template, player_template, data, preview):
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)
     predicted = projected_table(data)
+    rivals = rival_tracker(data)
+    season = data.get("season", "2026/27")
+
+    _og_image(str(outdir / "og.png"), "Ipswich Town Stats",
+              f"Premier League {season} · xG, form & survival odds")
+    og_default = ("preview/" if preview else "") + "og.png"
+
     for page_id, filename, _label in PAGES:
         toggle_href = f"../{filename}" if preview else f"preview/{filename}"
+        og_title, og_desc = OG.get(page_id, OG["overview"])
         html = template.render(data_json=data_json, page=page_id, current=page_id,
                                pages=PAGES, preview=preview, toggle_href=toggle_href,
-                               summary_text=summary_text, predicted=predicted, **data)
+                               summary_text=summary_text, predicted=predicted, rivals=rivals,
+                               og_title=og_title, og_description=og_desc, og_image=og_default,
+                               canonical=f"{SITE_URL}/{filename}", **data)
         (outdir / filename).write_text(html)
     (outdir / "data" / "itfc.json").write_text(json.dumps(data))
 
-    # a full detail page per finished match
+    # a full detail page per finished match (+ its own share card)
     matches = data.get("match_pages", [])
     if matches:
         (outdir / "match").mkdir(exist_ok=True)
         for mp in matches:
+            score = f"Ipswich {mp['gf']}\u2013{mp['ga']} {mp['opponent']}"
+            og_img = f"match/{mp['id']}.png"
+            xg = (f" \u00b7 xG {mp['xg_for']:.1f}\u2013{mp['xg_against']:.1f}"
+                  if mp.get("xg_for") is not None else "")
+            _og_image(str(outdir / "match" / f"{mp['id']}.png"), score,
+                      f"Premier League {season}{xg}")
             match_json = json.dumps({"opponent": mp.get("opponent", ""),
                                      "shots_for": mp.get("shots_for", []),
                                      "shots_against": mp.get("shots_against", [])}).replace("<", "\\u003c")
-            html = match_template.render(m=mp, season=data.get("season", ""),
+            html = match_template.render(m=mp, season=season,
                                          generated_at=data.get("generated_at", ""),
                                          preview=preview, match_json=match_json,
-                                         pages=PAGES, nav_prefix="../")
+                                         pages=PAGES, nav_prefix="../",
+                                         og_title=score + " · Match report",
+                                         og_description=f"Full report: xG, shots, player ratings and the story of Ipswich {mp['gf']}-{mp['ga']} {mp['opponent']}.",
+                                         og_image="../" + og_img, canonical=f"{SITE_URL}/match/{mp['id']}.html")
             (outdir / "match" / f"{mp['id']}.html").write_text(html)
 
     # a page per squad player
@@ -514,9 +612,12 @@ def render_site(template, match_template, player_template, data, preview):
         for pp in player_pages:
             player_json = json.dumps({"shots": pp["shots"],
                                       "log": list(reversed(pp["log"]))}).replace("<", "\\u003c")
-            html = player_template.render(p=pp, season=data.get("season", ""),
+            html = player_template.render(p=pp, season=season,
                                           preview=preview, player_json=player_json,
-                                          pages=PAGES, nav_prefix="../")
+                                          pages=PAGES, nav_prefix="../",
+                                          og_title=f"{pp['name']} · Ipswich Town",
+                                          og_description=f"{pp['name']}'s Ipswich Town season: stats, percentile profile, match log and shot map.",
+                                          og_image="../og.png", canonical=f"{SITE_URL}/player/{pp['slug']}.html")
             (outdir / "player" / f"{pp['slug']}.html").write_text(html)
 
 
