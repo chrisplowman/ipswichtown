@@ -374,13 +374,32 @@ def fetch_understat():
     finished_matches = [m for m in matches if "gf" in m]
     xg_by_mid = {m["match_id"]: m for m in finished_matches}
 
-    # Full detail for every finished match (most recent first)
-    match_pages = []
+    # Full detail for every finished match (most recent first). Finished matches never
+    # change, so each match's Understat detail is cached on disk and only fetched once.
+    CACHE_DIR = "match_cache"
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    match_pages, fetched = [], 0
     for mid, opp, home, date, score, side in list(reversed(finished_ids)):
-        try:
-            det = fetch_match_detail(mid, side)
-        except requests.RequestException:
-            continue
+        cache_file = os.path.join(CACHE_DIR, f"{mid}.json")
+        det = None
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file) as fh:
+                    det = json.load(fh)
+            except (ValueError, OSError):
+                det = None
+        if det is None:
+            try:
+                det = fetch_match_detail(mid, side)
+            except requests.RequestException:
+                continue
+            try:
+                with open(cache_file, "w") as fh:
+                    json.dump(det, fh)
+            except OSError:
+                pass
+            fetched += 1
+            time.sleep(0.2)  # be gentle with Understat (only for uncached matches)
         mm = xg_by_mid.get(mid, {})
         gf, ga = mm.get("gf", 0), mm.get("ga", 0)
         goals = ([{"minute": s["minute"], "player": s["player"], "assist": s["assist"], "side": "for"}
@@ -393,7 +412,7 @@ def fetch_understat():
                             "xg_for": mm.get("xg_for"), "xg_against": mm.get("xg_against"),
                             "result": "W" if gf > ga else "L" if gf < ga else "D",
                             "goals": goals, **det})
-        time.sleep(0.2)  # be gentle with Understat
+    print(f"  match detail: {len(match_pages)} matches ({fetched} freshly fetched, rest cached)")
 
     # shot maps (recent) for the Charts page, derived from the detail we already have
     shot_maps = [{"match_id": m["id"], "opponent": m["opponent"], "home": m["home"],
