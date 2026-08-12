@@ -33,6 +33,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Finished-match detail never changes, so persist it between runs. Keyed per run
+      # so each build saves a fresh snapshot; restore-keys pulls the most recent one.
+      - name: Restore match cache
+        uses: actions/cache@v4
+        with:
+          path: match_cache
+          key: match-cache-${{ github.run_id }}
+          restore-keys: |
+            match-cache-
+
       - name: Fetch data
         run: python ingest.py
 
