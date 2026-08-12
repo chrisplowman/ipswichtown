@@ -489,29 +489,28 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
     {% else %}<p class="empty-note">Available once the season is under way.</p>{% endif %}
 
     {% if home_table %}
-    <p class="label" style="margin-top:26px">Home &amp; away tables</p>
-    <div class="cols2">
-      {% for title, tbl in [('Home', home_table), ('Away', away_table)] %}
-      <div>
-        <h4 class="subhead">{{ title }}</h4>
-        <div class="tablewrap">
-          <table class="ltable compact">
-            <thead><tr><th class="rk">#</th><th class="tm">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
-            <tbody>
-              {% for row in tbl %}
-              <tr class="{{ 'ips ' if row.is_ipswich }}{{ 'eur' if row.rank<=5 else 'rel' if row.rank>=18 else '' }}">
-                <td class="rk">{{ row.rank }}</td>
-                <td class="tm">{% if row.badge %}<img class="badge" src="{{ row.badge }}" alt="">{% endif %}{{ row.team }}</td>
-                <td>{{ row.played }}</td><td>{{ row.won }}</td><td>{{ row.drawn }}</td><td>{{ row.lost }}</td>
-                <td>{{ '%+d'|format(row.gd) if row.gd else 0 }}</td><td><b>{{ row.points }}</b></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {% endfor %}
+    {% for title, tbl in [('Home table', home_table), ('Away table', away_table)] %}
+    <p class="label" style="margin-top:26px">{{ title }}</p>
+    <div class="tablewrap">
+      <table class="ltable">
+        <thead><tr>
+          <th class="rk">#</th><th class="tm">Team</th>
+          <th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th>
+        </tr></thead>
+        <tbody>
+          {% for row in tbl %}
+          <tr class="{{ 'ips ' if row.is_ipswich }}{{ 'eur' if row.rank<=5 else 'rel' if row.rank>=18 else '' }}">
+            <td class="rk">{{ row.rank }}</td>
+            <td class="tm">{% if row.badge %}<img class="badge" src="{{ row.badge }}" alt="">{% endif %}{{ row.team }}</td>
+            <td>{{ row.played }}</td><td>{{ row.won }}</td><td>{{ row.drawn }}</td><td>{{ row.lost }}</td>
+            <td>{{ row.gf }}</td><td>{{ row.ga }}</td><td>{{ '%+d'|format(row.gd) if row.gd else 0 }}</td>
+            <td><b>{{ row.points }}</b></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+    {% endfor %}
     {% endif %}
   </section>
 
@@ -519,6 +518,8 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   {% endif %}
   {% if page == 'charts' %}
   <section class="panel">
+
+    <p class="label">Form &amp; season</p>
     <div class="chartgrid">
       <div class="chartcard wide">
         <h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at the club's current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p>
@@ -528,37 +529,32 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <h3>Expected points vs actual</h3><p class="sub">Cumulative points vs the points the club's performances "deserved" (Understat xPts). Above the line = picking up more than the underlying play merits.</p>
         <div class="canvas-holder"><canvas id="c-xpts"></canvas></div><div class="note" id="n-xpts" hidden></div>
       </div>
-      <div class="chartcard">
-        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of the club's best and worst weeks.</p>
-        <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
-      </div>
-      <div class="chartcard">
-        <h3>Attack: goals vs xG</h3><p class="sub">Cumulative goals vs expected goals (Understat). Above the line = finishing better than the chances created.</p>
-        <div class="canvas-holder"><canvas id="c-xg"></canvas></div><div class="note" id="n-xg" hidden></div>
-      </div>
-      <div class="chartcard">
-        <h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances the club would expect to concede.</p>
-        <div class="canvas-holder"><canvas id="c-xga"></canvas></div><div class="note" id="n-xga" hidden></div>
-      </div>
-      <div class="chartcard">
-        <h3>Finishing: goals vs npxG</h3><p class="sub">Non-penalty. Above the dashed line = outscoring the model.</p>
-        <div class="canvas-holder"><canvas id="c-finish"></canvas></div><div class="note" id="n-finish" hidden></div>
+      <div class="chartcard wide">
+        <h3>Elo trend</h3><p class="sub">The club's ClubElo rating through the season — a single-number measure of strength. Rising = getting stronger relative to the field.</p>
+        <div class="canvas-holder"><canvas id="c-elo"></canvas></div><div class="note" id="n-elo" hidden></div>
       </div>
       <div class="chartcard wide">
         <h3>Rolling xG difference</h3><p class="sub">xG created minus xG conceded, averaged over the last 5 games. Above zero = on top of matches; the slope shows momentum.</p>
         <div class="canvas-holder"><canvas id="c-xgd"></canvas></div><div class="note" id="n-xgd" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Pressing intensity (PPDA)</h3><p class="sub">Passes the opponent completes per defensive action the club makes, 5-game average. Lower = pressing higher and harder.</p>
-        <div class="canvas-holder"><canvas id="c-ppda"></canvas></div><div class="note" id="n-ppda" hidden></div>
-      </div>
-      <div class="chartcard wide">
-        <h3>Territory: deep completions</h3><p class="sub">Passes completed near the opponent's box, for and against, per match. A read on which side controlled dangerous territory.</p>
-        <div class="canvas-holder"><canvas id="c-deep"></canvas></div><div class="note" id="n-deep" hidden></div>
-      </div>
-      <div class="chartcard wide">
         <h3>Home &amp; away split</h3><p class="sub">Per-game points, goals and xG at home vs away — how differently the side performs by venue.</p>
         <div class="canvas-holder"><canvas id="c-homeaway"></canvas></div><div class="note" id="n-homeaway" hidden></div>
+      </div>
+    </div>
+    <p class="label">Attack</p>
+    <div class="chartgrid">
+      <div class="chartcard">
+        <h3>Attack: goals vs xG</h3><p class="sub">Cumulative goals vs expected goals (Understat). Above the line = finishing better than the chances created.</p>
+        <div class="canvas-holder"><canvas id="c-xg"></canvas></div><div class="note" id="n-xg" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Finishing: goals vs npxG</h3><p class="sub">Non-penalty. Above the dashed line = outscoring the model.</p>
+        <div class="canvas-holder"><canvas id="c-finish"></canvas></div><div class="note" id="n-finish" hidden></div>
+      </div>
+      <div class="chartcard">
+        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of the club's best and worst weeks.</p>
+        <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
       </div>
       <div class="chartcard wide">
         <h3>Shots for &amp; against</h3><p class="sub">Actual shots (and shots on target) taken vs faced each match — real volume, not xG. Out-shooting opponents is a good sign.</p>
@@ -567,15 +563,6 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
       <div class="chartcard">
         <h3>Where shots come from</h3><p class="sub">Breakdown of shots by situation across recent matches — open play, set pieces, corners and penalties.</p>
         <div class="canvas-holder"><canvas id="c-situation"></canvas></div><div class="note" id="n-situation" hidden></div>
-      </div>
-      <div class="chartcard wide">
-        <h3>League: chance creation vs concession</h3><p class="sub">Every club — xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
-        <div class="canvas-holder" style="height:340px"><canvas id="c-scatter"></canvas></div><div class="note" id="n-scatter" hidden></div>
-      </div>
-      <div class="chartcard wide">
-        <h3>How Ipswich compare</h3><p class="sub">Ipswich's rank out of 20 on each measure — a longer bar is better.</p>
-        <div class="ranks" id="ranks"></div>
-        <div class="note" id="n-ranks" hidden></div>
       </div>
       <div class="chartcard wide">
         <h3>Shot map</h3><p class="sub">Every shot from the selected match, placed by pitch location. Circle size = chance quality (xG), colour = outcome.</p>
@@ -594,14 +581,24 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
           <span style="margin-left:auto">Circle size = xG</span>
         </div>
       </div>
-      <div class="chartcard wide">
-        <h3>Upcoming difficulty</h3><p class="sub">FPL difficulty of the next fixtures (1 easy → 5 hard) — a quick look at the run ahead.</p>
-        <div class="canvas-holder"><canvas id="c-fdr"></canvas></div><div class="note" id="n-fdr" hidden></div>
+    </div>
+    <p class="label">Defence &amp; pressing</p>
+    <div class="chartgrid">
+      <div class="chartcard">
+        <h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances the club would expect to concede.</p>
+        <div class="canvas-holder"><canvas id="c-xga"></canvas></div><div class="note" id="n-xga" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Elo trend</h3><p class="sub">The club's ClubElo rating through the season — a single-number measure of strength. Rising = getting stronger relative to the field.</p>
-        <div class="canvas-holder"><canvas id="c-elo"></canvas></div><div class="note" id="n-elo" hidden></div>
+        <h3>Pressing intensity (PPDA)</h3><p class="sub">Passes the opponent completes per defensive action the club makes, 5-game average. Lower = pressing higher and harder.</p>
+        <div class="canvas-holder"><canvas id="c-ppda"></canvas></div><div class="note" id="n-ppda" hidden></div>
       </div>
+      <div class="chartcard wide">
+        <h3>Territory: deep completions</h3><p class="sub">Passes completed near the opponent's box, for and against, per match. A read on which side controlled dangerous territory.</p>
+        <div class="canvas-holder"><canvas id="c-deep"></canvas></div><div class="note" id="n-deep" hidden></div>
+      </div>
+    </div>
+    <p class="label">Timing &amp; game-state</p>
+    <div class="chartgrid">
       <div class="chartcard wide">
         <h3>Goals by 15-minute phase</h3><p class="sub">When the club scores and concedes across the match — a read on fast starts, strong finishes and vulnerable spells.</p>
         <div class="canvas-holder"><canvas id="c-timing"></canvas></div><div class="note" id="n-timing" hidden></div>
@@ -610,6 +607,9 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <h3>Points by half-time state</h3><p class="sub">Points won per game when ahead, level or behind at the break — how the club closes matches out.</p>
         <div class="canvas-holder"><canvas id="c-gamestate"></canvas></div><div class="note" id="n-gamestate" hidden></div>
       </div>
+    </div>
+    <p class="label">Discipline</p>
+    <div class="chartgrid">
       <div class="chartcard">
         <h3>Discipline</h3><p class="sub">Fouls and cards per game, for and against — how the club's discipline compares with what it draws from opponents.</p>
         <div class="canvas-holder"><canvas id="c-discipline"></canvas></div><div class="note" id="n-discipline" hidden></div>
@@ -618,9 +618,25 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
         <h3>Record by referee</h3><p class="sub">The club's results broken down by match official this season.</p>
         <div id="ref-table"></div><div class="note" id="n-ref" hidden></div>
       </div>
+    </div>
+    <p class="label">League context</p>
+    <div class="chartgrid">
+      <div class="chartcard wide">
+        <h3>League: chance creation vs concession</h3><p class="sub">Every club — xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
+        <div class="canvas-holder" style="height:340px"><canvas id="c-scatter"></canvas></div><div class="note" id="n-scatter" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>How Ipswich compare</h3><p class="sub">Ipswich's rank out of 20 on each measure — a longer bar is better.</p>
+        <div class="ranks" id="ranks"></div>
+        <div class="note" id="n-ranks" hidden></div>
+      </div>
       <div class="chartcard wide">
         <h3>Team strength profile</h3><p class="sub">FPL's attack, defence and overall ratings (home and away) as a percentile vs the league — the club's stylistic fingerprint.</p>
         <div class="canvas-holder"><canvas id="c-strength"></canvas></div><div class="note" id="n-strength" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <h3>Upcoming difficulty</h3><p class="sub">FPL difficulty of the next fixtures (1 easy → 5 hard) — a quick look at the run ahead.</p>
+        <div class="canvas-holder"><canvas id="c-fdr"></canvas></div><div class="note" id="n-fdr" hidden></div>
       </div>
     </div>
   </section>
