@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ p.name }} · Ipswich Town player profile</title>
+{% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
+<meta name="description" content="{{ og_description }}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ og_title }}">
+<meta property="og:description" content="{{ og_description }}">
+{% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
+{% if canonical %}<meta property="og:url" content="{{ canonical }}">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ og_title }}">
+<meta name="twitter:description" content="{{ og_description }}">
+{% if og_image %}<meta name="twitter:image" content="{{ og_image }}">{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -67,6 +78,8 @@ td .oppcell{display:flex;align-items:center;gap:8px}
 td .oppcell img{width:18px;height:18px;object-fit:contain}
 .res{font-weight:700;border-radius:var(--radius-sm);padding:1px 7px;font-size:11px;color:#fff}
 .res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
+.rowlink-a{color:var(--primary);text-decoration:none;font-weight:500}.rowlink-a:hover{text-decoration:underline}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
 .canvas-holder{position:relative;height:300px}
 .pitch-holder{width:100%}
@@ -145,8 +158,8 @@ footer{color:var(--steel);font-size:12px;text-align:center;padding:24px;border-t
           <thead><tr><th>Opponent</th><th>Min</th><th>G</th><th>A</th><th>Sh</th><th>xG</th><th>xA</th><th>KP</th></tr></thead>
           <tbody>
             {% for g in p.log %}
-            <tr class="linked" onclick="location.href='../match/{{ g.match_id }}.html'">
-              <td><div class="oppcell"><span class="res {{ g.result }}">{{ g.result }}</span>{% if g.opponent_badge %}<img src="{{ g.opponent_badge }}" alt="">{% endif %}{{ g.opponent }} <span style="color:var(--stone)">{{ '(H)' if g.home else '(A)' }}</span></div></td>
+            <tr class="linked">
+              <td><div class="oppcell"><span class="res {{ g.result }}">{{ g.result }}</span>{% if g.opponent_badge %}<img src="{{ g.opponent_badge }}" alt="">{% endif %}<a class="rowlink-a" href="../match/{{ g.match_id }}.html">{{ g.opponent }}</a> <span style="color:var(--stone)">{{ '(H)' if g.home else '(A)' }}</span></div></td>
               <td>{{ g.minutes }}</td><td>{{ g.goals }}</td><td>{{ g.assists }}</td><td>{{ g.shots }}</td>
               <td>{{ '%.2f'|format(g.xg) }}</td><td>{{ '%.2f'|format(g.xa) }}</td><td>{{ g.key_passes }}</td>
             </tr>
@@ -205,7 +218,7 @@ footer{color:var(--steel);font-size:12px;text-align:center;padding:24px;border-t
   // shot map (attacking right)
   if(P.shots && P.shots.length){
     var W=520,H=340;
-    var s='<svg class="pitch" viewBox="0 0 '+W+' '+H+'"><rect x="1" y="1" width="'+(W-2)+'" height="'+(H-2)+'" fill="'+MINT+'" stroke="'+LINE+'"/>';
+    var s='<svg role="img" aria-label="Shot map" class="pitch" viewBox="0 0 '+W+' '+H+'"><rect x="1" y="1" width="'+(W-2)+'" height="'+(H-2)+'" fill="'+MINT+'" stroke="'+LINE+'"/>';
     var bh=H*0.55, by=(H-bh)/2, bw=W*0.16;
     s+='<rect x="'+(W-1-bw)+'" y="'+by+'" width="'+bw+'" height="'+bh+'" fill="none" stroke="'+LINE+'"/>';
     s+='<line x1="'+(W/2)+'" y1="1" x2="'+(W/2)+'" y2="'+(H-1)+'" stroke="'+LINE+'"/>';

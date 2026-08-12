@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ipswich {{ m.gf }}–{{ m.ga }} {{ m.opponent }} · Match report</title>
+{% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
+<meta name="description" content="{{ og_description }}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ og_title }}">
+<meta property="og:description" content="{{ og_description }}">
+{% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
+{% if canonical %}<meta property="og:url" content="{{ canonical }}">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ og_title }}">
+<meta name="twitter:description" content="{{ og_description }}">
+{% if og_image %}<meta name="twitter:image" content="{{ og_image }}">{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -248,7 +259,7 @@ footer{color:var(--steel);font-size:12px;text-align:center;padding:24px;border-t
   // ---- shot map (both teams on one pitch) ----
   var W=520,H=340;
   function pitch(){
-    var s='<svg class="pitch" viewBox="0 0 '+W+' '+H+'">';
+    var s='<svg role="img" aria-label="Shot map" class="pitch" viewBox="0 0 '+W+' '+H+'">';
     s+='<rect x="1" y="1" width="'+(W-2)+'" height="'+(H-2)+'" fill="'+MINT+'" stroke="'+LINE+'"/>';
     s+='<line x1="'+(W/2)+'" y1="1" x2="'+(W/2)+'" y2="'+(H-1)+'" stroke="'+LINE+'"/>';
     s+='<circle cx="'+(W/2)+'" cy="'+(H/2)+'" r="34" fill="none" stroke="'+LINE+'"/>';
