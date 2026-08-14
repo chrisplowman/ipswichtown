@@ -73,8 +73,13 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nu
 .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--on-dark-muted);font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .eyebrow .pos{color:var(--on-primary);background:var(--primary);border-radius:var(--radius-full);padding:3px 10px;letter-spacing:.3px}
 .updated{font-size:13px;color:var(--on-dark-muted);text-align:right}
-.updated b{color:var(--on-dark);font-weight:600}
-.headright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.updated b{color:var(--on-dark);font-weight:600; margin-left: 8px}
+.headright{display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 10px;
+    align-content: center;
+    flex-wrap: wrap;}
 .previewtoggle{font-size:12px;font-weight:600;color:var(--on-dark);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-full);padding:6px 13px;text-decoration:none;white-space:nowrap}
 .previewtoggle:hover{background:rgba(255,255,255,.2)}
 .previewtoggle.on{background:var(--brand-orange);border-color:var(--brand-orange)}
