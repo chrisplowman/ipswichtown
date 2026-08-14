@@ -18,6 +18,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ css_href }}">
+<script>
+(function(){var K='itfc-theme',d=document.documentElement;
+ function set(t){d.setAttribute('data-theme',t);}
+ try{set(localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch(e){set('light');}
+ window.__toggleTheme=function(){
+   var n=d.getAttribute('data-theme')==='dark'?'light':'dark';
+   set(n);try{localStorage.setItem(K,n);}catch(e){}
+   if(window.Chart&&Chart.instances){
+     var c=getComputedStyle(d),grid=(c.getPropertyValue('--chart-grid')||c.getPropertyValue('--hairline')).trim(),txt=c.getPropertyValue('--steel').trim();
+     Chart.defaults.color=txt;
+     Object.keys(Chart.instances).forEach(function(id){var ch=Chart.instances[id],sc=ch.options.scales||{};
+       Object.keys(sc).forEach(function(k){var s=sc[k];
+         if(s.grid)s.grid.color=grid;if(s.ticks)s.ticks.color=txt;
+         if(s.pointLabels)s.pointLabels.color=txt;if(s.angleLines)s.angleLines.color=grid;if(s.title)s.title.color=txt;});
+       try{ch.update('none');}catch(e){}});
+   }
+ };
+})();
+</script>
 </head>
 <body class="page-player">
 {% include '_masthead.html.j2' %}
@@ -110,6 +129,7 @@
   var P = JSON.parse(document.getElementById('player-data').textContent);
   var css=getComputedStyle(document.documentElement); function cv(n){return css.getPropertyValue(n).trim();}
   var BLUE=cv('--primary'), GREEN=cv('--win'), ORANGE=cv('--brand-orange'), GRID=cv('--chart-grid'), LINE=cv('--hairline-strong'), MINT='#eef6f0';
+  if(window.Chart){Chart.defaults.color=cv('--steel');}
   var ord=function(n){n=Math.round(n);var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);};
 
   // radar

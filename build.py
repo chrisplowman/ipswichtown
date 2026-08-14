@@ -542,6 +542,28 @@ def _make_env():
     return env
 
 
+def form_guide(data, n=6):
+    """Last n results with rolling points/PPG and a momentum trend."""
+    results = data.get("results") or []          # most recent first
+    recent = results[:n]
+    if not recent:
+        return None
+    pts_of = lambda r: 3 if r["result"] == "W" else 1 if r["result"] == "D" else 0
+    pts = sum(pts_of(r) for r in recent)
+    ppg = round(pts / len(recent), 2)
+    # momentum: newer half's PPG vs older half's
+    half = max(1, len(recent) // 2)
+    newer, older = recent[:half], recent[half:half * 2] or recent[half:]
+    np_ = sum(pts_of(r) for r in newer) / len(newer)
+    op = sum(pts_of(r) for r in older) / len(older) if older else np_
+    trend = "up" if np_ > op + 0.25 else "down" if np_ < op - 0.25 else "flat"
+    matches = [{"result": r["result"], "opponent": r.get("opponent", ""),
+                "opponent_short": r.get("opponent_short", ""), "home": r.get("home"),
+                "score": r.get("score", ""), "match_id": r.get("match_id")}
+               for r in reversed(recent)]          # oldest first (reads left→right)
+    return {"matches": matches, "pts": pts, "ppg": ppg, "trend": trend, "count": len(recent)}
+
+
 def rival_tracker(data):
     """Clubs immediately around Ipswich, with form and relegation odds."""
     table = data.get("table") or []
@@ -570,6 +592,7 @@ def render_site(template, match_template, player_template, data, preview):
     summary_text = season_summary(data)
     predicted = projected_table(data)
     rivals = rival_tracker(data)
+    fguide = form_guide(data)
     season = data.get("season", "2026/27")
     team = data.get("team", {})
     position = data.get("position")
@@ -586,6 +609,7 @@ def render_site(template, match_template, player_template, data, preview):
                                pages=PAGES, preview=preview, toggle_href=toggle_href,
                                nav_prefix="", css_href="style.css",
                                summary_text=summary_text, predicted=predicted, rivals=rivals,
+                               form_guide=fguide,
                                og_title=og_title, og_description=og_desc, og_image=og_default,
                                canonical=f"{SITE_URL}/{filename}", **data)
         (outdir / filename).write_text(html)

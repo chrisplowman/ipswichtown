@@ -31,6 +31,31 @@
   --font-sans:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   --shadow-card:0 1px 2px rgba(15,15,15,.04); --shadow-md:0 4px 14px rgba(15,15,15,.06);
 }
+
+/* ---- dark theme -------------------------------------------------------
+   Applied by a tiny <head> script that sets data-theme on load (respecting
+   OS preference and a saved toggle). Brand colours are kept; only the
+   light/dark structural tokens are swapped. ------------------------------ */
+:root[data-theme="dark"]{
+  --canvas:#181820; --surface:#0f0f14; --surface-soft:#1c1c24;
+  --hairline:#2b2b34; --hairline-soft:#232329; --hairline-strong:#3a3a45;
+  --ink-deep:#ffffff; --ink:#ececef; --charcoal:#dcdce2; --slate:#c2c2ca;
+  --steel:#9a9aa6; --stone:#7c7c88; --muted:#5a5a66;
+  --chart-grid:#2b2b34;
+  --tint-peach:#3a2a1a; --tint-rose:#38202e; --tint-mint:#153026; --tint-lavender:#241d38;
+  --tint-sky:#1b2740; --tint-yellow:#332f18; --tint-cream:#2a2820; --tint-gray:#23232a;
+  --shadow-card:0 1px 2px rgba(0,0,0,.4); --shadow-md:0 6px 18px rgba(0,0,0,.5);
+  --primary:#8b7dff; --primary-pressed:#7565ff; --link-blue:#5aa9ff;
+}
+:root[data-theme="dark"] .health-note{background:#3a2a12;border-color:#6b4a1a;color:#f0c088}
+:root[data-theme="dark"] .crest .mark{background:#fff}
+/* theme toggle button */
+.themetoggle{background:transparent;border:1px solid rgba(255,255,255,.25);color:var(--on-dark);
+  width:34px;height:34px;border-radius:var(--radius-full);cursor:pointer;font-size:15px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;padding:0}
+.themetoggle:hover{background:rgba(255,255,255,.1)}
+.themetoggle::before{content:"\263E"}                 /* moon: click for dark */
+:root[data-theme="dark"] .themetoggle::before{content:"\2600"}  /* sun: click for light */
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
@@ -177,7 +202,7 @@ ul.list li.has-link .opp{color:var(--primary)}
 .rivaltable thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
 .rivaltable td.tm{display:flex;align-items:center;gap:7px}
 .rivaltable td.tm .badge{width:17px;height:17px;object-fit:contain}
-.rivaltable tr.ips{background:#eaf1fc}
+.rivaltable tr.ips{background:var(--tint-sky)}
 .rivaltable tr.ips td:nth-child(2){font-weight:600;color:var(--primary)}
 .rivaltable tbody tr:last-child td{border-bottom:0}
 .snapshot p{margin:0;font-size:16px;line-height:1.55;color:#eef1f7;font-weight:400}
@@ -274,6 +299,17 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 .health-note{background:#fff4e6;border:1px solid #ffd8a8;color:#8a4b00;border-radius:var(--radius-md);padding:10px 14px;margin-bottom:14px;font-size:13px}
+.formguide{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:16px 18px}
+.fg-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.fg-label{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--steel)}
+.fg-summary{font-size:14px;font-weight:600;color:var(--ink)}
+.fg-trend{font-size:13px;margin-left:4px}
+.fg-trend.up{color:var(--win)}.fg-trend.down{color:var(--loss)}.fg-trend.flat{color:var(--stone)}
+.fg-pills{display:flex;gap:8px;flex-wrap:wrap}
+.fg-pill{width:34px;height:34px;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:14px;color:#fff;text-decoration:none;flex:none;transition:transform .1s}
+a.fg-pill:hover{transform:translateY(-2px)}
+.fg-pill.W{background:var(--win)}.fg-pill.D{background:var(--draw)}.fg-pill.L{background:var(--loss)}
 
 /* ---- match report pages ---- */
 .page-match .back{display:inline-flex;align-items:center;gap:8px;color:var(--on-dark);text-decoration:none;font-weight:500;font-size:14px}

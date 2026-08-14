@@ -19,6 +19,25 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ css_href }}">
+<script>
+(function(){var K='itfc-theme',d=document.documentElement;
+ function set(t){d.setAttribute('data-theme',t);}
+ try{set(localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch(e){set('light');}
+ window.__toggleTheme=function(){
+   var n=d.getAttribute('data-theme')==='dark'?'light':'dark';
+   set(n);try{localStorage.setItem(K,n);}catch(e){}
+   if(window.Chart&&Chart.instances){
+     var c=getComputedStyle(d),grid=(c.getPropertyValue('--chart-grid')||c.getPropertyValue('--hairline')).trim(),txt=c.getPropertyValue('--steel').trim();
+     Chart.defaults.color=txt;
+     Object.keys(Chart.instances).forEach(function(id){var ch=Chart.instances[id],sc=ch.options.scales||{};
+       Object.keys(sc).forEach(function(k){var s=sc[k];
+         if(s.grid)s.grid.color=grid;if(s.ticks)s.ticks.color=txt;
+         if(s.pointLabels)s.pointLabels.color=txt;if(s.angleLines)s.angleLines.color=grid;if(s.title)s.title.color=txt;});
+       try{ch.update('none');}catch(e){}});
+   }
+ };
+})();
+</script>
 </head>
 <body>
 {% include '_masthead.html.j2' %}
@@ -33,6 +52,23 @@
       <div class="snapshot">
         <div class="snapshot-label">Season snapshot</div>
         <p>{{ summary_text }}</p>
+      </div>
+    </div>
+    {% endif %}
+    {% if form_guide %}
+    <div class="block">
+      <div class="formguide">
+        <div class="fg-head">
+          <span class="fg-label">Form guide · last {{ form_guide.count }}</span>
+          <span class="fg-summary">{{ form_guide.pts }} pts · {{ '%.2f'|format(form_guide.ppg) }} PPG
+            <span class="fg-trend {{ form_guide.trend }}" title="Momentum {{ form_guide.trend }}">{{ {'up':'▲','down':'▼','flat':'▬'}[form_guide.trend] }}</span></span>
+        </div>
+        <div class="fg-pills">
+          {% for m in form_guide.matches %}
+          {% if m.match_id %}<a class="fg-pill {{ m.result }}" href="match/{{ m.match_id }}.html" title="{{ m.opponent }} {{ m.score }} ({{ 'H' if m.home else 'A' }})">{{ m.result }}</a>
+          {% else %}<span class="fg-pill {{ m.result }}" title="{{ m.opponent }} {{ m.score }} ({{ 'H' if m.home else 'A' }})">{{ m.result }}</span>{% endif %}
+          {% endfor %}
+        </div>
       </div>
     </div>
     {% endif %}
