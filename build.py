@@ -27,6 +27,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 DATA = Path("data/itfc.json")
 SITE = Path("site")
 TEMPLATES = Path("templates")
+ASSETS = Path("assets/style.css")
 
 # (page id, output filename, nav label) — order defines the nav order.
 PAGES = [
@@ -561,12 +562,17 @@ def rival_tracker(data):
 def render_site(template, match_template, player_template, data, preview):
     outdir = SITE / "preview" if preview else SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
+    if ASSETS.exists():
+        shutil.copy(ASSETS, outdir / "style.css")   # one stylesheet per site root
     player_pages = build_player_pages(data)     # stamps slug on each squad entry
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)
     predicted = projected_table(data)
     rivals = rival_tracker(data)
     season = data.get("season", "2026/27")
+    team = data.get("team", {})
+    position = data.get("position")
+    generated_at = data.get("generated_at", "")
 
     _og_image(str(outdir / "og.png"), "Ipswich Town Stats",
               f"Premier League {season} · xG, form & survival odds")
@@ -577,11 +583,15 @@ def render_site(template, match_template, player_template, data, preview):
         og_title, og_desc = OG.get(page_id, OG["overview"])
         html = template.render(data_json=data_json, page=page_id, current=page_id,
                                pages=PAGES, preview=preview, toggle_href=toggle_href,
+                               nav_prefix="", css_href="style.css",
                                summary_text=summary_text, predicted=predicted, rivals=rivals,
                                og_title=og_title, og_description=og_desc, og_image=og_default,
                                canonical=f"{SITE_URL}/{filename}", **data)
         (outdir / filename).write_text(html)
     (outdir / "data" / "itfc.json").write_text(json.dumps(data))
+
+    # toggle target for sub-pages: jump to the other mode's overview
+    sub_toggle = "../../index.html" if preview else "../preview/index.html"
 
     # a full detail page per finished match (+ its own share card)
     matches = data.get("match_pages", [])
@@ -598,9 +608,11 @@ def render_site(template, match_template, player_template, data, preview):
                                      "shots_for": mp.get("shots_for", []),
                                      "shots_against": mp.get("shots_against", [])}).replace("<", "\\u003c")
             html = match_template.render(m=mp, season=season,
-                                         generated_at=data.get("generated_at", ""),
+                                         generated_at=generated_at,
                                          preview=preview, match_json=match_json,
-                                         pages=PAGES, nav_prefix="../",
+                                         pages=PAGES, nav_prefix="../", current="matches",
+                                         css_href="../style.css", team=team, position=position,
+                                         toggle_href=sub_toggle,
                                          og_title=score + " · Match report",
                                          og_description=f"Full report: xG, shots, player ratings and the story of Ipswich {mp['gf']}-{mp['ga']} {mp['opponent']}.",
                                          og_image="../" + og_img, canonical=f"{SITE_URL}/match/{mp['id']}.html")
@@ -614,7 +626,9 @@ def render_site(template, match_template, player_template, data, preview):
                                       "log": list(reversed(pp["log"]))}).replace("<", "\\u003c")
             html = player_template.render(p=pp, season=season,
                                           preview=preview, player_json=player_json,
-                                          pages=PAGES, nav_prefix="../",
+                                          pages=PAGES, nav_prefix="../", current="squad",
+                                          css_href="../style.css", team=team, position=position,
+                                          generated_at=generated_at, toggle_href=sub_toggle,
                                           og_title=f"{pp['name']} · Ipswich Town",
                                           og_description=f"{pp['name']}'s Ipswich Town season: stats, percentile profile, match log and shot map.",
                                           og_image="../og.png", canonical=f"{SITE_URL}/player/{pp['slug']}.html")
