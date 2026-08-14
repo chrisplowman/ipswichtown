@@ -12,7 +12,7 @@
     <div class="headright">
       <button class="themetoggle" type="button" onclick="__toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode"></button>
       <a class="previewtoggle{% if preview %} on{% endif %}" href="{{ toggle_href }}">{% if preview %}← Live data{% else %}Preview mode{% endif %}</a>
-      <div class="updated">Updated<br><b>{{ generated_at|updated }}</b></div>
+      <div class="updated">Updated<b>{{ generated_at|updated }}</b></div>
     </div>
   </div>
 </header>
