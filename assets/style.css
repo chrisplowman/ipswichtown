@@ -258,7 +258,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .ranks{display:grid;grid-template-columns:1fr 1fr;gap:14px 28px}
 .rankrow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
 .rankrow .top .pos{color:var(--steel);font-size:12px}
-.rankbar{height:8px;background:var(--tint-gray);border-radius:var(--radius-full);overflow:hidden}
+.rankbar{height:16px;background:var(--tint-gray);border-radius:var(--radius-full);overflow:hidden}
 .rankbar span{display:block;height:100%;border-radius:var(--radius-full);background:var(--primary)}
 .rankbar span.good{background:var(--win)}
 .rankbar span.bad{background:var(--loss)}
