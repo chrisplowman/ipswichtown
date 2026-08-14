@@ -499,6 +499,7 @@
 </main>
 
 <footer class="wrap">
+  {% if health and health.missing %}<div class="health-note" role="status">⚠ Some data sources returned nothing on the last update: {{ health.missing|join(', ') }}. Those sections may be incomplete until the next successful rebuild.</div>{% endif %}
   Data from the FPL API (squad &amp; team news), Understat (xG &amp; shots), ESPN (table), TheSportsDB (badges), football-data.co.uk (head-to-head), ClubElo (win probability) and Ipswich RSS feeds (news) · rebuilt automatically via GitHub Actions.<br>
   Raw data: <code>data/itfc.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>

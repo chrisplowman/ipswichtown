@@ -1176,6 +1176,35 @@ def main():
     except Exception as e:
         print(f"  news: skipped ({e})")
 
+    # ---- data-source health check ------------------------------------- #
+    # Every source fails soft (an empty section rather than a crash), so this
+    # summary makes a broken/blank feed obvious in the build log and on the page.
+    checks = {
+        "FPL squad": bool(fpl["squad"]),
+        "FPL fixtures": bool(fpl["fixtures"]),
+        "League table": bool(table),
+        "Understat matches": bool(understat["matches"]),
+        "Understat players": bool(understat["players"]),
+        "Match detail": bool(match_pages),
+        "football-data stats": bool(match_stats),
+        "Home/away tables": bool(home_table),
+        "Elo (current)": bool(elos),
+        "Elo history": bool(elo_history),
+        "Survival model": survival is not None,
+        "Badges": bool(badge_for(ipswich["short_name"])),
+        "News": bool(news),
+    }
+    # Pre-season is expected to have no match-derived data; don't flag those.
+    preseason = fpl["summary"]["played"] == 0
+    match_derived = {"Understat matches", "Match detail", "football-data stats",
+                     "Home/away tables", "Understat players", "Survival model"}
+    missing = [name for name, ok in checks.items()
+               if not ok and not (preseason and name in match_derived)]
+    health = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+              "preseason": preseason, "sources": checks, "missing": missing}
+    print("  data health: " + ("all sources OK" if not missing
+          else f"{len(missing)} source(s) EMPTY -> " + ", ".join(missing)))
+
     data = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "season": "2026/27",
@@ -1207,6 +1236,7 @@ def main():
         "results": list(reversed(fpl["results"])),
         "squad": fpl["squad"],
         "news": news,
+        "health": health,
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

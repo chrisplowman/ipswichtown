@@ -445,6 +445,7 @@ def sample_data(live=None):
         "team_strength": team_strength, "survival": survival, "releg_odds": releg_odds,
         "results": results, "squad": squad, "news": live.get("news") or [],
         "match_pages": match_pages,
+        "health": {"preseason": False, "sources": {}, "missing": []},
     }
 
 

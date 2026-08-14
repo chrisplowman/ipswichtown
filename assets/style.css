@@ -273,6 +273,8 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 }
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
+.health-note{background:#fff4e6;border:1px solid #ffd8a8;color:#8a4b00;border-radius:var(--radius-md);padding:10px 14px;margin-bottom:14px;font-size:13px}
+
 /* ---- match report pages ---- */
 .page-match .back{display:inline-flex;align-items:center;gap:8px;color:var(--on-dark);text-decoration:none;font-weight:500;font-size:14px}
 .page-match .back:hover{color:#fff;text-decoration:underline}
