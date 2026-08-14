@@ -8,8 +8,8 @@
 :root{
   
   --primary:#0333a0; --primary-pressed:#4534b3; --on-primary:#ffffff;
-  --brand-navy:#0a1530; --brand-navy-deep:#070f24; --brand-navy-mid:#1a2a52;
-  --link-blue:#0075de; --brand-orange:#dd5b00; --brand-orange-deep:#793400;
+  --brand-navy:#0333a0; --brand-navy-deep:#070f24; --brand-navy-mid:#1a2a52;
+  --link-blue:#0333a0; --brand-orange:#e2241b; --brand-orange-deep:#793400;
   --brand-pink:#ff64c8; --brand-purple-800:#391c57; --brand-green:#1aae39; --brand-teal:#2a9d99;
   
   --tint-peach:#ffe8d4; --tint-rose:#fde0ec; --tint-mint:#d9f3e1; --tint-lavender:#e6e0f5;
