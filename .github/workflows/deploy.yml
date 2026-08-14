@@ -33,6 +33,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Gate: run the test suite (incl. the full-site smoke build) before doing
+      # anything else. If tests fail the job stops here, so a broken build never
+      # reaches the deploy step (deploy `needs: build`).
+      - name: Run tests
+        run: |
+          pip install pytest
+          python -m pytest -q
+
       # Finished-match detail never changes, so persist it between runs. Keyed per run
       # so each build saves a fresh snapshot; restore-keys pulls the most recent one.
       - name: Restore match cache
