@@ -95,7 +95,6 @@ section.panel[hidden]{display:none}
 .label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px}
 .label::after{content:"";height:1px;background:var(--hairline);flex:1}
 .board{overflow:hidden;position:relative}
-.board::before{content:"NEXT";position:absolute;top:16px;left:18px;font-size:11px;letter-spacing:1px;font-weight:600;color:var(--steel)}
 .board .row{display:flex;align-items:center;justify-content:center;gap:clamp(16px,5vw,54px);padding:32px 20px 24px;text-align:center;flex-wrap:wrap}
 .board .side{min-width:96px}
 .board .side .badge-lg{width:40px;height:40px;object-fit:contain;margin:0 auto 8px;display:block}
