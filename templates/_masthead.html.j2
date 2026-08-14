@@ -1,0 +1,27 @@
+{# Shared header + nav for every page. nav_prefix is "" for top-level pages and
+   "../" for match/player pages so links resolve correctly. #}
+<a class="skiplink" href="#main">Skip to content</a>
+<header class="masthead{% if preview %} is-preview{% endif %}">
+  <div class="wrap">
+    <div class="crest">
+      <div class="mark">{% if team.badge %}<img src="{{ team.badge }}" alt="Ipswich Town crest">{% else %}{{ team.short_name }}{% endif %}</div>
+      <div>
+        <div class="eyebrow">Premier League · {{ season }}{% if position %} <span class="pos">{{ position|ordinal }}</span>{% endif %}</div>
+        <div class="wordmark">Ipswich Town</div>
+      </div>
+    </div>
+    <div class="headright">
+      <a class="previewtoggle{% if preview %} on{% endif %}" href="{{ toggle_href }}">{% if preview %}← Live data{% else %}Preview mode{% endif %}</a>
+      <div class="updated">Updated<br><b>{{ generated_at|updated }}</b></div>
+    </div>
+  </div>
+</header>
+{% if preview %}<div class="previewbanner">Preview mode — every section is showing sample data. <a href="{{ toggle_href }}">Switch back to live data</a></div>{% endif %}
+
+<nav class="tabs">
+  <div class="wrap">
+    {% for pid, filename, label in pages %}
+    <a href="{{ nav_prefix }}{{ filename }}"{% if pid == current %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </div>
+</nav>

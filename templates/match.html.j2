@@ -17,103 +17,12 @@
 {% if og_image %}<meta name="twitter:image" content="{{ og_image }}">{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  --brand-navy:#0a1530;--brand-navy-mid:#1a2a52;--brand-orange:#dd5b00;
-  --surface:#f6f5f4;--canvas:#ffffff;--ink:#1d1c1a;--ink-deep:#111;
-  --steel:#6b6862;--stone:#9a968f;--slate:#4a4844;
-  --primary:#5645d4;--win:#1aae39;--draw:#a4a097;--loss:#e03131;--link-blue:#0075de;
-  --hairline:#e9e7e3;--hairline-soft:#f0eeeb;--hairline-strong:#dcd9d4;
-  --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-full:999px;
-  --shadow-card:0 1px 2px rgba(20,20,20,.04),0 2px 8px rgba(20,20,20,.03);
-  --space-lg:28px;--on-dark:#fff;--on-dark-muted:#aeb7cc;--chart-grid:#eeece9;
-}
-*{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--surface);color:var(--ink);
-  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1040px;margin:0 auto;padding:0 24px}
-a{color:inherit}
-.masthead{background:var(--brand-navy);color:var(--on-dark)}
-.masthead .wrap{display:flex;align-items:center;justify-content:space-between;padding:16px 24px}
-.back{display:inline-flex;align-items:center;gap:8px;color:var(--on-dark);text-decoration:none;font-weight:500;font-size:14px}
-.back:hover{color:#fff;text-decoration:underline}
-.masthead .season{font-size:13px;color:var(--on-dark-muted)}
-.tabs{border-bottom:1px solid var(--hairline);background:var(--canvas)}
-.tabs .wrap{display:flex;gap:8px;padding:12px 24px;flex-wrap:wrap}
-.tabs a{font-weight:500;font-size:14px;color:var(--steel);padding:8px 16px;border-radius:var(--radius-full);border:1px solid var(--hairline);text-decoration:none;line-height:1}
-.tabs a:hover{color:var(--ink);background:var(--surface)}
-main{padding:34px 0 60px}
-.block{margin-bottom:22px}
-.label{font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--steel);
-  border-bottom:1px solid var(--hairline);padding-bottom:8px;margin:0 0 14px}
-.card{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-card);padding:18px 20px}
-h3{margin:0 0 4px;font-size:15px;font-weight:600}
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-@media(max-width:760px){.cols{grid-template-columns:1fr}}
-
-/* scoreline */
-.score-card{background:var(--canvas);color:var(--ink);border:1px solid var(--hairline);box-shadow:var(--shadow-card);border-radius:var(--radius-lg);padding:26px 20px;text-align:center}
-.score-row{display:flex;align-items:center;justify-content:center;gap:clamp(16px,5vw,48px)}
-.score-row .side{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:120px}
-.score-row .side img{width:56px;height:56px;object-fit:contain}
-.score-row .side .nm{font-weight:600;font-size:15px}
-.score-row .sc{font-size:44px;font-weight:700;letter-spacing:-1px}
-.score-card .meta{margin-top:14px;font-size:13px;color:var(--steel)}
-.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.5px;padding:4px 10px;border-radius:var(--radius-full);text-transform:uppercase}
-.pill.W{background:var(--win);color:#fff}.pill.D{background:var(--draw);color:#fff}.pill.L{background:var(--loss);color:#fff}
-
-/* stat comparison */
-.statrow{margin-bottom:12px}
-.statrow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
-.statrow .top .v{font-weight:600;font-size:15px}
-.statrow .top .lab{color:var(--steel);align-self:center}
-.bar{display:flex;height:8px;border-radius:6px;overflow:hidden;background:var(--hairline)}
-.bar .f{background:var(--primary)}.bar .a{background:var(--loss)}
-.legend{display:flex;gap:16px;font-size:12px;color:var(--steel);margin-bottom:14px}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-
-/* pitch */
-.pitch-holder{width:100%;overflow:hidden}
-svg.pitch{width:100%;height:auto;display:block;background:var(--canvas)}
-.canvas-holder{position:relative;height:280px}
-
-/* tables */
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--hairline-soft)}
-th:first-child,td:first-child{text-align:left}
-thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
-tbody tr:last-child td{border-bottom:0}
-
-/* goals + h2h */
-ul.plain{list-style:none;margin:0;padding:0}
-ul.plain li{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--hairline-soft);font-size:14px}
-ul.plain li:last-child{border-bottom:0}
-.min{font-weight:600;color:var(--steel);min-width:38px}
-.dot{width:8px;height:8px;border-radius:50%}
-.dot.f{background:var(--primary)}.dot.a{background:var(--loss)}
-.assist{color:var(--stone);font-size:12px}
-.res{font-weight:600;border-radius:var(--radius-sm);padding:2px 7px;font-size:12px;color:#fff}
-.res.W{background:var(--win)}.res.D{background:var(--draw)}.res.L{background:var(--loss)}
-.odds{display:flex;gap:10px;text-align:center}
-.odds .o{flex:1;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-md);padding:12px}
-.odds .o .p{font-size:22px;font-weight:700}.odds .o .k{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--steel);margin-top:2px}
-.empty-note{color:var(--steel);font-size:14px;padding:8px 2px}
-footer{color:var(--steel);font-size:12px;text-align:center;padding:24px;border-top:1px solid var(--hairline)}
-</style>
+<link rel="stylesheet" href="{{ css_href }}">
 </head>
-<body>
-<header class="masthead">
-  <div class="wrap">
-    <a class="back" href="{{ nav_prefix }}index.html">← Ipswich Town stats</a>
-    <span class="season">Premier League · {{ season }}</span>
-  </div>
-</header>
-<nav class="tabs"><div class="wrap">
-  {% for pid, filename, label in pages %}<a href="{{ nav_prefix }}{{ filename }}">{{ label }}</a>{% endfor %}
-</div></nav>
+<body class="page-match">
+{% include '_masthead.html.j2' %}
 
-<main class="wrap">
+<main class="wrap" id="main" tabindex="-1">
   <!-- SCORELINE -->
   <div class="block">
     <div class="score-card">
