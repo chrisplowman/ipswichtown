@@ -359,7 +359,8 @@ def sample_data(live=None):
             "corners_for": 4 + i % 5, "corners_against": 3 + i % 4,
             "fouls_for": 9 + i % 5, "fouls_against": 10 + i % 6,
             "yellows_for": 1 + i % 3, "yellows_against": 2 + i % 2,
-            "reds_for": 1 if i % 7 == 0 else 0, "reds_against": 0})
+            "reds_for": 1 if i % 7 == 0 else 0, "reds_against": 0,
+            "odds": {"win": 30 + (i * 7) % 25, "draw": 27, "opp": 43 - (i * 7) % 25}})
 
     # full detail match pages (dummy) for the most recent results, and link them in
     def _shot(x, y, xg, res, pl, mn, sit):
@@ -543,7 +544,9 @@ def _make_env():
 
 
 def form_guide(data, n=6):
-    """Last n results with rolling points/PPG and a momentum trend."""
+    """Last n results with rolling points/PPG, a momentum trend, and an 'expected
+    form' read: pre-match expected points (bookmaker odds), performance-based
+    expected points (xPts), xG for/against, and how tough the run of opponents was."""
     results = data.get("results") or []          # most recent first
     recent = results[:n]
     if not recent:
@@ -551,17 +554,48 @@ def form_guide(data, n=6):
     pts_of = lambda r: 3 if r["result"] == "W" else 1 if r["result"] == "D" else 0
     pts = sum(pts_of(r) for r in recent)
     ppg = round(pts / len(recent), 2)
+    k = len(recent)
+
     # momentum: newer half's PPG vs older half's
-    half = max(1, len(recent) // 2)
+    half = max(1, k // 2)
     newer, older = recent[:half], recent[half:half * 2] or recent[half:]
     np_ = sum(pts_of(r) for r in newer) / len(newer)
     op = sum(pts_of(r) for r in older) / len(older) if older else np_
     trend = "up" if np_ > op + 0.25 else "down" if np_ < op - 0.25 else "flat"
+
+    # performance-based expected points + xG (Understat, last k finished matches)
+    uh = (data.get("understat_history") or [])[-k:]
+    xpts = round(sum(h.get("xpts", 0) for h in uh), 1) if uh else None
+    xgf = round(sum(h.get("xg", 0) for h in uh), 1) if uh else None
+    xga = round(sum(h.get("xga", 0) for h in uh), 1) if uh else None
+
+    # pre-match expected points from bookmaker odds (last k matches with odds)
+    ms = [m for m in (data.get("match_stats") or []) if m.get("odds")][-k:]
+    exp_odds = round(sum(3 * m["odds"]["win"] / 100 + m["odds"]["draw"] / 100 for m in ms), 1) if ms else None
+
+    # over/under-performance verdict (vs the clearer of the two expectations)
+    ref = xpts if xpts is not None else exp_odds
+    verdict = None
+    if ref is not None:
+        d = pts - ref
+        verdict = "over" if d >= 1.5 else "under" if d <= -1.5 else "par"
+
+    # run difficulty: average current league position of the opponents faced
+    rank_by = {_pnorm(t["team"]): t["rank"] for t in (data.get("table") or []) if t.get("rank")}
+    opp_ranks = [rank_by.get(_pnorm(r.get("opponent", ""))) for r in recent]
+    opp_ranks = [x for x in opp_ranks if x]
+    opp_avg_rank = round(sum(opp_ranks) / len(opp_ranks)) if opp_ranks else None
+    run_label = None
+    if opp_avg_rank:
+        run_label = "a tough run" if opp_avg_rank <= 8 else "a kind run" if opp_avg_rank >= 13 else "an average run"
+
     matches = [{"result": r["result"], "opponent": r.get("opponent", ""),
                 "opponent_short": r.get("opponent_short", ""), "home": r.get("home"),
                 "score": r.get("score", ""), "match_id": r.get("match_id")}
                for r in reversed(recent)]          # oldest first (reads left→right)
-    return {"matches": matches, "pts": pts, "ppg": ppg, "trend": trend, "count": len(recent)}
+    return {"matches": matches, "pts": pts, "ppg": ppg, "trend": trend, "count": k,
+            "xpts": xpts, "xgf": xgf, "xga": xga, "exp_odds": exp_odds, "verdict": verdict,
+            "opp_avg_rank": opp_avg_rank, "run_label": run_label}
 
 
 def rival_tracker(data):
