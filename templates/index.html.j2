@@ -117,8 +117,8 @@
       </div>
     </div>
     {% endif %}
-    <div class="block">
-      <p class="label">Next fixture</p>
+    <div class="block card">
+      <h3>Next fixture</h3>
       {% if next_fixture %}
       <div class="board">
         <div class="row">
@@ -167,8 +167,8 @@
 
     {% if team_news %}
     <div class="block">
-      <p class="label">Team news</p>
       <div class="card">
+        <h3>Team news</h3>
         <ul class="list news">
           {% for t in team_news %}
           <li>
@@ -182,8 +182,8 @@
     </div>
     {% endif %}
 
-    <div class="block">
-      <p class="label">Season record</p>
+    <div class="block card">
+      <h3>Season record</h3>
       <div class="stats">
         <div class="stat"><div class="v">{{ summary.played }}</div><div class="k">Played</div></div>
         <div class="stat"><div class="v">{{ summary.won }}</div><div class="k">Won</div></div>
@@ -231,7 +231,8 @@
   {% endif %}
   {% if page == 'table' %}
   <section class="panel">
-    <p class="label">Premier League table</p>
+    <div class="block card">
+    <h3>Premier League table</h3>
     {% if table %}
     <div class="tablewrap">
       <table class="ltable">
@@ -259,8 +260,10 @@
       <span><i style="background:#eaf1fc;border:1px solid var(--line)"></i> Ipswich</span>
     </div>
     {% else %}<p class="empty-note">League table unavailable right now — it will appear on the next successful update.</p>{% endif %}
+    </div>
 
-    <p class="label" style="margin-top:26px">Projected final table</p>
+    <div class="block card">
+    <h3>Projected final table</h3>
     {% if predicted and predicted[0].proj is not none %}
     <p class="empty-note" style="padding:0 2px 12px">Where the season ends if every club keeps its current points-per-game — a projection, not a prediction.</p>
     <div class="tablewrap">
@@ -282,10 +285,12 @@
       </table>
     </div>
     {% else %}<p class="empty-note">Available once the season is under way.</p>{% endif %}
+    </div>
 
     {% if home_table %}
     {% for title, tbl in [('Home table', home_table), ('Away table', away_table)] %}
-    <p class="label" style="margin-top:26px">{{ title }}</p>
+    <div class="block card">
+    <h3>{{ title }}</h3>
     <div class="tablewrap">
       <table class="ltable">
         <thead><tr>
@@ -304,6 +309,7 @@
           {% endfor %}
         </tbody>
       </table>
+    </div>
     </div>
     {% endfor %}
     {% endif %}
@@ -440,7 +446,8 @@
   {% endif %}
   {% if page == 'matches' %}
   <section class="panel">
-    <p class="label">Results &amp; reports</p>
+    <div class="block card">
+    <h3>Results &amp; reports</h3>
     {% if match_pages %}
     <p class="empty-note" style="padding:0 2px 12px">Every match this season — tap any row for the full report.</p>
     <div class="tablewrap">
@@ -460,11 +467,13 @@
       </table>
     </div>
     {% else %}<p class="empty-note">No matches played yet. The season opens on 22 August.</p>{% endif %}
+    </div>
   </section>
   {% endif %}
   {% if page == 'squad' %}
   <section class="panel">
-    <p class="label">Squad · {{ squad|length }} players</p>
+    <div class="block card">
+    <h3>Squad · {{ squad|length }} players</h3>
     <div class="toolbar">
       <label class="toggle"><input type="checkbox" id="per90-toggle" aria-label="Show per 90 minutes"> Per 90 minutes</label>
     </div>
@@ -497,8 +506,10 @@
       </table>
     </div>
 
-    <div class="block" style="margin-top:30px">
-      <p class="label">Player profiles</p>
+    </div>
+
+    <div class="block card" style="margin-top:30px">
+      <h3>Player profiles</h3>
       <div class="chartcard wide">
         <p class="sub">Per-90 percentile ranks vs positional peers across the Premier League. Search an Ipswich player, then any PL player to compare across the league.</p>
         <div class="profile-controls">
@@ -521,7 +532,8 @@
   {% endif %}
   {% if page == 'news' %}
   <section class="panel">
-    <p class="label">Latest news</p>
+    <div class="block card">
+    <h3>Latest news</h3>
     {% if news %}
     <div class="card">
       <ul class="list newslist">
@@ -539,6 +551,7 @@
     </div>
     <p class="empty-note" style="padding:14px 2px 0">Headlines from Ipswich-focused RSS feeds. Links open on the publisher's site.</p>
     {% else %}<p class="empty-note">No news available right now.</p>{% endif %}
+    </div>
   </section>
 {% endif %}
 </main>
