@@ -120,7 +120,7 @@
     <div class="block card">
       <h3>Next fixture</h3>
       {% if next_fixture %}
-      <div class="innerboard">
+      <div class="board">
         <div class="row">
           <div class="side">{% if team.badge %}<img class="badge-lg" src="{{ team.badge }}" alt="">{% endif %}<div class="abbr">{{ team.short_name }}</div><div class="full">Ipswich Town</div></div>
           <div class="vs">{{ "HOME" if next_fixture.home else "AWAY" }}</div>
