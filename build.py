@@ -41,12 +41,12 @@ PAGES = [
 
 # per-page Open Graph title/description
 OG = {
-    "overview": ("Ipswich Town — Premier League stats", "Live xG, form, the projected table and a survival forecast for Ipswich Town's Premier League season."),
-    "table":    ("Ipswich Town — Premier League table", "The live table, projected final standings and home/away splits."),
-    "charts":   ("Ipswich Town — season charts", "xG, expected points, pressing, discipline and more, chart by chart."),
-    "matches":  ("Ipswich Town — match results", "Every result this season with xG, and a full report for each match."),
-    "squad":    ("Ipswich Town — squad stats", "Per-90 stats and percentile profiles for the Ipswich squad."),
-    "news":     ("Ipswich Town — latest news", "The latest Ipswich Town headlines from across the web."),
+    "overview": ("Ipswich Town: Premier League stats", "Live xG, form, the projected table and a survival forecast for Ipswich Town's Premier League season."),
+    "table":    ("Ipswich Town: Premier League table", "The live table, projected final standings and home/away splits."),
+    "charts":   ("Ipswich Town: season charts", "xG, expected points, pressing, discipline and more, chart by chart."),
+    "matches":  ("Ipswich Town: match results", "Every result this season with xG, and a full report for each match."),
+    "squad":    ("Ipswich Town: squad stats", "Per-90 stats and percentile profiles for the Ipswich squad."),
+    "news":     ("Ipswich Town: latest news", "The latest Ipswich Town headlines from across the web."),
 }
 
 
@@ -164,15 +164,15 @@ def season_summary(data):
     survival = round(safe["points"] / safe["played"] * 38) if safe and safe.get("played") else None
     if survival:
         if projected >= 66:
-            parts.append(f"At that rate they'd finish on about {projected} points — a pace that would put them in the European conversation.")
+            parts.append(f"At that rate they'd finish on about {projected} points, a pace that would put them in the European conversation.")
         elif projected >= survival + 8:
             parts.append(f"That pace projects to around {projected} points, comfortably clear of the ~{survival} the drop looks likely to demand.")
         elif projected >= survival + 3:
             parts.append(f"That pace projects to around {projected} points, a cushion above the ~{survival} likely needed to stay up.")
         elif projected >= survival - 2:
-            parts.append(f"That pace projects to around {projected} points — right on the ~{survival} likely needed for safety, so survival is finely balanced.")
+            parts.append(f"That pace projects to around {projected} points, right on the ~{survival} likely needed for safety, so survival is finely balanced.")
         else:
-            parts.append(f"That pace projects to around {projected} points, short of the ~{survival} likely needed to survive — a relegation fight as things stand.")
+            parts.append(f"That pace projects to around {projected} points, short of the ~{survival} likely needed to survive: a relegation fight as things stand.")
     else:
         parts.append(f"At their current rate that projects to around {projected} points over the season.")
 
@@ -181,7 +181,7 @@ def season_summary(data):
         xpts = round(sum(h.get("xpts", 0) for h in uh))
         diff = pts - xpts
         if diff >= 4:
-            parts.append(f"They've outrun the underlying numbers — {pts} points from an expected {xpts} — so some regression may be due.")
+            parts.append(f"They've outrun the underlying numbers: {pts} points from an expected {xpts}, so some regression may be due.")
         elif diff <= -4:
             parts.append(f"The performances merit more: an expected {xpts} points against {pts} banked suggests they've been unlucky.")
         else:

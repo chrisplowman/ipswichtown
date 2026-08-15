@@ -7,10 +7,10 @@
 
 :root{
   
-  --primary:#5645d4; --primary-pressed:#4534b3; --on-primary:#ffffff;
-  --brand-navy:#0a1530; --brand-navy-deep:#070f24; --brand-navy-mid:#1a2a52;
+  --primary:#0333a0; --on-primary:#ffffff;
+  --brand-navy:#0333a0;
   --link-blue:#0075de; --brand-orange:#dd5b00; --brand-orange-deep:#793400;
-  --brand-pink:#ff64c8; --brand-purple-800:#391c57; --brand-green:#1aae39; --brand-teal:#2a9d99;
+  --brand-pink:#ff64c8; --brand-purple-800:#391c57;
   
   --tint-peach:#ffe8d4; --tint-rose:#fde0ec; --tint-mint:#d9f3e1; --tint-lavender:#e6e0f5;
   --tint-sky:#dcecfa; --tint-yellow:#fef7d6; --tint-cream:#f8f5e8; --tint-gray:#f0eeec;
@@ -45,7 +45,7 @@
   --tint-peach:#3a2a1a; --tint-rose:#38202e; --tint-mint:#153026; --tint-lavender:#241d38;
   --tint-sky:#1b2740; --tint-yellow:#332f18; --tint-cream:#2a2820; --tint-gray:#23232a;
   --shadow-card:0 1px 2px rgba(0,0,0,.4); --shadow-md:0 6px 18px rgba(0,0,0,.5);
-  --primary:#8b7dff; --primary-pressed:#7565ff; --link-blue:#5aa9ff;
+  --primary:#4d8dff; --link-blue:#5aa9ff;
 }
 :root[data-theme="dark"] .health-note{background:#3a2a12;border-color:#6b4a1a;color:#f0c088}
 :root[data-theme="dark"] .crest .mark{background:#fff}
