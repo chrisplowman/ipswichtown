@@ -77,13 +77,13 @@
   <div class="block">
     <div class="cols">
       <div class="card">
-        <h3>Percentile profile</h3><p class="empty-note" style="padding-top:0">Per-90 ranks vs positional peers across the Premier League.</p>
+        <div class="cardhead"><h3>Percentile profile</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Per-90 stats converted to percentile rank against positional peers league-wide. Source: Understat league page.</span></button></div><p class="empty-note" style="padding-top:0">Per-90 ranks vs positional peers across the Premier League.</p>
         {% if p.profile and p.profile.pct %}
         <div class="canvas-holder"><canvas id="c-radar"></canvas></div>
         {% else %}<p class="empty-note">Not enough minutes yet for a percentile profile.</p>{% endif %}
       </div>
       <div class="card">
-        <h3>Goal involvements</h3><p class="empty-note" style="padding-top:0">Cumulative goals and assists through the season.</p>
+        <div class="cardhead"><h3>Goal involvements</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative goals and assists, match by match. Source: Fantasy Premier League API.</span></button></div><p class="empty-note" style="padding-top:0">Cumulative goals and assists through the season.</p>
         {% if p.log %}<div class="canvas-holder"><canvas id="c-ga"></canvas></div>
         {% else %}<p class="empty-note">No match minutes yet.</p>{% endif %}
       </div>
@@ -94,7 +94,7 @@
   <div class="block">
     <div class="cols">
       <div class="card">
-        <h3>Match-by-match</h3>
+        <div class="cardhead"><h3>Match-by-match</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every match this player has appeared in, with Understat's per-match numbers. Source: Understat.</span></button></div>
         {% if p.log %}
         <table>
           <thead><tr><th>Opponent</th><th>Min</th><th>G</th><th>A</th><th>Sh</th><th>xG</th><th>xA</th><th>KP</th></tr></thead>
@@ -111,7 +111,7 @@
         {% else %}<p class="empty-note">No match appearances recorded yet.</p>{% endif %}
       </div>
       <div class="card">
-        <h3>Shot map</h3><p class="empty-note" style="padding-top:0">Every shot this season. Circle size = xG; filled = goal.</p>
+        <div class="cardhead"><h3>Shot map</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every shot this player has taken this season, placed by pitch location. Source: Understat.</span></button></div><p class="empty-note" style="padding-top:0">Every shot this season. Circle size = xG; filled = goal.</p>
         {% if p.shots %}<div class="pitch-holder" id="pitch"></div>
         {% else %}<p class="empty-note">No shots recorded yet.</p>{% endif %}
       </div>

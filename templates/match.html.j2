@@ -64,6 +64,7 @@
   <div class="block">
     <p class="label">Match stats</p>
     <div class="card">
+      <div class="cardhead"><h3>Match statistics</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Shots, cards, corners, pressing (PPDA) and Understat's expected points for this match. Source: Understat and football-data.co.uk.</span></button></div>
       <div class="legend"><span><i style="background:var(--primary)"></i>Ipswich</span><span><i style="background:var(--loss)"></i>{{ m.opponent }}</span></div>
       {% macro statrow(label, a, b, dp=0) %}
         {% set af = (a|float) %}{% set bf = (b|float) %}{% set tot = af + bf %}
@@ -92,11 +93,11 @@
   <div class="block">
     <div class="cols">
       <div class="card">
-        <h3>xG race</h3><p class="empty-note" style="padding-top:0">Expected goals accumulating through the match. Each step is a shot.</p>
+        <div class="cardhead"><h3>xG race</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative Understat xG for each shot, in the order it happened. Source: Understat.</span></button></div><p class="empty-note" style="padding-top:0">Expected goals accumulating through the match. Each step is a shot.</p>
         <div class="canvas-holder"><canvas id="c-flow"></canvas></div><div id="n-flow" class="empty-note" hidden></div>
       </div>
       <div class="card">
-        <h3>Shot map</h3><p class="empty-note" style="padding-top:0">Both teams' shots. Circle size = xG; filled = goal. Ipswich attack right.</p>
+        <div class="cardhead"><h3>Shot map</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every shot's location, quality and outcome for both teams in this match. Source: Understat.</span></button></div><p class="empty-note" style="padding-top:0">Both teams' shots. Circle size = xG; filled = goal. Ipswich attack right.</p>
         <div class="pitch-holder" id="pitch"></div>
       </div>
     </div>
@@ -106,7 +107,7 @@
   <div class="block">
     <div class="cols">
       <div class="card">
-        <h3>Goals</h3>
+        <div class="cardhead"><h3>Goals</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Goals and assists from this match. Source: Understat player lines.</span></button></div>
         {% if m.goals %}
         <ul class="plain">
           {% for g in m.goals %}
@@ -117,7 +118,7 @@
       </div>
       <div class="card">
         {% if m.odds %}
-        <h3>Pre-match odds</h3><p class="empty-note" style="padding-top:0">Bookmakers' implied probability (B365).</p>
+        <div class="cardhead"><h3>Pre-match odds</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Bookmakers' implied win probability before kickoff. Source: football-data.co.uk (Bet365).</span></button></div><p class="empty-note" style="padding-top:0">Bookmakers' implied probability (B365).</p>
         <div class="odds">
           <div class="o"><div class="p">{{ m.odds.win }}%</div><div class="k">Ipswich</div></div>
           <div class="o"><div class="p">{{ m.odds.draw }}%</div><div class="k">Draw</div></div>
@@ -125,7 +126,7 @@
         </div>
         {% endif %}
         {% if m.h2h %}
-        <h3 style="margin-top:16px">Recent meetings</h3>
+        <div class="cardhead" style="margin-top:16px"><h3>Recent meetings</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results from previous meetings between these two clubs. Source: football-data.co.uk historical results.</span></button></div>
         <ul class="plain">
           {% for h in m.h2h %}
           <li><span class="res {{ h.result }}">{{ h.result }}</span>{{ h.opponent }} <span class="assist">{{ '(H)' if h.home else '(A)' }} {{ h.score }} · {{ h.date }}</span></li>
@@ -142,7 +143,7 @@
     <div class="cols">
       {% for group, players in [('Ipswich', m.players_for), (m.opponent, m.players_against)] %}
       <div class="card">
-        <h3>{{ group }}</h3>
+        <div class="cardhead"><h3>{{ group }}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Per-player minutes, goals, shots and expected involvement for this match. Source: Understat player lines.</span></button></div>
         {% if players %}
         <table>
           <thead><tr><th>Player</th><th>Min</th><th>G</th><th>A</th><th>Sh</th><th>xG</th><th>xA</th><th>KP</th></tr></thead>

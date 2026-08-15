@@ -10,7 +10,7 @@
   --primary:#0333a0; --on-primary:#ffffff;
   --brand-navy:#0333a0;
   --link-blue:#0075de; --brand-orange:#dd5b00; --brand-orange-deep:#793400;
-  --brand-pink:#ff64c8; --brand-purple-800:#391c57;
+  --brand-purple-800:#391c57;
   
   --tint-peach:#ffe8d4; --tint-rose:#fde0ec; --tint-mint:#d9f3e1; --tint-lavender:#e6e0f5;
   --tint-sky:#dcecfa; --tint-yellow:#fef7d6; --tint-cream:#f8f5e8; --tint-gray:#f0eeec;
@@ -85,7 +85,7 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nu
 .tabs .wrap{display:flex;gap:8px;padding:12px var(--space-lg)}
 .tabs a{cursor:pointer;font-weight:500;font-size:14px;color:var(--steel);padding:8px 16px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
 .tabs a:hover{color:var(--ink);background:var(--surface)}
-.tabs a.active{background:var(--ink-deep);color:var(--on-dark);border-color:var(--ink-deep)}
+.tabs a.active{background:var(--ink-deep);color:var(--canvas);border-color:var(--ink-deep)}
 .tabs a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .skiplink{position:absolute;left:-999px;top:0;z-index:100;background:var(--brand-navy);color:#fff;padding:10px 16px;border-radius:0 0 var(--radius-md) 0;text-decoration:none}
 .skiplink:focus{left:0}
@@ -146,9 +146,39 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 .stat .v.pos{color:var(--win)}
 .stat .v.neg{color:var(--loss)}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.card{overflow:hidden}
 .card h3,.chartcard h3{font-weight:600;font-size:16px;letter-spacing:-.2px;color:var(--charcoal)}
-.card h3{margin:0;padding:14px 18px;border-bottom:1px solid var(--hairline);background:var(--surface-soft)}
+/* Every card's title lives in its own header div (.cardhead), never bare in the
+   card body, so an info icon can sit opposite it without touching the title markup. */
+.cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hgroup{display:inline-flex;align-items:center;gap:6px}
+.card>.cardhead:first-child{margin:0;padding:14px 18px;border-bottom:1px solid var(--hairline);
+  background:var(--surface-soft);border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+.card>.cardhead:first-child h3{margin:0}
+.card .cardhead:not(:first-child){margin:16px 18px 10px}
+.chartcard>.cardhead,.hero>.cardhead{margin-bottom:4px}
+.chartcard>.cardhead h3{margin:0}
+.snapshot>.cardhead,.survival>.cardhead,.formguide>.cardhead{margin-bottom:8px}
+.cardhead .snapshot-label{margin-bottom:0}
+/* the info icon: a small "i" badge that reveals a tooltip explaining the
+   calculation and data source on hover/focus */
+.infobtn{all:unset;cursor:help;flex:none;width:17px;height:17px;border-radius:50%;
+  border:1px solid var(--hairline-strong);color:var(--steel);font-size:11px;font-weight:700;
+  font-style:italic;font-family:Georgia,'Times New Roman',serif;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;position:relative}
+.infobtn:hover,.infobtn:focus-visible{color:var(--on-primary);background:var(--primary);border-color:var(--primary)}
+.infobtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.infobtn .tip{position:absolute;top:calc(100% + 8px);right:-6px;z-index:30;width:230px;
+  background:var(--ink-deep);color:var(--canvas);font-size:12px;font-weight:400;font-style:normal;
+  font-family:var(--font-sans);line-height:1.45;text-align:left;border-radius:var(--radius-md);
+  padding:9px 11px;box-shadow:var(--shadow-md);opacity:0;visibility:hidden;transform:translateY(-4px);
+  transition:opacity .12s,transform .12s;pointer-events:none}
+.infobtn:hover .tip,.infobtn:focus-visible .tip{opacity:1;visibility:visible;transform:translateY(0)}
+:root[data-theme="dark"] .infobtn .tip{background:#050508;color:#ececef}
+@media(max-width:600px){.infobtn .tip{width:180px}}
+/* on the navy hero cards the default steel-on-white icon styling has no contrast */
+.snapshot .infobtn,.survival .infobtn{color:var(--on-dark-muted);border-color:rgba(255,255,255,.35)}
+.snapshot .infobtn:hover,.snapshot .infobtn:focus-visible,
+.survival .infobtn:hover,.survival .infobtn:focus-visible{color:var(--brand-navy);background:#fff;border-color:#fff}
 /* When a component that is normally its own card sits inside a section card,
    flatten its chrome so we get one clean card with an h3 header bar on top. */
 .card .board,.card .tablewrap{border:0;box-shadow:none;border-radius:0;background:transparent}
