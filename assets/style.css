@@ -64,6 +64,7 @@ a{color:var(--link-blue);text-decoration:none}
 img.badge{width:20px;height:20px;object-fit:contain;flex:none;vertical-align:middle}
 td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nums}
 .card,.board,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
+.innerboard{background:var(--canvas)}
 .masthead{background:var(--brand-navy);color:var(--on-dark)}
 .masthead .wrap{padding:26px var(--space-lg) 24px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
 .crest{display:flex;align-items:center;gap:14px}
@@ -137,7 +138,7 @@ ul.news .reason{font-size:13px;color:var(--steel)}
 ul.news .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:var(--radius-sm);white-space:nowrap;background:var(--tint-gray);color:var(--charcoal)}
 ul.news .tag.out{background:var(--tint-rose);color:#a02020}
 ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
-.stats{display:grid;grid-template-columns:repeat(8,1fr);gap:10px}
+.stats{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin:18px}
 .stat{padding:16px 8px;text-align:center}
 .stat .v{font-weight:600;font-size:26px;line-height:1;letter-spacing:-.5px}
 .stat .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--steel);margin-top:6px}
