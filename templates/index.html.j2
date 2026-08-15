@@ -107,7 +107,7 @@
                 <td class="tm">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.team }}</td>
                 <td><b>{{ r.points }}</b></td>
                 <td class="formcol">{% for f in r.form %}<span class="fdot {{ f }}"></span>{% endfor %}</td>
-                <td>{{ ('%.0f'|format(r.releg)) + '%' if r.releg is not none else '—' }}</td>
+                <td>{{ ('%.0f'|format(r.releg)) + '%' if r.releg is not none else '-' }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -211,7 +211,7 @@
             </li>
             {% endfor %}
           </ul>
-          {% else %}<p class="empty-note">No upcoming fixtures — the season is complete.</p>{% endif %}
+          {% else %}<p class="empty-note">No upcoming fixtures. The season is complete.</p>{% endif %}
         </div>
         <div class="card">
           <h3>Results</h3>
@@ -259,13 +259,13 @@
       <span><i style="background:var(--hard2)"></i> Relegation</span>
       <span><i style="background:#eaf1fc;border:1px solid var(--line)"></i> Ipswich</span>
     </div>
-    {% else %}<p class="empty-note">League table unavailable right now — it will appear on the next successful update.</p>{% endif %}
+    {% else %}<p class="empty-note">League table unavailable right now. It will appear on the next successful update.</p>{% endif %}
     </div>
 
     <div class="block card">
     <h3>Projected final table</h3>
     {% if predicted and predicted[0].proj is not none %}
-    <p class="empty-note" style="padding:0 2px 12px">Where the season ends if every club keeps its current points-per-game — a projection, not a prediction.</p>
+    <p class="empty-note" style="padding:0 2px 12px">Where the season ends if every club keeps its current points-per-game: a projection, not a prediction.</p>
     <div class="tablewrap">
       <table class="ltable">
         <thead><tr>
@@ -331,7 +331,7 @@
         <div class="canvas-holder"><canvas id="c-xpts"></canvas></div><div class="note" id="n-xpts" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Elo trend</h3><p class="sub">The club's ClubElo rating through the season — a single-number measure of strength. Rising = getting stronger relative to the field.</p>
+        <h3>Elo trend</h3><p class="sub">The club's ClubElo rating through the season: a single-number measure of strength. Rising = getting stronger relative to the field.</p>
         <div class="canvas-holder"><canvas id="c-elo"></canvas></div><div class="note" id="n-elo" hidden></div>
       </div>
       <div class="chartcard wide">
@@ -339,7 +339,7 @@
         <div class="canvas-holder"><canvas id="c-xgd"></canvas></div><div class="note" id="n-xgd" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Home &amp; away split</h3><p class="sub">Per-game points, goals and xG at home vs away — how differently the side performs by venue.</p>
+        <h3>Home &amp; away split</h3><p class="sub">Per-game points, goals and xG at home vs away: how differently the side performs by venue.</p>
         <div class="canvas-holder"><canvas id="c-homeaway"></canvas></div><div class="note" id="n-homeaway" hidden></div>
       </div>
     </div>
@@ -354,15 +354,15 @@
         <div class="canvas-holder"><canvas id="c-finish"></canvas></div><div class="note" id="n-finish" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of the club's best and worst weeks.</p>
+        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match: a quick read of the club's best and worst weeks.</p>
         <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Shots for &amp; against</h3><p class="sub">Actual shots (and shots on target) taken vs faced each match — real volume, not xG. Out-shooting opponents is a good sign.</p>
+        <h3>Shots for &amp; against</h3><p class="sub">Actual shots (and shots on target) taken vs faced each match. Real volume, not xG. Out-shooting opponents is a good sign.</p>
         <div class="canvas-holder"><canvas id="c-shots"></canvas></div><div class="note" id="n-shots" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Where shots come from</h3><p class="sub">Breakdown of shots by situation across recent matches — open play, set pieces, corners and penalties.</p>
+        <h3>Where shots come from</h3><p class="sub">Breakdown of shots by situation across recent matches: open play, set pieces, corners and penalties.</p>
         <div class="canvas-holder"><canvas id="c-situation"></canvas></div><div class="note" id="n-situation" hidden></div>
       </div>
       <div class="chartcard wide">
@@ -401,18 +401,18 @@
     <p class="label">Timing &amp; game-state</p>
     <div class="chartgrid">
       <div class="chartcard wide">
-        <h3>Goals by 15-minute phase</h3><p class="sub">When the club scores and concedes across the match — a read on fast starts, strong finishes and vulnerable spells.</p>
+        <h3>Goals by 15-minute phase</h3><p class="sub">When the club scores and concedes across the match: a read on fast starts, strong finishes and vulnerable spells.</p>
         <div class="canvas-holder"><canvas id="c-timing"></canvas></div><div class="note" id="n-timing" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Points by half-time state</h3><p class="sub">Points won per game when ahead, level or behind at the break — how the club closes matches out.</p>
+        <h3>Points by half-time state</h3><p class="sub">Points won per game when ahead, level or behind at the break: how the club closes matches out.</p>
         <div class="canvas-holder"><canvas id="c-gamestate"></canvas></div><div class="note" id="n-gamestate" hidden></div>
       </div>
     </div>
     <p class="label">Discipline</p>
     <div class="chartgrid">
       <div class="chartcard">
-        <h3>Discipline</h3><p class="sub">Fouls and cards per game, for and against — how the club's discipline compares with what it draws from opponents.</p>
+        <h3>Discipline</h3><p class="sub">Fouls and cards per game, for and against: how the club's discipline compares with what it draws from opponents.</p>
         <div class="canvas-holder"><canvas id="c-discipline"></canvas></div><div class="note" id="n-discipline" hidden></div>
       </div>
       <div class="chartcard wide">
@@ -423,20 +423,20 @@
     <p class="label">League context</p>
     <div class="chartgrid">
       <div class="chartcard wide">
-        <h3>League: chance creation vs concession</h3><p class="sub">Every club — xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
+        <h3>League: chance creation vs concession</h3><p class="sub">Every club: xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
         <div class="canvas-holder" style="height:340px"><canvas id="c-scatter"></canvas></div><div class="note" id="n-scatter" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>How Ipswich compare</h3><p class="sub">Ipswich's rank out of 20 on each measure — a longer bar is better.</p>
+        <h3>How Ipswich compare</h3><p class="sub">Ipswich's rank out of 20 on each measure: a longer bar is better.</p>
         <div class="ranks" id="ranks"></div>
         <div class="note" id="n-ranks" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Team strength profile</h3><p class="sub">FPL's attack, defence and overall ratings (home and away) as a percentile vs the league — the club's stylistic fingerprint.</p>
+        <h3>Team strength profile</h3><p class="sub">FPL's attack, defence and overall ratings (home and away) as a percentile vs the league: the club's stylistic fingerprint.</p>
         <div class="canvas-holder"><canvas id="c-strength"></canvas></div><div class="note" id="n-strength" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Upcoming difficulty</h3><p class="sub">FPL difficulty of the next fixtures (1 easy → 5 hard) — a quick look at the run ahead.</p>
+        <h3>Upcoming difficulty</h3><p class="sub">FPL difficulty of the next fixtures (1 easy to 5 hard): a quick look at the run ahead.</p>
         <div class="canvas-holder"><canvas id="c-fdr"></canvas></div><div class="note" id="n-fdr" hidden></div>
       </div>
     </div>
@@ -449,7 +449,7 @@
     <div class="block card">
     <h3>Results &amp; reports</h3>
     {% if match_pages %}
-    <p class="empty-note" style="padding:0 2px 12px">Every match this season — tap any row for the full report.</p>
+    <p class="empty-note" style="padding:0 2px 12px">Every match this season. Tap any row for the full report.</p>
     <div class="tablewrap">
       <table class="ltable">
         <thead><tr><th>Date</th><th class="tm">Opponent</th><th>Result</th><th>Score</th><th>xG</th></tr></thead>
@@ -460,7 +460,7 @@
             <td class="tm">{% if m.opponent_badge %}<img class="badge" src="{{ m.opponent_badge }}" alt="">{% endif %}<a class="playerlink" href="match/{{ m.id }}.html">{{ m.opponent }}</a> <span class="ha">{{ '(H)' if m.home else '(A)' }}</span></td>
             <td><span class="res {{ m.result }}">{{ m.result }}</span></td>
             <td><b>{{ m.gf }}–{{ m.ga }}</b></td>
-            <td>{% if m.xg_for is not none %}{{ '%.1f'|format(m.xg_for) }}–{{ '%.1f'|format(m.xg_against) }}{% else %}—{% endif %}</td>
+            <td>{% if m.xg_for is not none %}{{ '%.1f'|format(m.xg_for) }}-{{ '%.1f'|format(m.xg_against) }}{% else %}-{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -589,7 +589,7 @@
   });
   var css = getComputedStyle(document.documentElement);
   function cv(n){ return css.getPropertyValue(n).trim(); }
-  var C = {blue:cv('--primary'),bright:cv('--brand-navy-mid'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid'),pink:cv('--brand-pink'),pitch:cv('--tint-mint'),pitchline:cv('--hairline-strong')};
+  var C = {blue:cv('--primary'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid'),pink:cv('--brand-pink'),pitch:cv('--tint-mint'),pitchline:cv('--hairline-strong')};
   var FDR = {1:cv('--fdr-1'),2:cv('--fdr-2'),3:cv('--fdr-3'),4:cv('--fdr-4'),5:cv('--fdr-5')};
   var SHOT = {Goal:cv('--win'),SavedShot:cv('--link-blue'),BlockedShot:cv('--brand-orange'),MissedShots:cv('--stone'),ShotOnPost:cv('--loss'),OwnGoal:cv('--stone')};
 
@@ -727,7 +727,7 @@
           {label:'PPDA (5-game avg)',data:rollAvg(uh.map(function(h){return h.ppda;}),5),
             borderColor:C.blue,tension:.3,pointRadius:2,spanGaps:true}]},
         options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},
-          y:{grid:{color:C.line},title:{display:true,text:'PPDA — lower = press harder'}}}})}); }
+          y:{grid:{color:C.line},title:{display:true,text:'PPDA (lower = press harder)'}}}})}); }
       else showNote('ppda','No pressing data yet.');
 
       // Territory — deep completions for vs against
@@ -849,7 +849,7 @@
               borderDash:[5,4],pointRadius:0,fill:false}]},
           options:baseOpts({
             plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){
-              return ctx.raw.name?(ctx.raw.name+' — '+ctx.raw.y+' G, '+ctx.raw.x.toFixed(2)+' npxG'):'';}}}},
+              return ctx.raw.name?(ctx.raw.name+': '+ctx.raw.y+' G, '+ctx.raw.x.toFixed(2)+' npxG'):'';}}}},
             scales:{x:{title:{display:true,text:'npxG'},beginAtZero:true,grid:{color:C.line}},
                     y:{title:{display:true,text:'Goals'},beginAtZero:true,grid:{color:C.line}}}})});
       } else showNote('finish','No shot data yet.');
@@ -984,12 +984,12 @@
     var a=document.getElementById('prof-a'), b=document.getElementById('prof-b');
     var la=document.getElementById('prof-a-list'), lb=document.getElementById('prof-b-list');
     if(!profs.length){ var pc=document.querySelector('.profile-controls'); if(pc)pc.style.display='none';
-      showNote('radar','No player minutes yet — profiles appear once games are played.'); return; }
+      showNote('radar','No player minutes yet. Profiles appear once games are played.'); return; }
     if(!window.Chart){ showNote('radar','Charts library did not load.'); return; }
     var M=[['goals','Goals'],['assists','Assists'],['npxg','npxG'],['xa','xA'],
            ['shots','Shots'],['key_passes','Key passes'],['xgchain','xGChain'],['xgbuildup','xGBuildup']];
     // unique display key per player, plus datalist options (Ipswich list vs all-PL list)
-    function keyOf(p){return p.name + (p.team ? ' — ' + p.team : '');}
+    function keyOf(p){return p.name + (p.team ? ' (' + p.team + ')' : '');}
     var byKey={};
     profs.forEach(function(p){ byKey[keyOf(p)]=p; });
     function opt(p){var o=document.createElement('option'); o.value=keyOf(p); o.label=p.pos; return o;}
