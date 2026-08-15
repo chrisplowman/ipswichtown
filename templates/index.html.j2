@@ -69,6 +69,15 @@
           {% else %}<span class="fg-pill {{ m.result }}" title="{{ m.opponent }} {{ m.score }} ({{ 'H' if m.home else 'A' }})">{{ m.result }}</span>{% endif %}
           {% endfor %}
         </div>
+        {% if form_guide.xpts is not none or form_guide.exp_odds is not none or form_guide.run_label %}
+        <div class="fg-analysis">
+          {% if form_guide.exp_odds is not none %}<span class="fg-chip"><span class="k">Expected (odds)</span> <b>{{ form_guide.exp_odds }}</b> pts</span>{% endif %}
+          {% if form_guide.xpts is not none %}<span class="fg-chip"><span class="k">Deserved (xPts)</span> <b>{{ form_guide.xpts }}</b> pts</span>{% endif %}
+          {% if form_guide.xgf is not none %}<span class="fg-chip"><span class="k">xG</span> <b>{{ form_guide.xgf }}</b>–<b>{{ form_guide.xga }}</b></span>{% endif %}
+          {% if form_guide.run_label %}<span class="fg-chip"><span class="k">Run</span> {{ form_guide.run_label }} (opponents avg {{ form_guide.opp_avg_rank|ordinal }})</span>{% endif %}
+          {% if form_guide.verdict %}<span class="fg-verdict {{ form_guide.verdict }}">{{ {'over':'Outperforming expectation','under':'Underperforming expectation','par':'In line with expectation'}[form_guide.verdict] }}</span>{% endif %}
+        </div>
+        {% endif %}
       </div>
     </div>
     {% endif %}
@@ -338,7 +347,7 @@
         <h3>Finishing: goals vs npxG</h3><p class="sub">Non-penalty. Above the dashed line = outscoring the model.</p>
         <div class="canvas-holder"><canvas id="c-finish"></canvas></div><div class="note" id="n-finish" hidden></div>
       </div>
-      <div class="chartcard wide">
+      <div class="chartcard">
         <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match — a quick read of the club's best and worst weeks.</p>
         <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
       </div>
