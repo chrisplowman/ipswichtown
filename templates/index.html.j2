@@ -73,25 +73,23 @@
           <span class="fg-summary">{{ form_guide.pts }} pts · {{ '%.2f'|format(form_guide.ppg) }} PPG
             <span class="fg-trend {{ form_guide.trend }}" title="Momentum {{ form_guide.trend }}">{{ {'up':'▲','down':'▼','flat':'▬'}[form_guide.trend] }}</span></span>
         </div>
-        <div class="fg-pills">
+        <div class="fg-tiles">
           {% for m in form_guide.matches %}
-          <details class="fg-pill-wrap" name="fg-detail">
-            <summary class="fg-pill {{ m.result }}" title="{{ m.opponent }} {{ m.score }} ({{ 'H' if m.home else 'A' }})">{{ m.result }}</summary>
-            <div class="fg-pill-detail">
-              <div class="fg-pd-head">
-                <span class="fg-pd-opp">{{ m.opponent_short or m.opponent }}</span>
-                <span class="fg-pd-meta">{{ 'H' if m.home else 'A' }}{% if m.event %} · GW{{ m.event }}{% endif %}{% if m.date %} · {{ m.date }}{% endif %}</span>
-              </div>
-              <div class="fg-pd-score">{{ m.score }}</div>
-              <div class="fg-pd-rows">
-                <div><span class="k">Points taken</span><span class="v">{{ m.pts }}</span></div>
-                {% if m.exp_odds is not none %}<div><span class="k">Expected (odds)</span><span class="v">{{ m.exp_odds }} pts</span></div>{% endif %}
-                {% if m.xpts is not none %}<div><span class="k">Deserved (xPts)</span><span class="v">{{ '%.2f'|format(m.xpts) }} pts</span></div>{% endif %}
-                {% if m.xg_for is not none %}<div><span class="k">xG</span><span class="v">{{ '%.2f'|format(m.xg_for) }}-{{ '%.2f'|format(m.xg_against) }}</span></div>{% endif %}
-              </div>
-              {% if m.match_id %}<a class="fg-pd-link" href="match/{{ m.match_id }}.html">Full match report →</a>{% endif %}
+          <div class="fg-tile">
+            <div class="fg-tile-top">
+              <span class="res {{ m.result }}">{{ m.result }}</span>
+              <span class="fg-tile-opp">{{ m.opponent_short or m.opponent }}</span>
             </div>
-          </details>
+            <div class="fg-tile-meta">{{ 'H' if m.home else 'A' }}{% if m.event %} · GW{{ m.event }}{% endif %}</div>
+            <div class="fg-tile-score">{{ m.score }}</div>
+            <div class="fg-tile-rows">
+              <div><span class="k">Pts</span><span class="v">{{ m.pts }}</span></div>
+              {% if m.exp_odds is not none %}<div><span class="k">Odds</span><span class="v">{{ m.exp_odds }}</span></div>{% endif %}
+              {% if m.xpts is not none %}<div><span class="k">xPts</span><span class="v">{{ '%.2f'|format(m.xpts) }}</span></div>{% endif %}
+              {% if m.xg_for is not none %}<div><span class="k">xG</span><span class="v">{{ '%.2f'|format(m.xg_for) }}-{{ '%.2f'|format(m.xg_against) }}</span></div>{% endif %}
+            </div>
+            {% if m.match_id %}<a class="fg-tile-link" href="match/{{ m.match_id }}.html">Report →</a>{% endif %}
+          </div>
           {% endfor %}
         </div>
         {% if form_guide.xpts is not none or form_guide.exp_odds is not none or form_guide.run_label %}
