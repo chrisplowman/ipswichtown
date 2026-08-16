@@ -81,7 +81,10 @@
 :root[data-theme="teletext"] body{font-size:19px;line-height:1.5;letter-spacing:.3px;text-transform:uppercase}
 :root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
 :root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
-:root[data-theme="teletext"] .health-note{background:#000;border:1px solid var(--brand-orange);color:var(--brand-orange)}
+/* a literal bright orange, not --brand-orange (a dark brick-red in this theme,
+   too low-contrast as text-on-black); keeps "warning" visually distinct from
+   the --loss red used elsewhere */
+:root[data-theme="teletext"] .health-note{background:#000;border:1px solid #ff8000;color:#ff8000}
 :root[data-theme="teletext"] .crest .mark{background:#000;border:1px solid #fff;color:#fff}
 /* white-on-bright-fill components need black text against green/yellow/cyan/orange */
 :root[data-theme="teletext"] .formdots i.W,:root[data-theme="teletext"] .formdots i.D,
@@ -91,9 +94,15 @@
 :root[data-theme="teletext"] .page-match .pill.W,:root[data-theme="teletext"] .page-match .pill.D,
 :root[data-theme="teletext"] .wp-w,:root[data-theme="teletext"] .wp-d,
 :root[data-theme="teletext"] .fdr-1,:root[data-theme="teletext"] .fdr-2,
-:root[data-theme="teletext"] .fdr-3,:root[data-theme="teletext"] .fdr-4,
+:root[data-theme="teletext"] .fdr-3,:root[data-theme="teletext"] .fdr-4{color:#000}
+/* --brand-orange is a dark brick-red in this theme (not bright like --fdr-4), so
+   anything filled with it needs to stay white text, not join the group above */
 :root[data-theme="teletext"] .previewtoggle.on,:root[data-theme="teletext"] .previewbanner,
-:root[data-theme="teletext"] .previewbanner a{color:#000}
+:root[data-theme="teletext"] .previewbanner a{color:#fff}
+/* ...and as text-on-navy (not a fill) it needs a genuinely bright colour rather
+   than its own dark tone; reuse the same yellow already used for the info icons
+   on these same cards */
+:root[data-theme="teletext"] .snapshot-label{color:#ffff00}
 /* position pills + news tags: loud solid blocks, not the dim tint tokens above */
 :root[data-theme="teletext"] .p-GKP{background:#ff00ff;color:#000}
 :root[data-theme="teletext"] .p-DEF{background:#00ff00;color:#000}
