@@ -20,15 +20,20 @@
 <link rel="stylesheet" href="{{ css_href }}">
 <script>
 (function(){var K='itfc-theme',d=document.documentElement;
- function set(t){d.setAttribute('data-theme',t);}
+ function set(t){d.setAttribute('data-theme',t);
+   // VT323 is only for teletext mode, so only fetch it when that mode is active.
+   if(t==='teletext'&&!document.getElementById('vt323-font')){
+     var l=document.createElement('link');l.id='vt323-font';l.rel='stylesheet';
+     l.href='https://fonts.googleapis.com/css2?family=VT323&display=swap';
+     document.head.appendChild(l);
+   }
+ }
  try{set(localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch(e){set('light');}
- window.__toggleTheme=function(){
+ window.__setTheme=function(t){
    // Charts bake their colours in from CSS vars at build time (see cv() below),
    // so a theme switch needs a fresh load to recolour them correctly rather than
    // patching chart chrome in place — most visible jumping into/out of teletext.
-   var order=['light','dark','teletext'],cur=d.getAttribute('data-theme')||'light';
-   var n=order[(order.indexOf(cur)+1)%order.length];
-   set(n);try{localStorage.setItem(K,n);}catch(e){}
+   set(t);try{localStorage.setItem(K,t);}catch(e){}
    location.reload();
  };
 })();

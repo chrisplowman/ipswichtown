@@ -74,9 +74,11 @@
   --win:#00ff00; --draw:#ffff00; --loss:#ff0000;
   --fdr-1:#00ff00; --fdr-2:#00ffff; --fdr-3:#ffff00; --fdr-4:#ff8000; --fdr-5:#ff0000;
   --radius-xs:0; --radius-sm:0; --radius-md:0; --radius-lg:0; --radius-full:0;
-  --font-sans:'Consolas','Courier New',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --font-sans:'VT323','Consolas','Courier New',ui-monospace,'SFMono-Regular',Menlo,monospace;
 }
-:root[data-theme="teletext"] body{letter-spacing:.2px}
+/* VT323 is a pixel font drawn thin and small at normal text sizes, so bump
+   the base size and loosen tracking rather than let it read as illegible */
+:root[data-theme="teletext"] body{font-size:19px;line-height:1.5;letter-spacing:.3px}
 :root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
 :root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
 :root[data-theme="teletext"] .health-note{background:#000;border:1px solid var(--brand-orange);color:var(--brand-orange)}
@@ -110,16 +112,20 @@
 :root[data-theme="teletext"] .page-match .eyebrow::before{content:"P199 "}
 :root[data-theme="teletext"] .page-player .eyebrow::before{content:"P198 "}
 
-/* theme toggle button */
-.themetoggle{background:transparent;border:1px solid rgba(255,255,255,.25);color:var(--on-dark);
-  width:34px;height:34px;border-radius:var(--radius-full);cursor:pointer;font-size:15px;line-height:1;
-  display:inline-flex;align-items:center;justify-content:center;padding:0}
-.themetoggle:hover{background:rgba(255,255,255,.1)}
-/* the icon shown is always the *next* mode in the light -> dark -> teletext -> light cycle */
-.themetoggle::before{content:"\263E"}                                        /* light: next is dark (moon) */
-:root[data-theme="dark"] .themetoggle::before{content:"TXT";font-size:9px;font-weight:800;letter-spacing:.5px}  /* dark: next is teletext */
-:root[data-theme="teletext"] .themetoggle::before{content:"\2600"}          /* teletext: next is light (sun) */
-:root[data-theme="teletext"] .themetoggle{border-radius:0;border-color:#00ffff}
+/* theme switch: a 3-position light / dark / teletext segmented control.
+   The active segment is matched purely in CSS off the data-theme attribute
+   the <head> script already sets pre-paint — no JS needed to mark it. */
+.themeswitch{display:inline-flex;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius-full);padding:2px;gap:2px}
+.themeswitch .opt{all:unset;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.3px;
+  color:var(--on-dark-muted);padding:6px 11px;border-radius:var(--radius-full);line-height:1;
+  text-align:center;box-sizing:border-box}
+.themeswitch .opt:hover{color:var(--on-dark)}
+.themeswitch .opt:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+:root[data-theme="light"] .themeswitch .opt[data-theme-opt="light"],
+:root[data-theme="dark"] .themeswitch .opt[data-theme-opt="dark"],
+:root[data-theme="teletext"] .themeswitch .opt[data-theme-opt="teletext"]{
+  background:var(--on-dark);color:var(--brand-navy);font-weight:700}
+:root[data-theme="teletext"] .themeswitch{border-color:#00ffff}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
