@@ -20,6 +20,9 @@
 <link rel="stylesheet" href="{{ css_href }}">
 <script>
 (function(){var K='itfc-theme',d=document.documentElement;
+ // Only the first page view of a session gets the card rise-in animation;
+ // every tab click after that is a full navigation and shouldn't replay it.
+ try{if(sessionStorage.getItem('itfc-seen')){d.classList.add('seen');}else{sessionStorage.setItem('itfc-seen','1');}}catch(e){}
  function set(t){d.setAttribute('data-theme',t);
    // VT323 is only for teletext mode, so only fetch it when that mode is active.
    if(t==='teletext'&&!document.getElementById('vt323-font')){

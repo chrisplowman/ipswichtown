@@ -126,7 +126,7 @@
    the <head> script already sets pre-paint — no JS needed to mark it. */
 .themeswitch{display:inline-flex;border:1px solid rgba(255,255,255,.3);border-radius:var(--radius-full);padding:2px;gap:2px}
 .themeswitch .opt{all:unset;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.3px;
-  color:var(--on-dark-muted);padding:6px 11px;border-radius:var(--radius-full);line-height:1;
+  color:var(--on-dark-muted);padding:15px 11px;border-radius:var(--radius-full);line-height:1;
   text-align:center;box-sizing:border-box}
 .themeswitch .opt:hover{color:var(--on-dark)}
 .themeswitch .opt:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
@@ -233,7 +233,8 @@ body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-
 a{color:var(--link-blue);text-decoration:none}
 .wrap{max-width:1080px;margin:0 auto;padding:0 var(--space-lg)}
 img.badge{width:20px;height:20px;object-fit:contain;flex:none;vertical-align:middle}
-td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nums}
+td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr,
+.surv-big,.wp-bar,.page-match .score-row .sc,.page-match .odds .o .p{font-variant-numeric:tabular-nums}
 .card,.board,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
 .innerboard{background:var(--canvas)}
 .masthead{background:var(--brand-navy);color:var(--on-dark)}
@@ -241,7 +242,7 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nu
 .crest{display:flex;align-items:center;gap:14px}
 .crest .mark{width:46px;height:46px;border-radius:var(--radius-md);background:#fff;flex:none;display:flex;align-items:center;justify-content:center;color:var(--brand-navy);font-weight:700;font-size:18px;letter-spacing:-.5px}
 .crest .mark img{width:38px;height:38px;object-fit:contain}
-.wordmark{font-weight:600;font-size:clamp(26px,4vw,34px);line-height:1.05;letter-spacing:-1px}
+.wordmark{font-weight:600;font-size:clamp(26px,4vw,34px);line-height:1.05;letter-spacing:-1px;text-wrap:balance}
 .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--on-dark-muted);font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .eyebrow .pos{color:var(--on-primary);background:var(--primary);border-radius:var(--radius-full);padding:3px 10px;letter-spacing:.3px}
 .updated{font-size:13px;color:var(--on-dark-muted);text-align:right}
@@ -305,7 +306,7 @@ section.panel[hidden]{display:none}
 ul.news li{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--hairline-soft)}
 ul.news li:last-child{border-bottom:0}
 ul.news .nm{flex:1;font-weight:500}
-ul.news .reason{font-size:13px;color:var(--steel)}
+ul.news .reason{font-size:13px;color:var(--steel);text-wrap:pretty}
 ul.news .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:var(--radius-sm);white-space:nowrap;background:var(--tint-gray);color:var(--charcoal)}
 ul.news .tag.out{background:var(--tint-rose);color:#a02020}
 ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
@@ -317,7 +318,7 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 .stat .v.pos{color:var(--win)}
 .stat .v.neg{color:var(--loss)}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.card h3,.chartcard h3{font-weight:600;font-size:16px;letter-spacing:-.2px;color:var(--charcoal)}
+.card h3,.chartcard h3{font-weight:600;font-size:16px;letter-spacing:-.2px;color:var(--charcoal);text-wrap:balance}
 /* Every card's title lives in its own header div (.cardhead), never bare in the
    card body, so an info icon can sit opposite it without touching the title markup. */
 .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -334,10 +335,12 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
    calculation and data source on hover/focus */
 .infobtn{all:unset;cursor:help;flex:none;width:17px;height:17px;border-radius:50%;
   border:1px solid var(--hairline-strong);color:var(--steel);font-size:11px;font-weight:700;
+  /* keep the visible glyph small but extend the actual tap target to 40x40 */
   font-style:italic;font-family:Georgia,'Times New Roman',serif;line-height:1;
   display:inline-flex;align-items:center;justify-content:center;position:relative}
 .infobtn:hover,.infobtn:focus-visible{color:var(--on-primary);background:var(--primary);border-color:var(--primary)}
 .infobtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.infobtn::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px}
 .infobtn .tip{position:absolute;top:calc(100% + 8px);right:-6px;z-index:30;width:230px;
   background:var(--ink-deep);color:var(--canvas);font-size:12px;font-weight:400;font-style:normal;
   font-family:var(--font-sans);line-height:1.45;text-align:left;border-radius:var(--radius-md);
@@ -384,7 +387,7 @@ ul.list li.has-link .opp{color:var(--primary)}
 .res.D{background:var(--draw)}
 .res.L{background:var(--loss)}
 .score{font-weight:600;font-size:14px}
-.empty-note{padding:22px 18px;color:var(--steel);font-size:14px}
+.empty-note{padding:22px 18px;color:var(--steel);font-size:14px;text-wrap:pretty}
 .snapshot{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
 .playerlink{color:var(--primary);text-decoration:none;font-weight:500}
 .playerlink:hover{text-decoration:underline}
@@ -419,11 +422,13 @@ ul.list li.has-link .opp{color:var(--primary)}
 .rivaltable tr.ips{background:var(--tint-sky)}
 .rivaltable tr.ips td:nth-child(2){font-weight:600;color:var(--primary)}
 .rivaltable tbody tr:last-child td{border-bottom:0}
-.snapshot p{margin:0;font-size:16px;line-height:1.55;color:#eef1f7;font-weight:400}
+.snapshot p{margin:0;font-size:16px;line-height:1.55;color:#eef1f7;font-weight:400;text-wrap:pretty}
 @media(max-width:600px){.snapshot p{font-size:15px}}
 ul.newslist li{display:flex;align-items:flex-start;gap:16px;padding:16px 18px;border-bottom:1px solid var(--hairline-soft)}
 ul.newslist li:last-child{border-bottom:0}
-.newslist .thumb{flex:none;width:132px;height:88px;object-fit:cover;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--hairline)}
+.newslist .thumb{flex:none;width:132px;height:88px;object-fit:cover;border-radius:var(--radius-md);background:var(--surface);
+  outline:1px solid oklch(0 0 0 / 0.1);outline-offset:-1px}
+:root[data-theme="dark"] .newslist .thumb,:root[data-theme="teletext"] .newslist .thumb{outline-color:oklch(1 0 0 / 0.1)}
 .newslist .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .newslist .meta{display:flex;align-items:center;gap:10px}
 .newslist .src{flex:none;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--steel);background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-sm);padding:3px 8px;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -451,7 +456,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .chartcard{padding:18px 20px 20px}
 .chartcard.wide{grid-column:1 / -1}
 .chartcard h3{margin:0 0 4px}
-.chartcard p.sub{margin:0 0 16px;font-size:13px;color:var(--steel)}
+.chartcard p.sub{margin:0 0 16px;font-size:13px;color:var(--steel);text-wrap:pretty}
 .canvas-holder{position:relative;height:260px}
 .chartcard .note{color:var(--steel);font-size:14px;padding:40px 0;text-align:center}
 .shotbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -491,9 +496,9 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .p-FWD{background:var(--tint-peach);color:var(--brand-orange-deep)}
 .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--slate);cursor:pointer}
-.toggle input{appearance:none;width:38px;height:22px;background:var(--hairline-strong);border-radius:var(--radius-full);position:relative;cursor:pointer;transition:.15s;flex:none}
+.toggle input{appearance:none;width:38px;height:22px;background:var(--hairline-strong);border-radius:var(--radius-full);position:relative;cursor:pointer;transition-property:background-color;transition-duration:.15s;flex:none}
 .toggle input:checked{background:var(--primary)}
-.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.15s}
+.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition-property:transform;transition-duration:.15s}
 .toggle input:checked::after{transform:translateX(16px)}
 .profile-controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .profile-controls label{font-size:12px;color:var(--steel);display:flex;flex-direction:column;gap:5px}
@@ -507,8 +512,13 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   .cols,.chartgrid,.ranks{grid-template-columns:1fr}
   .tabs .wrap{overflow-x:auto}
 }
+/* Only the first page view of a session gets the rise-in; every tab click after
+   that is a full navigation and shouldn't replay a 450ms entrance on every card
+   (see html.seen, set by the theme-init script before first paint). */
 @media(prefers-reduced-motion:no-preference){
-  .board,.stat,.card,.chartcard,.tablewrap,.oppcard{animation:rise .45s cubic-bezier(.2,.7,.3,1) both}
+  html:not(.seen) .board,html:not(.seen) .stat,html:not(.seen) .card,
+  html:not(.seen) .chartcard,html:not(.seen) .tablewrap,html:not(.seen) .oppcard{
+    animation:rise .45s cubic-bezier(.2,.7,.3,1) both}
 }
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
@@ -520,7 +530,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .fg-trend{font-size:13px;margin-left:4px}
 .fg-trend.up{color:var(--win)}.fg-trend.down{color:var(--loss)}.fg-trend.flat{color:var(--stone)}
 .fg-pills{display:flex;gap:8px;flex-wrap:wrap}
-.fg-pill{width:34px;height:34px;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;
+.fg-pill{width:40px;height:40px;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;
   font-weight:700;font-size:14px;color:#fff;text-decoration:none;flex:none;transition:transform .1s}
 a.fg-pill:hover{transform:translateY(-2px)}
 .fg-pill.W{background:var(--win)}.fg-pill.D{background:var(--draw)}.fg-pill.L{background:var(--loss)}
