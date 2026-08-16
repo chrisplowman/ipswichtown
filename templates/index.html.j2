@@ -94,7 +94,7 @@
         {% if survival %}
         <div class="survival">
           <div class="cardhead">
-            <div class="snapshot-label" style="color:var(--brand-orange)">Survival forecast</div>
+            <div class="snapshot-label">Survival forecast</div>
             <button class="infobtn" type="button" aria-label="About this forecast"><span aria-hidden="true">i</span><span class="tip" role="tooltip">A Monte Carlo simulation of every remaining fixture ({{ '{:,}'.format(survival.sims) }} runs), using Elo-based win probabilities. Source: ClubElo ratings and the FPL fixture list.</span></button>
           </div>
           <div class="surv-big">{{ survival.survive_pct }}%</div>

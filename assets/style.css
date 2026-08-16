@@ -81,7 +81,10 @@
 :root[data-theme="teletext"] body{font-size:19px;line-height:1.5;letter-spacing:.3px;text-transform:uppercase}
 :root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
 :root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
-:root[data-theme="teletext"] .health-note{background:#000;border:1px solid var(--brand-orange);color:var(--brand-orange)}
+/* a literal bright orange, not --brand-orange (a dark brick-red in this theme,
+   too low-contrast as text-on-black); keeps "warning" visually distinct from
+   the --loss red used elsewhere */
+:root[data-theme="teletext"] .health-note{background:#000;border:1px solid #ff8000;color:#ff8000}
 :root[data-theme="teletext"] .crest .mark{background:#000;border:1px solid #fff;color:#fff}
 /* white-on-bright-fill components need black text against green/yellow/cyan/orange */
 :root[data-theme="teletext"] .formdots i.W,:root[data-theme="teletext"] .formdots i.D,
@@ -91,9 +94,15 @@
 :root[data-theme="teletext"] .page-match .pill.W,:root[data-theme="teletext"] .page-match .pill.D,
 :root[data-theme="teletext"] .wp-w,:root[data-theme="teletext"] .wp-d,
 :root[data-theme="teletext"] .fdr-1,:root[data-theme="teletext"] .fdr-2,
-:root[data-theme="teletext"] .fdr-3,:root[data-theme="teletext"] .fdr-4,
+:root[data-theme="teletext"] .fdr-3,:root[data-theme="teletext"] .fdr-4{color:#000}
+/* --brand-orange is a dark brick-red in this theme (not bright like --fdr-4), so
+   anything filled with it needs to stay white text, not join the group above */
 :root[data-theme="teletext"] .previewtoggle.on,:root[data-theme="teletext"] .previewbanner,
-:root[data-theme="teletext"] .previewbanner a{color:#000}
+:root[data-theme="teletext"] .previewbanner a{color:#fff}
+/* ...and as text-on-navy (not a fill) it needs a genuinely bright colour rather
+   than its own dark tone; reuse the same yellow already used for the info icons
+   on these same cards */
+:root[data-theme="teletext"] .snapshot-label{color:#ffff00}
 /* position pills + news tags: loud solid blocks, not the dim tint tokens above */
 :root[data-theme="teletext"] .p-GKP{background:#ff00ff;color:#000}
 :root[data-theme="teletext"] .p-DEF{background:#00ff00;color:#000}
@@ -126,6 +135,98 @@
 :root[data-theme="teletext"] .themeswitch .opt[data-theme-opt="teletext"]{
   background:var(--on-dark);color:var(--brand-navy);font-weight:700}
 :root[data-theme="teletext"] .themeswitch{border-color:#00ffff}
+
+/* Minimum legible size in teletext mode: nothing renders below 16px, even the
+   fine print. Below this floor, hierarchy comes from weight/case/colour instead
+   of size (see the uppercase + colour-tiered rules above). */
+:root[data-theme="teletext"] .themeswitch .opt,
+:root[data-theme="teletext"] .eyebrow,
+:root[data-theme="teletext"] .updated,
+:root[data-theme="teletext"] .previewtoggle,
+:root[data-theme="teletext"] .previewbanner,
+:root[data-theme="teletext"] .tabs a,
+:root[data-theme="teletext"] .label,
+:root[data-theme="teletext"] .board::before,
+:root[data-theme="teletext"] .board .side .full,
+:root[data-theme="teletext"] .board .vs,
+:root[data-theme="teletext"] .board .when,
+:root[data-theme="teletext"] .board.empty .row,
+:root[data-theme="teletext"] .who .sub,
+:root[data-theme="teletext"] .metric .k,
+:root[data-theme="teletext"] .formdots i,
+:root[data-theme="teletext"] .h2h-dots i,
+:root[data-theme="teletext"] .wp-bar,
+:root[data-theme="teletext"] .wp-key,
+:root[data-theme="teletext"] .h2h,
+:root[data-theme="teletext"] .h2h-label,
+:root[data-theme="teletext"] ul.news .reason,
+:root[data-theme="teletext"] ul.news .tag,
+:root[data-theme="teletext"] .stat .k,
+:root[data-theme="teletext"] .infobtn,
+:root[data-theme="teletext"] .infobtn .tip,
+:root[data-theme="teletext"] .opp .ha,
+:root[data-theme="teletext"] .kick,
+:root[data-theme="teletext"] .gw,
+:root[data-theme="teletext"] .fdr,
+:root[data-theme="teletext"] .res,
+:root[data-theme="teletext"] .score,
+:root[data-theme="teletext"] .empty-note,
+:root[data-theme="teletext"] .reftable,
+:root[data-theme="teletext"] .reftable thead th,
+:root[data-theme="teletext"] .subhead,
+:root[data-theme="teletext"] .snapshot-label,
+:root[data-theme="teletext"] .surv-sub,
+:root[data-theme="teletext"] .surv-meta,
+:root[data-theme="teletext"] .rivaltable,
+:root[data-theme="teletext"] .rivaltable thead th,
+:root[data-theme="teletext"] .snapshot p,
+:root[data-theme="teletext"] .newslist .src,
+:root[data-theme="teletext"] .newslist .date,
+:root[data-theme="teletext"] .newslist .headline,
+:root[data-theme="teletext"] .newslist .summary,
+:root[data-theme="teletext"] table,
+:root[data-theme="teletext"] .ltable thead th,
+:root[data-theme="teletext"] .lkey,
+:root[data-theme="teletext"] .chartcard p.sub,
+:root[data-theme="teletext"] .chartcard .note,
+:root[data-theme="teletext"] .shotbar select,
+:root[data-theme="teletext"] .profile-controls select,
+:root[data-theme="teletext"] .shotscore,
+:root[data-theme="teletext"] .matchreport,
+:root[data-theme="teletext"] .matchreport .mr .k,
+:root[data-theme="teletext"] .shotkey,
+:root[data-theme="teletext"] .rankrow .top,
+:root[data-theme="teletext"] .rankrow .top .pos,
+:root[data-theme="teletext"] #squad thead th,
+:root[data-theme="teletext"] .pill,
+:root[data-theme="teletext"] .toggle,
+:root[data-theme="teletext"] .profile-controls label,
+:root[data-theme="teletext"] .profile-controls input,
+:root[data-theme="teletext"] footer,
+:root[data-theme="teletext"] .health-note,
+:root[data-theme="teletext"] .fg-label,
+:root[data-theme="teletext"] .fg-summary,
+:root[data-theme="teletext"] .fg-trend,
+:root[data-theme="teletext"] .fg-pill,
+:root[data-theme="teletext"] .fg-analysis,
+:root[data-theme="teletext"] .fg-chip .k,
+:root[data-theme="teletext"] .fg-verdict,
+:root[data-theme="teletext"] .page-match .back,
+:root[data-theme="teletext"] .page-match .masthead .season,
+:root[data-theme="teletext"] .page-match h3,
+:root[data-theme="teletext"] .page-match .score-row .side .nm,
+:root[data-theme="teletext"] .page-match .score-card .meta,
+:root[data-theme="teletext"] .page-match .statrow .top,
+:root[data-theme="teletext"] .page-match .statrow .top .v,
+:root[data-theme="teletext"] .page-match .legend,
+:root[data-theme="teletext"] .page-match thead th,
+:root[data-theme="teletext"] .page-match ul.plain li,
+:root[data-theme="teletext"] .page-match .assist,
+:root[data-theme="teletext"] .page-match .odds .o .k,
+:root[data-theme="teletext"] .page-player .hero .pos,
+:root[data-theme="teletext"] .page-player .hero .fpl .k,
+:root[data-theme="teletext"] .page-player .tile .k{font-size:16px}
+
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
