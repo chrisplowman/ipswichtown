@@ -50,7 +50,10 @@
     {% if summary_text %}
     <div class="block">
       <div class="snapshot">
-        <div class="snapshot-label">Season snapshot</div>
+        <div class="cardhead">
+          <div class="snapshot-label">Season snapshot</div>
+          <button class="infobtn" type="button" aria-label="About this summary"><span aria-hidden="true">i</span><span class="tip" role="tooltip">An auto-written read of the season from points-per-game pace, Understat expected points and goal difference. Source: FPL API and Understat.</span></button>
+        </div>
         <p>{{ summary_text }}</p>
       </div>
     </div>
@@ -59,7 +62,10 @@
     <div class="block">
       <div class="formguide">
         <div class="fg-head">
-          <span class="fg-label">Form guide · last {{ form_guide.count }}</span>
+          <div class="hgroup">
+            <span class="fg-label">Form guide · last {{ form_guide.count }}</span>
+            <button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points from the last {{ form_guide.count }} matches, momentum from the newer half's PPG vs the older half's, and a verdict against xPts or bookmaker-implied expected points. Source: FPL results, Understat and football-data.co.uk odds.</span></button>
+          </div>
           <span class="fg-summary">{{ form_guide.pts }} pts · {{ '%.2f'|format(form_guide.ppg) }} PPG
             <span class="fg-trend {{ form_guide.trend }}" title="Momentum {{ form_guide.trend }}">{{ {'up':'▲','down':'▼','flat':'▬'}[form_guide.trend] }}</span></span>
         </div>
@@ -86,7 +92,10 @@
       <div class="cols">
         {% if survival %}
         <div class="survival">
-          <div class="snapshot-label" style="color:var(--brand-orange)">Survival forecast</div>
+          <div class="cardhead">
+            <div class="snapshot-label" style="color:var(--brand-orange)">Survival forecast</div>
+            <button class="infobtn" type="button" aria-label="About this forecast"><span aria-hidden="true">i</span><span class="tip" role="tooltip">A Monte Carlo simulation of every remaining fixture ({{ '{:,}'.format(survival.sims) }} runs), using Elo-based win probabilities. Source: ClubElo ratings and the FPL fixture list.</span></button>
+          </div>
           <div class="surv-big">{{ survival.survive_pct }}%</div>
           <div class="surv-sub">chance of avoiding relegation</div>
           <div class="surv-bar" role="img" aria-label="{{ survival.survive_pct }}% survival, {{ survival.releg_pct }}% relegation">
@@ -97,7 +106,7 @@
         {% endif %}
         {% if rivals %}
         <div class="card">
-          <h3>The relegation picture</h3>
+          <div class="cardhead"><h3>The relegation picture</h3><button class="infobtn" type="button" aria-label="About this table"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Clubs immediately around Ipswich, with recent form and relegation odds from the season-simulation model. Source: ESPN table and ClubElo-based simulation.</span></button></div>
           <table class="rivaltable">
             <thead><tr><th>#</th><th>Team</th><th>Pts</th><th>Form</th><th>Drop%</th></tr></thead>
             <tbody>
@@ -118,7 +127,7 @@
     </div>
     {% endif %}
     <div class="block card">
-      <h3>Next fixture</h3>
+      <div class="cardhead"><h3>Next fixture</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Kickoff details, opponent form and a win probability modelled from Elo ratings, plus the head-to-head record from recent meetings. Source: FPL fixtures, ClubElo and football-data.co.uk.</span></button></div>
       {% if next_fixture %}
       <div class="board">
         <div class="row">
@@ -168,7 +177,7 @@
     {% if team_news %}
     <div class="block">
       <div class="card">
-        <h3>Team news</h3>
+        <div class="cardhead"><h3>Team news</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Injuries, suspensions and doubts, read from each player's status and news fields. Source: Fantasy Premier League API.</span></button></div>
         <ul class="list news">
           {% for t in team_news %}
           <li>
@@ -183,8 +192,9 @@
     {% endif %}
 
     <div class="block card">
-      <h3>Season record</h3>
+      <div class="cardhead"><h3>Season record</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results and goals for the season so far. Source: Fantasy Premier League API.</span></button></div>
       <div class="stats">
+        <div class="stat accent"><div class="v">{{ summary.points }}</div><div class="k">Points</div></div>
         <div class="stat"><div class="v">{{ summary.played }}</div><div class="k">Played</div></div>
         <div class="stat"><div class="v">{{ summary.won }}</div><div class="k">Won</div></div>
         <div class="stat"><div class="v">{{ summary.drawn }}</div><div class="k">Drawn</div></div>
@@ -192,14 +202,13 @@
         <div class="stat"><div class="v">{{ summary.gf }}</div><div class="k">For</div></div>
         <div class="stat"><div class="v">{{ summary.ga }}</div><div class="k">Against</div></div>
         <div class="stat"><div class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</div><div class="k">Goal diff</div></div>
-        <div class="stat accent"><div class="v">{{ summary.points }}</div><div class="k">Points</div></div>
       </div>
     </div>
 
     <div class="block">
       <div class="cols">
         <div class="card">
-          <h3>Fixtures</h3>
+          <div class="cardhead"><h3>Fixtures</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Upcoming fixtures with FPL's difficulty rating (1 easy to 5 hard). Source: Fantasy Premier League API.</span></button></div>
           {% set upcoming_fx = fixtures|rejectattr('finished')|list %}
           {% if upcoming_fx %}
           <ul class="list">
@@ -214,7 +223,7 @@
           {% else %}<p class="empty-note">No upcoming fixtures. The season is complete.</p>{% endif %}
         </div>
         <div class="card">
-          <h3>Results</h3>
+          <div class="cardhead"><h3>Results</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Full-time results this season. Source: Fantasy Premier League API.</span></button></div>
           {% if results %}
           <ul class="list">
             {% for r in results %}
@@ -232,7 +241,7 @@
   {% if page == 'table' %}
   <section class="panel">
     <div class="block card">
-    <h3>Premier League table</h3>
+    <div class="cardhead"><h3>Premier League table</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">The live Premier League table. Source: ESPN's public standings endpoint.</span></button></div>
     {% if table %}
     <div class="tablewrap">
       <table class="ltable">
@@ -263,7 +272,7 @@
     </div>
 
     <div class="block card">
-    <h3>Projected final table</h3>
+    <div class="cardhead"><h3>Projected final table</h3><button class="infobtn" type="button" aria-label="About this projection"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every club's current points-per-game extrapolated to 38 games: a straight-line projection, not a simulation. Source: ESPN table.</span></button></div>
     {% if predicted and predicted[0].proj is not none %}
     <p class="empty-note" style="padding:0 2px 12px">Where the season ends if every club keeps its current points-per-game: a projection, not a prediction.</p>
     <div class="tablewrap">
@@ -290,7 +299,7 @@
     {% if home_table %}
     {% for title, tbl in [('Home table', home_table), ('Away table', away_table)] %}
     <div class="block card">
-    <h3>{{ title }}</h3>
+    <div class="cardhead"><h3>{{ title }}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">The league table split by home and away results this season. Source: football-data.co.uk match results.</span></button></div>
     <div class="tablewrap">
       <table class="ltable">
         <thead><tr>
@@ -323,50 +332,50 @@
     <p class="label">Form &amp; season</p>
     <div class="chartgrid">
       <div class="chartcard wide">
-        <h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at the club's current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p>
+        <div class="cardhead"><h3>Points progression</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to GW38 at the club's current points-per-game. Source: Fantasy Premier League API.</span></button></div><p class="sub">Points so far (solid), projected to GW38 at the club's current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p>
         <div class="canvas-holder"><canvas id="c-points"></canvas></div><div class="note" id="n-points" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Expected points vs actual</h3><p class="sub">Cumulative points vs the points the club's performances "deserved" (Understat xPts). Above the line = picking up more than the underlying play merits.</p>
+        <div class="cardhead"><h3>Expected points vs actual</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">xPts sums each match's expected outcome from Understat's match xG model. Source: Understat.</span></button></div><p class="sub">Cumulative points vs the points the club's performances "deserved" (Understat xPts). Above the line = picking up more than the underlying play merits.</p>
         <div class="canvas-holder"><canvas id="c-xpts"></canvas></div><div class="note" id="n-xpts" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Elo trend</h3><p class="sub">The club's ClubElo rating through the season: a single-number measure of strength. Rising = getting stronger relative to the field.</p>
+        <div class="cardhead"><h3>Elo trend</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">The club's published Elo rating history. Source: ClubElo.</span></button></div><p class="sub">The club's ClubElo rating through the season: a single-number measure of strength. Rising = getting stronger relative to the field.</p>
         <div class="canvas-holder"><canvas id="c-elo"></canvas></div><div class="note" id="n-elo" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Rolling xG difference</h3><p class="sub">xG created minus xG conceded, averaged over the last 5 games. Above zero = on top of matches; the slope shows momentum.</p>
+        <div class="cardhead"><h3>Rolling xG difference</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">xG created minus xG conceded per match, averaged over the last 5 games. Source: Understat.</span></button></div><p class="sub">xG created minus xG conceded, averaged over the last 5 games. Above zero = on top of matches; the slope shows momentum.</p>
         <div class="canvas-holder"><canvas id="c-xgd"></canvas></div><div class="note" id="n-xgd" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Home &amp; away split</h3><p class="sub">Per-game points, goals and xG at home vs away: how differently the side performs by venue.</p>
+        <div class="cardhead"><h3>Home &amp; away split</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points, goals and xG per game, split by venue. Source: Understat match data.</span></button></div><p class="sub">Per-game points, goals and xG at home vs away: how differently the side performs by venue.</p>
         <div class="canvas-holder"><canvas id="c-homeaway"></canvas></div><div class="note" id="n-homeaway" hidden></div>
       </div>
     </div>
     <p class="label">Attack</p>
     <div class="chartgrid">
       <div class="chartcard">
-        <h3>Attack: goals vs xG</h3><p class="sub">Cumulative goals vs expected goals (Understat). Above the line = finishing better than the chances created.</p>
+        <div class="cardhead"><h3>Attack: goals vs xG</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative goals vs Understat's expected goals model. Source: Understat.</span></button></div><p class="sub">Cumulative goals vs expected goals (Understat). Above the line = finishing better than the chances created.</p>
         <div class="canvas-holder"><canvas id="c-xg"></canvas></div><div class="note" id="n-xg" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Finishing: goals vs npxG</h3><p class="sub">Non-penalty. Above the dashed line = outscoring the model.</p>
+        <div class="cardhead"><h3>Finishing: goals vs npxG</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Non-penalty goals vs non-penalty expected goals per match. Source: Understat.</span></button></div><p class="sub">Non-penalty. Above the dashed line = outscoring the model.</p>
         <div class="canvas-holder"><canvas id="c-finish"></canvas></div><div class="note" id="n-finish" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Goals by gameweek</h3><p class="sub">Goals scored and conceded in each match: a quick read of the club's best and worst weeks.</p>
+        <div class="cardhead"><h3>Goals by gameweek</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Goals scored and conceded, gameweek by gameweek. Source: Fantasy Premier League API.</span></button></div><p class="sub">Goals scored and conceded in each match: a quick read of the club's best and worst weeks.</p>
         <div class="canvas-holder"><canvas id="c-goals"></canvas></div><div class="note" id="n-goals" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Shots for &amp; against</h3><p class="sub">Actual shots (and shots on target) taken vs faced each match. Real volume, not xG. Out-shooting opponents is a good sign.</p>
+        <div class="cardhead"><h3>Shots for &amp; against</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Total shots and shots on target, for and against, per match. Source: Understat.</span></button></div><p class="sub">Actual shots (and shots on target) taken vs faced each match. Real volume, not xG. Out-shooting opponents is a good sign.</p>
         <div class="canvas-holder"><canvas id="c-shots"></canvas></div><div class="note" id="n-shots" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Where shots come from</h3><p class="sub">Breakdown of shots by situation across recent matches: open play, set pieces, corners and penalties.</p>
+        <div class="cardhead"><h3>Where shots come from</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">How the club's shots this season break down by situation. Source: Understat shot-level data.</span></button></div><p class="sub">Breakdown of shots by situation across recent matches: open play, set pieces, corners and penalties.</p>
         <div class="canvas-holder"><canvas id="c-situation"></canvas></div><div class="note" id="n-situation" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Shot map</h3><p class="sub">Every shot from the selected match, placed by pitch location. Circle size = chance quality (xG), colour = outcome.</p>
+        <div class="cardhead"><h3>Shot map</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every shot's pitch location, quality (xG) and outcome for the selected match. Source: Understat.</span></button></div><p class="sub">Every shot from the selected match, placed by pitch location. Circle size = chance quality (xG), colour = outcome.</p>
         <div class="shotbar">
           <select id="shot-select" aria-label="Choose match"></select>
           <span class="shotscore" id="shot-score"></span>
@@ -386,57 +395,57 @@
     <p class="label">Defence &amp; pressing</p>
     <div class="chartgrid">
       <div class="chartcard">
-        <h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances the club would expect to concede.</p>
+        <div class="cardhead"><h3>Defence: conceded vs xG against</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative goals conceded vs Understat's expected goals against. Source: Understat.</span></button></div><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances the club would expect to concede.</p>
         <div class="canvas-holder"><canvas id="c-xga"></canvas></div><div class="note" id="n-xga" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Pressing intensity (PPDA)</h3><p class="sub">Passes the opponent completes per defensive action the club makes, 5-game average. Lower = pressing higher and harder.</p>
+        <div class="cardhead"><h3>Pressing intensity (PPDA)</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Opponent passes allowed per defensive action, a lower-is-more-aggressive pressing metric, 5-game average. Source: Understat.</span></button></div><p class="sub">Passes the opponent completes per defensive action the club makes, 5-game average. Lower = pressing higher and harder.</p>
         <div class="canvas-holder"><canvas id="c-ppda"></canvas></div><div class="note" id="n-ppda" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Territory: deep completions</h3><p class="sub">Passes completed near the opponent's box, for and against, per match. A read on which side controlled dangerous territory.</p>
+        <div class="cardhead"><h3>Territory: deep completions</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Passes completed within 20 yards of goal, for and against, per match. Source: Understat.</span></button></div><p class="sub">Passes completed near the opponent's box, for and against, per match. A read on which side controlled dangerous territory.</p>
         <div class="canvas-holder"><canvas id="c-deep"></canvas></div><div class="note" id="n-deep" hidden></div>
       </div>
     </div>
     <p class="label">Timing &amp; game-state</p>
     <div class="chartgrid">
       <div class="chartcard wide">
-        <h3>Goals by 15-minute phase</h3><p class="sub">When the club scores and concedes across the match: a read on fast starts, strong finishes and vulnerable spells.</p>
+        <div class="cardhead"><h3>Goals by 15-minute phase</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Goals scored and conceded, grouped into 15-minute windows across the match. Source: Understat shot timing.</span></button></div><p class="sub">When the club scores and concedes across the match: a read on fast starts, strong finishes and vulnerable spells.</p>
         <div class="canvas-holder"><canvas id="c-timing"></canvas></div><div class="note" id="n-timing" hidden></div>
       </div>
       <div class="chartcard">
-        <h3>Points by half-time state</h3><p class="sub">Points won per game when ahead, level or behind at the break: how the club closes matches out.</p>
+        <div class="cardhead"><h3>Points by half-time state</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points won per game depending on the scoreline at half-time. Source: football-data.co.uk match results.</span></button></div><p class="sub">Points won per game when ahead, level or behind at the break: how the club closes matches out.</p>
         <div class="canvas-holder"><canvas id="c-gamestate"></canvas></div><div class="note" id="n-gamestate" hidden></div>
       </div>
     </div>
     <p class="label">Discipline</p>
     <div class="chartgrid">
       <div class="chartcard">
-        <h3>Discipline</h3><p class="sub">Fouls and cards per game, for and against: how the club's discipline compares with what it draws from opponents.</p>
+        <div class="cardhead"><h3>Discipline</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Fouls and cards per game, for and against. Source: football-data.co.uk match stats.</span></button></div><p class="sub">Fouls and cards per game, for and against: how the club's discipline compares with what it draws from opponents.</p>
         <div class="canvas-holder"><canvas id="c-discipline"></canvas></div><div class="note" id="n-discipline" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Record by referee</h3><p class="sub">The club's results broken down by match official this season.</p>
+        <div class="cardhead"><h3>Record by referee</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results broken down by match official. Source: football-data.co.uk match data.</span></button></div><p class="sub">The club's results broken down by match official this season.</p>
         <div id="ref-table"></div><div class="note" id="n-ref" hidden></div>
       </div>
     </div>
     <p class="label">League context</p>
     <div class="chartgrid">
       <div class="chartcard wide">
-        <h3>League: chance creation vs concession</h3><p class="sub">Every club: xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
+        <div class="cardhead"><h3>League: chance creation vs concession</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every club's xG for and against per game this season. Source: Understat league page.</span></button></div><p class="sub">Every club: xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p>
         <div class="canvas-holder" style="height:340px"><canvas id="c-scatter"></canvas></div><div class="note" id="n-scatter" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>How Ipswich compare</h3><p class="sub">Ipswich's rank out of 20 on each measure: a longer bar is better.</p>
+        <div class="cardhead"><h3>How Ipswich compare</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Ipswich's rank out of 20 clubs on xG, xGA, non-penalty xG and pressing (PPDA). Source: Understat league page.</span></button></div><p class="sub">Ipswich's rank out of 20 on each measure: a longer bar is better.</p>
         <div class="ranks" id="ranks"></div>
         <div class="note" id="n-ranks" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Team strength profile</h3><p class="sub">FPL's attack, defence and overall ratings (home and away) as a percentile vs the league: the club's stylistic fingerprint.</p>
+        <div class="cardhead"><h3>Team strength profile</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">FPL's own attack/defence/overall strength ratings, shown as a percentile against the other 19 clubs. Source: Fantasy Premier League API.</span></button></div><p class="sub">FPL's attack, defence and overall ratings (home and away) as a percentile vs the league: the club's stylistic fingerprint.</p>
         <div class="canvas-holder"><canvas id="c-strength"></canvas></div><div class="note" id="n-strength" hidden></div>
       </div>
       <div class="chartcard wide">
-        <h3>Upcoming difficulty</h3><p class="sub">FPL difficulty of the next fixtures (1 easy to 5 hard): a quick look at the run ahead.</p>
+        <div class="cardhead"><h3>Upcoming difficulty</h3><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">FPL's fixture difficulty rating for each upcoming match (1 easy to 5 hard). Source: Fantasy Premier League API.</span></button></div><p class="sub">FPL difficulty of the next fixtures (1 easy to 5 hard): a quick look at the run ahead.</p>
         <div class="canvas-holder"><canvas id="c-fdr"></canvas></div><div class="note" id="n-fdr" hidden></div>
       </div>
     </div>
@@ -447,7 +456,7 @@
   {% if page == 'matches' %}
   <section class="panel">
     <div class="block card">
-    <h3>Results &amp; reports</h3>
+    <div class="cardhead"><h3>Results &amp; reports</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every match played this season, with xG from Understat. Source: Fantasy Premier League API and Understat.</span></button></div>
     {% if match_pages %}
     <p class="empty-note" style="padding:0 2px 12px">Every match this season. Tap any row for the full report.</p>
     <div class="tablewrap">
@@ -473,7 +482,7 @@
   {% if page == 'squad' %}
   <section class="panel">
     <div class="block card">
-    <h3>Squad · {{ squad|length }} players</h3>
+    <div class="cardhead"><h3>Squad · {{ squad|length }} players</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Season totals for every registered player. Source: Fantasy Premier League API.</span></button></div>
     <div class="toolbar">
       <label class="toggle"><input type="checkbox" id="per90-toggle" aria-label="Show per 90 minutes"> Per 90 minutes</label>
     </div>
@@ -509,7 +518,7 @@
     </div>
 
     <div class="block card" style="margin-top:30px">
-      <h3>Player profiles</h3>
+      <div class="cardhead"><h3>Player profiles</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Per-90 stats converted to percentile ranks against positional peers league-wide. Source: Understat league page.</span></button></div>
       <div class="chartcard wide">
         <p class="sub">Per-90 percentile ranks vs positional peers across the Premier League. Search an Ipswich player, then any PL player to compare across the league.</p>
         <div class="profile-controls">
@@ -533,7 +542,7 @@
   {% if page == 'news' %}
   <section class="panel">
     <div class="block card">
-    <h3>Latest news</h3>
+    <div class="cardhead"><h3>Latest news</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Headlines merged from Ipswich-specific RSS feeds, newest first. Source: BBC Sport, TWTD and Vital RSS feeds.</span></button></div>
     {% if news %}
     <div class="card">
       <ul class="list newslist">
@@ -589,7 +598,7 @@
   });
   var css = getComputedStyle(document.documentElement);
   function cv(n){ return css.getPropertyValue(n).trim(); }
-  var C = {blue:cv('--primary'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid'),pink:cv('--brand-pink'),pitch:cv('--tint-mint'),pitchline:cv('--hairline-strong')};
+  var C = {blue:cv('--primary'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid'),pitch:cv('--tint-mint'),pitchline:cv('--hairline-strong')};
   var FDR = {1:cv('--fdr-1'),2:cv('--fdr-2'),3:cv('--fdr-3'),4:cv('--fdr-4'),5:cv('--fdr-5')};
   var SHOT = {Goal:cv('--win'),SavedShot:cv('--link-blue'),BlockedShot:cv('--brand-orange'),MissedShots:cv('--stone'),ShotOnPost:cv('--loss'),OwnGoal:cv('--stone')};
 
@@ -755,12 +764,13 @@
         var k=s.situation||'Unknown'; sit[k]=(sit[k]||0)+1; });});
       var sk=Object.keys(sit);
       if(sk.length){ var nice={OpenPlay:'Open play',FromCorner:'From corner',SetPiece:'Set piece',DirectFreekick:'Free kick',Penalty:'Penalty'};
-        new Chart(document.getElementById('c-situation'),{type:'doughnut',
-          data:{labels:sk.map(function(k){return nice[k]||k;}),datasets:[
-            {data:sk.map(function(k){return sit[k];}),
-              backgroundColor:[C.blue,C.amber,C.green,C.pink,C.red,C.muted],borderWidth:0}]},
-          options:{responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:12}}}}}}); }
+        var order=sk.slice().sort(function(a,b){return sit[b]-sit[a];});
+        new Chart(document.getElementById('c-situation'),{type:'bar',
+          data:{labels:order.map(function(k){return nice[k]||k;}),datasets:[
+            {data:order.map(function(k){return sit[k];}),backgroundColor:C.blue,borderRadius:4}]},
+          options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{x:{beginAtZero:true,grid:{color:C.line},ticks:{precision:0}},y:{grid:{display:false}}}}}); }
       else showNote('situation','No shot-location data yet.');
 
       // Elo trend
