@@ -49,13 +49,77 @@
 }
 :root[data-theme="dark"] .health-note{background:#3a2a12;border-color:#6b4a1a;color:#f0c088}
 :root[data-theme="dark"] .crest .mark{background:#fff}
+
+/* ---- teletext theme --------------------------------------------------
+   A pastiche of 1980s broadcast teletext (Ceefax/Oracle): pure black,
+   the 8-colour CEEFAX palette, monospace, square corners, zero shadow.
+   A handful of components hardcode white text on their coloured fill
+   (result badges, FDR chips, the preview banner) — those get explicit
+   black-text overrides below so eg. white-on-yellow never happens. ---- */
+:root[data-theme="teletext"]{
+  --canvas:#000000; --surface:#000000; --surface-soft:#001a1a;
+  --hairline:#00ffff; --hairline-soft:#008080; --hairline-strong:#00ffff;
+  --ink-deep:#ffffff; --ink:#ffffff; --charcoal:#ffffff; --slate:#ffffff;
+  --steel:#00ffff; --stone:#008080; --muted:#005050;
+  --on-dark:#ffffff; --on-dark-muted:#ffff00;
+  --chart-grid:#004d4d;
+  --tint-peach:#001a1a; --tint-rose:#001a1a; --tint-mint:#001a1a; --tint-lavender:#001a1a;
+  --tint-sky:#001a1a; --tint-yellow:#001a1a; --tint-cream:#001a1a; --tint-gray:#001a1a;
+  --shadow-card:none; --shadow-md:none;
+  --primary:#00ffff; --on-primary:#000000; --link-blue:#ffff00;
+  --brand-navy:#0000c8;
+  --brand-orange:#ff8000; --brand-orange-deep:#ff8000;
+  --brand-purple-800:#ff00ff;
+  --success:#00ff00; --warning:#ff8000; --error:#ff0000;
+  --win:#00ff00; --draw:#ffff00; --loss:#ff0000;
+  --fdr-1:#00ff00; --fdr-2:#00ffff; --fdr-3:#ffff00; --fdr-4:#ff8000; --fdr-5:#ff0000;
+  --radius-xs:0; --radius-sm:0; --radius-md:0; --radius-lg:0; --radius-full:0;
+  --font-sans:'Consolas','Courier New',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+:root[data-theme="teletext"] body{letter-spacing:.2px}
+:root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
+:root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
+:root[data-theme="teletext"] .health-note{background:#000;border:1px solid var(--brand-orange);color:var(--brand-orange)}
+:root[data-theme="teletext"] .crest .mark{background:#000;border:1px solid #fff;color:#fff}
+/* white-on-bright-fill components need black text against green/yellow/cyan/orange */
+:root[data-theme="teletext"] .formdots i.W,:root[data-theme="teletext"] .formdots i.D,
+:root[data-theme="teletext"] .h2h-dots i.W,:root[data-theme="teletext"] .h2h-dots i.D,
+:root[data-theme="teletext"] .res.W,:root[data-theme="teletext"] .res.D,
+:root[data-theme="teletext"] .fg-pill.W,:root[data-theme="teletext"] .fg-pill.D,
+:root[data-theme="teletext"] .page-match .pill.W,:root[data-theme="teletext"] .page-match .pill.D,
+:root[data-theme="teletext"] .wp-w,:root[data-theme="teletext"] .wp-d,
+:root[data-theme="teletext"] .fdr-1,:root[data-theme="teletext"] .fdr-2,
+:root[data-theme="teletext"] .fdr-3,:root[data-theme="teletext"] .fdr-4,
+:root[data-theme="teletext"] .previewtoggle.on,:root[data-theme="teletext"] .previewbanner,
+:root[data-theme="teletext"] .previewbanner a{color:#000}
+/* position pills + news tags: loud solid blocks, not the dim tint tokens above */
+:root[data-theme="teletext"] .p-GKP{background:#ff00ff;color:#000}
+:root[data-theme="teletext"] .p-DEF{background:#00ff00;color:#000}
+:root[data-theme="teletext"] .p-MID{background:#00ffff;color:#000}
+:root[data-theme="teletext"] .p-FWD{background:#ff8000;color:#000}
+:root[data-theme="teletext"] ul.news .tag{background:#fff;color:#000}
+:root[data-theme="teletext"] ul.news .tag.out{background:#ff0000;color:#fff}
+:root[data-theme="teletext"] ul.news .tag.doubt{background:#ffff00;color:#000}
+/* classic Ceefax page numbering, added purely in CSS */
+:root[data-theme="teletext"] .page-overview .eyebrow::before{content:"P100 "}
+:root[data-theme="teletext"] .page-table .eyebrow::before{content:"P101 "}
+:root[data-theme="teletext"] .page-charts .eyebrow::before{content:"P102 "}
+:root[data-theme="teletext"] .page-matches .eyebrow::before{content:"P103 "}
+:root[data-theme="teletext"] .page-squad .eyebrow::before{content:"P104 "}
+:root[data-theme="teletext"] .page-news .eyebrow::before{content:"P105 "}
+:root[data-theme="teletext"] .page-match .eyebrow::before{content:"P199 "}
+:root[data-theme="teletext"] .page-player .eyebrow::before{content:"P198 "}
+
 /* theme toggle button */
 .themetoggle{background:transparent;border:1px solid rgba(255,255,255,.25);color:var(--on-dark);
   width:34px;height:34px;border-radius:var(--radius-full);cursor:pointer;font-size:15px;line-height:1;
   display:inline-flex;align-items:center;justify-content:center;padding:0}
 .themetoggle:hover{background:rgba(255,255,255,.1)}
-.themetoggle::before{content:"\263E"}                 /* moon: click for dark */
-:root[data-theme="dark"] .themetoggle::before{content:"\2600"}  /* sun: click for light */
+/* the icon shown is always the *next* mode in the light -> dark -> teletext -> light cycle */
+.themetoggle::before{content:"\263E"}                                        /* light: next is dark (moon) */
+:root[data-theme="dark"] .themetoggle::before{content:"TXT";font-size:9px;font-weight:800;letter-spacing:.5px}  /* dark: next is teletext */
+:root[data-theme="teletext"] .themetoggle::before{content:"\2600"}          /* teletext: next is light (sun) */
+:root[data-theme="teletext"] .themetoggle{border-radius:0;border-color:#00ffff}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}

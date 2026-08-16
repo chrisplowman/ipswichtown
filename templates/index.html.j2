@@ -24,22 +24,18 @@
  function set(t){d.setAttribute('data-theme',t);}
  try{set(localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch(e){set('light');}
  window.__toggleTheme=function(){
-   var n=d.getAttribute('data-theme')==='dark'?'light':'dark';
+   // Charts bake their colours in from CSS vars at build time (see cv() below),
+   // so a theme switch needs a fresh load to recolour them correctly rather than
+   // patching chart chrome in place — most visible jumping into/out of teletext.
+   var order=['light','dark','teletext'],cur=d.getAttribute('data-theme')||'light';
+   var n=order[(order.indexOf(cur)+1)%order.length];
    set(n);try{localStorage.setItem(K,n);}catch(e){}
-   if(window.Chart&&Chart.instances){
-     var c=getComputedStyle(d),grid=(c.getPropertyValue('--chart-grid')||c.getPropertyValue('--hairline')).trim(),txt=c.getPropertyValue('--steel').trim();
-     Chart.defaults.color=txt;
-     Object.keys(Chart.instances).forEach(function(id){var ch=Chart.instances[id],sc=ch.options.scales||{};
-       Object.keys(sc).forEach(function(k){var s=sc[k];
-         if(s.grid)s.grid.color=grid;if(s.ticks)s.ticks.color=txt;
-         if(s.pointLabels)s.pointLabels.color=txt;if(s.angleLines)s.angleLines.color=grid;if(s.title)s.title.color=txt;});
-       try{ch.update('none');}catch(e){}});
-   }
+   location.reload();
  };
 })();
 </script>
 </head>
-<body>
+<body class="page-{{ page }}">
 {% include '_masthead.html.j2' %}
 
 <main class="wrap" id="main" tabindex="-1">
@@ -264,9 +260,9 @@
       </table>
     </div>
     <div class="lkey">
-      <span><i style="background:var(--easy)"></i> Top 5</span>
-      <span><i style="background:var(--hard2)"></i> Relegation</span>
-      <span><i style="background:#eaf1fc;border:1px solid var(--line)"></i> Ipswich</span>
+      <span><i style="background:var(--win)"></i> Top 5</span>
+      <span><i style="background:var(--loss)"></i> Relegation</span>
+      <span><i style="background:var(--tint-sky);border:1px solid var(--hairline)"></i> Ipswich</span>
     </div>
     {% else %}<p class="empty-note">League table unavailable right now. It will appear on the next successful update.</p>{% endif %}
     </div>
