@@ -589,10 +589,22 @@ def form_guide(data, n=6):
     if opp_avg_rank:
         run_label = "a tough run" if opp_avg_rank <= 8 else "a kind run" if opp_avg_rank >= 13 else "an average run"
 
-    matches = [{"result": r["result"], "opponent": r.get("opponent", ""),
-                "opponent_short": r.get("opponent_short", ""), "home": r.get("home"),
-                "score": r.get("score", ""), "match_id": r.get("match_id")}
-               for r in reversed(recent)]          # oldest first (reads left→right)
+    # per-match expectation breakdown, joined from the same match-report data
+    # (match_pages) that already carries odds + Understat xG/xPts per match
+    mp_by_id = {mp["id"]: mp for mp in (data.get("match_pages") or [])}
+    matches = []
+    for r in reversed(recent):          # oldest first (reads left→right)
+        mp = mp_by_id.get(r.get("match_id")) or {}
+        odds = mp.get("odds")
+        matches.append({
+            "result": r["result"], "opponent": r.get("opponent", ""),
+            "opponent_short": r.get("opponent_short", ""), "home": r.get("home"),
+            "score": r.get("score", ""), "match_id": r.get("match_id"),
+            "event": r.get("event"), "pts": pts_of(r), "date": mp.get("date"),
+            "xg_for": mp.get("xg_for"), "xg_against": mp.get("xg_against"),
+            "xpts": mp.get("xpts"),
+            "exp_odds": round(3 * odds["win"] / 100 + odds["draw"] / 100, 1) if odds else None,
+        })
     return {"matches": matches, "pts": pts, "ppg": ppg, "trend": trend, "count": k,
             "xpts": xpts, "xgf": xgf, "xga": xga, "exp_odds": exp_odds, "verdict": verdict,
             "opp_avg_rank": opp_avg_rank, "run_label": run_label}
