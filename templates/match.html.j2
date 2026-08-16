@@ -23,17 +23,13 @@
  function set(t){d.setAttribute('data-theme',t);}
  try{set(localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch(e){set('light');}
  window.__toggleTheme=function(){
-   var n=d.getAttribute('data-theme')==='dark'?'light':'dark';
+   // Charts bake their colours in from CSS vars at build time (see cv() below),
+   // so a theme switch needs a fresh load to recolour them correctly rather than
+   // patching chart chrome in place — most visible jumping into/out of teletext.
+   var order=['light','dark','teletext'],cur=d.getAttribute('data-theme')||'light';
+   var n=order[(order.indexOf(cur)+1)%order.length];
    set(n);try{localStorage.setItem(K,n);}catch(e){}
-   if(window.Chart&&Chart.instances){
-     var c=getComputedStyle(d),grid=(c.getPropertyValue('--chart-grid')||c.getPropertyValue('--hairline')).trim(),txt=c.getPropertyValue('--steel').trim();
-     Chart.defaults.color=txt;
-     Object.keys(Chart.instances).forEach(function(id){var ch=Chart.instances[id],sc=ch.options.scales||{};
-       Object.keys(sc).forEach(function(k){var s=sc[k];
-         if(s.grid)s.grid.color=grid;if(s.ticks)s.ticks.color=txt;
-         if(s.pointLabels)s.pointLabels.color=txt;if(s.angleLines)s.angleLines.color=grid;if(s.title)s.title.color=txt;});
-       try{ch.update('none');}catch(e){}});
-   }
+   location.reload();
  };
 })();
 </script>
@@ -168,7 +164,7 @@
 (function(){
   var M = JSON.parse(document.getElementById('match-data').textContent);
   var css=getComputedStyle(document.documentElement); function cv(n){return css.getPropertyValue(n).trim();}
-  var BLUE=cv('--primary'), RED=cv('--loss'), GRID=cv('--chart-grid'), LINE=cv('--hairline-strong'), MINT='#eef6f0';
+  var BLUE=cv('--primary'), RED=cv('--loss'), GRID=cv('--chart-grid'), LINE=cv('--hairline-strong'), MINT=cv('--tint-mint');
   if(window.Chart){Chart.defaults.color=cv('--steel');}
 
   // ---- xG race (cumulative xG by minute, stepped) ----
