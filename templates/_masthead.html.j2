@@ -10,12 +10,19 @@
       </div>
     </div>
     <div class="headright">
-      <button class="themetoggle" type="button" onclick="__toggleTheme()" aria-label="Cycle theme: light, dark, teletext" title="Cycle theme: light, dark, teletext"></button>
+      <div class="themeswitch" role="group" aria-label="Theme">
+        <button type="button" class="opt" data-theme-opt="light" onclick="__setTheme('light')">Light</button>
+        <button type="button" class="opt" data-theme-opt="dark" onclick="__setTheme('dark')">Dark</button>
+        <button type="button" class="opt" data-theme-opt="teletext" onclick="__setTheme('teletext')">Txt</button>
+      </div>
       <a class="previewtoggle{% if preview %} on{% endif %}" href="{{ toggle_href }}">{% if preview %}← Live data{% else %}Preview mode{% endif %}</a>
       <div class="updated">Updated<b>{{ generated_at|updated }}</b></div>
     </div>
   </div>
 </header>
+<script>(function(){var t=document.documentElement.getAttribute('data-theme');
+  document.querySelectorAll('.themeswitch .opt').forEach(function(b){
+    b.setAttribute('aria-pressed', b.dataset.themeOpt===t ? 'true' : 'false');});})();</script>
 {% if preview %}<div class="previewbanner">Preview mode. Every section is showing sample data. <a href="{{ toggle_href }}">Switch back to live data</a></div>{% endif %}
 
 <nav class="tabs">
