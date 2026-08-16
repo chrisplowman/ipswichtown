@@ -211,6 +211,10 @@
 :root[data-theme="teletext"] .fg-analysis,
 :root[data-theme="teletext"] .fg-chip .k,
 :root[data-theme="teletext"] .fg-verdict,
+:root[data-theme="teletext"] .fg-pd-opp,
+:root[data-theme="teletext"] .fg-pd-meta,
+:root[data-theme="teletext"] .fg-pd-rows div,
+:root[data-theme="teletext"] .fg-pd-link,
 :root[data-theme="teletext"] .page-match .back,
 :root[data-theme="teletext"] .page-match .masthead .season,
 :root[data-theme="teletext"] .page-match h3,
@@ -261,7 +265,7 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr,
 .tabs a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .skiplink{position:absolute;left:-999px;top:0;z-index:100;background:var(--brand-navy);color:#fff;padding:10px 16px;border-radius:0 0 var(--radius-md) 0;text-decoration:none}
 .skiplink:focus{left:0}
-a:focus-visible,button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 section.panel{padding:28px 0}
 section.panel[hidden]{display:none}
 .block{margin-bottom:28px}
@@ -529,11 +533,32 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .fg-summary{font-size:14px;font-weight:600;color:var(--ink)}
 .fg-trend{font-size:13px;margin-left:4px}
 .fg-trend.up{color:var(--win)}.fg-trend.down{color:var(--loss)}.fg-trend.flat{color:var(--stone)}
-.fg-pills{display:flex;gap:8px;flex-wrap:wrap}
+.fg-pills{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
 .fg-pill{width:40px;height:40px;border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;
   font-weight:700;font-size:14px;color:#fff;text-decoration:none;flex:none;transition:transform .1s}
-a.fg-pill:hover{transform:translateY(-2px)}
+a.fg-pill:hover,summary.fg-pill:hover{transform:translateY(-2px)}
 .fg-pill.W{background:var(--win)}.fg-pill.D{background:var(--draw)}.fg-pill.L{background:var(--loss)}
+/* each result pill expands (native <details>, no JS) into a per-match
+   breakdown — same expectation numbers as the aggregate row below, but
+   for that one game instead of summed over the whole window */
+.fg-pill-wrap{position:relative}
+summary.fg-pill{list-style:none;cursor:pointer}
+summary.fg-pill::-webkit-details-marker{display:none}
+.fg-pill-detail{position:absolute;top:calc(100% + 8px);left:0;z-index:25;width:min(200px,calc(100vw - 24px));
+  background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-md);
+  box-shadow:var(--shadow-md);padding:12px 14px;text-align:left}
+.fg-pill-wrap:last-child .fg-pill-detail{left:auto;right:0}
+.fg-pd-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fg-pd-opp{font-weight:600;font-size:14px;color:var(--ink)}
+.fg-pd-meta{font-size:11px;color:var(--steel)}
+.fg-pd-score{font-weight:700;font-size:20px;letter-spacing:-.5px;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.fg-pd-rows{display:flex;flex-direction:column;gap:5px;padding-top:8px;border-top:1px solid var(--hairline-soft)}
+.fg-pd-rows div{display:flex;justify-content:space-between;gap:12px;font-size:13px}
+.fg-pd-rows .k{color:var(--steel)}
+.fg-pd-rows .v{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.fg-pd-link{display:block;margin-top:10px;padding-top:8px;border-top:1px solid var(--hairline-soft);
+  font-size:12.5px;font-weight:600;color:var(--primary);text-decoration:none}
+.fg-pd-link:hover{text-decoration:underline}
 .fg-analysis{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--hairline-soft);font-size:13px;color:var(--slate)}
 .fg-chip{display:inline-flex;align-items:baseline;gap:4px}
 .fg-chip + .fg-chip::before{content:"·";margin-right:12px;color:var(--muted)}

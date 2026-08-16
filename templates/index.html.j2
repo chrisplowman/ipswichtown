@@ -75,15 +75,30 @@
         </div>
         <div class="fg-pills">
           {% for m in form_guide.matches %}
-          {% if m.match_id %}<a class="fg-pill {{ m.result }}" href="match/{{ m.match_id }}.html" title="{{ m.opponent }} {{ m.score }} ({{ 'H' if m.home else 'A' }})">{{ m.result }}</a>
-          {% else %}<span class="fg-pill {{ m.result }}" title="{{ m.opponent }} {{ m.score }} ({{ 'H' if m.home else 'A' }})">{{ m.result }}</span>{% endif %}
+          <details class="fg-pill-wrap" name="fg-detail">
+            <summary class="fg-pill {{ m.result }}" title="{{ m.opponent }} {{ m.score }} ({{ 'H' if m.home else 'A' }})">{{ m.result }}</summary>
+            <div class="fg-pill-detail">
+              <div class="fg-pd-head">
+                <span class="fg-pd-opp">{{ m.opponent_short or m.opponent }}</span>
+                <span class="fg-pd-meta">{{ 'H' if m.home else 'A' }}{% if m.event %} · GW{{ m.event }}{% endif %}{% if m.date %} · {{ m.date }}{% endif %}</span>
+              </div>
+              <div class="fg-pd-score">{{ m.score }}</div>
+              <div class="fg-pd-rows">
+                <div><span class="k">Points taken</span><span class="v">{{ m.pts }}</span></div>
+                {% if m.exp_odds is not none %}<div><span class="k">Expected (odds)</span><span class="v">{{ m.exp_odds }} pts</span></div>{% endif %}
+                {% if m.xpts is not none %}<div><span class="k">Deserved (xPts)</span><span class="v">{{ '%.2f'|format(m.xpts) }} pts</span></div>{% endif %}
+                {% if m.xg_for is not none %}<div><span class="k">xG</span><span class="v">{{ '%.2f'|format(m.xg_for) }}-{{ '%.2f'|format(m.xg_against) }}</span></div>{% endif %}
+              </div>
+              {% if m.match_id %}<a class="fg-pd-link" href="match/{{ m.match_id }}.html">Full match report →</a>{% endif %}
+            </div>
+          </details>
           {% endfor %}
         </div>
         {% if form_guide.xpts is not none or form_guide.exp_odds is not none or form_guide.run_label %}
         <div class="fg-analysis">
           {% if form_guide.exp_odds is not none %}<span class="fg-chip"><span class="k">Expected (odds)</span> <b>{{ form_guide.exp_odds }}</b> pts</span>{% endif %}
           {% if form_guide.xpts is not none %}<span class="fg-chip"><span class="k">Deserved (xPts)</span> <b>{{ form_guide.xpts }}</b> pts</span>{% endif %}
-          {% if form_guide.xgf is not none %}<span class="fg-chip"><span class="k">xG</span> <b>{{ form_guide.xgf }}</b>–<b>{{ form_guide.xga }}</b></span>{% endif %}
+          {% if form_guide.xgf is not none %}<span class="fg-chip"><span class="k">xG</span> <b>{{ form_guide.xgf }}</b>-<b>{{ form_guide.xga }}</b></span>{% endif %}
           {% if form_guide.run_label %}<span class="fg-chip"><span class="k">Run</span> {{ form_guide.run_label }} (opponents avg {{ form_guide.opp_avg_rank|ordinal }})</span>{% endif %}
           {% if form_guide.verdict %}<span class="fg-verdict {{ form_guide.verdict }}">{{ {'over':'Outperforming expectation','under':'Underperforming expectation','par':'In line with expectation'}[form_guide.verdict] }}</span>{% endif %}
         </div>
