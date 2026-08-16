@@ -9,7 +9,7 @@
   
   --primary:#0333a0; --on-primary:#ffffff;
   --brand-navy:#0333a0;
-  --link-blue:#0075de; --brand-orange:#dd5b00; --brand-orange-deep:#793400;
+  --link-blue:#0075de; --brand-orange:#e2241b; --brand-orange-deep:#6E120D;
   --brand-purple-800:#391c57;
   
   --tint-peach:#ffe8d4; --tint-rose:#fde0ec; --tint-mint:#d9f3e1; --tint-lavender:#e6e0f5;
@@ -67,8 +67,8 @@
   --tint-sky:#001a1a; --tint-yellow:#001a1a; --tint-cream:#001a1a; --tint-gray:#001a1a;
   --shadow-card:none; --shadow-md:none;
   --primary:#00ffff; --on-primary:#000000; --link-blue:#ffff00;
-  --brand-navy:#0000c8;
-  --brand-orange:#ff8000; --brand-orange-deep:#ff8000;
+  --brand-navy:#00003D;
+  --brand-orange:#6E120D; --brand-orange-deep:#6E120D;
   --brand-purple-800:#ff00ff;
   --success:#00ff00; --warning:#ff8000; --error:#ff0000;
   --win:#00ff00; --draw:#ffff00; --loss:#ff0000;
@@ -144,8 +144,8 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr{font-variant-numeric:tabular-nu
 .eyebrow{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--on-dark-muted);font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .eyebrow .pos{color:var(--on-primary);background:var(--primary);border-radius:var(--radius-full);padding:3px 10px;letter-spacing:.3px}
 .updated{font-size:13px;color:var(--on-dark-muted);text-align:right}
-.updated b{color:var(--on-dark);font-weight:600}
-.headright{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.updated b{color:var(--on-dark);font-weight:600;margin-left:8px}
+.headright{display:flex;flex-direction:row-reverse;align-items:center;gap:10px}
 .previewtoggle{font-size:12px;font-weight:600;color:var(--on-dark);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-full);padding:6px 13px;text-decoration:none;white-space:nowrap}
 .previewtoggle:hover{background:rgba(255,255,255,.2)}
 .previewtoggle.on{background:var(--brand-orange);border-color:var(--brand-orange)}
