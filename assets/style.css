@@ -329,8 +329,12 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
   background:var(--surface-soft);border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 .card>.cardhead:first-child h3{margin:0}
 .card .cardhead:not(:first-child){margin:16px 18px 10px}
-.chartcard>.cardhead,.hero>.cardhead{margin-bottom:4px}
+.hero>.cardhead{margin-bottom:4px}
+.chartcard>.cardhead{align-items:flex-start;margin:-18px -20px 16px;padding:14px 18px;
+  border-bottom:1px solid var(--hairline);background:var(--surface-soft);
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 .chartcard>.cardhead h3{margin:0}
+.chartcard>.cardhead .infobtn{margin-top:1px;flex:none}
 .snapshot>.cardhead,.survival>.cardhead,.formguide>.cardhead{margin-bottom:8px}
 .cardhead .snapshot-label{margin-bottom:0}
 /* the info icon: a small "i" badge that reveals a tooltip explaining the
@@ -457,8 +461,8 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .chartcard{padding:18px 20px 20px}
 .chartcard.wide{grid-column:1 / -1}
-.chartcard h3{margin:0 0 4px}
-.chartcard p.sub{margin:0 0 16px;font-size:13px;color:var(--steel);text-wrap:pretty}
+.chartcard .htitle{min-width:0}
+.chartcard p.sub{margin:4px 0 0;font-size:13px;color:var(--steel);text-wrap:pretty}
 .canvas-holder{position:relative;height:260px}
 .chartcard .note{color:var(--steel);font-size:14px;padding:40px 0;text-align:center}
 .shotbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
