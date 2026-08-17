@@ -80,7 +80,7 @@
    the base size and loosen tracking rather than let it read as illegible */
 :root[data-theme="teletext"] body{font-size:19px;line-height:1.5;letter-spacing:.3px;text-transform:uppercase}
 :root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
-:root[data-theme="teletext"] .snapshot-,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
+:root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
 /* a literal bright orange, not --brand-orange (a dark brick-red in this theme,
    too low-contrast as text-on-black); keeps "warning" visually distinct from
    the --loss red used elsewhere */
@@ -101,7 +101,7 @@
 /* ...and as text-on-navy (not a fill) it needs a genuinely bright colour rather
    than its own dark tone; reuse the same yellow already used for the info icons
    on these same cards */
-:root[data-theme="teletext"] .snapshot-{color:#ffff00}
+:root[data-theme="teletext"] .snapshot-label{color:#ffff00}
 /* position pills + news tags: loud solid blocks, not the dim tint tokens above */
 :root[data-theme="teletext"] .p-GKP{background:#ff00ff;color:#000}
 :root[data-theme="teletext"] .p-DEF{background:#00ff00;color:#000}
@@ -174,7 +174,7 @@
 :root[data-theme="teletext"] .reftable,
 :root[data-theme="teletext"] .reftable thead th,
 :root[data-theme="teletext"] .subhead,
-:root[data-theme="teletext"] .snapshot-,
+:root[data-theme="teletext"] .snapshot-label,
 :root[data-theme="teletext"] .surv-sub,
 :root[data-theme="teletext"] .surv-meta,
 :root[data-theme="teletext"] .rivaltable,
