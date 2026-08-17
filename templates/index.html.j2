@@ -346,7 +346,15 @@
   {% if page == 'charts' %}
   <section class="panel">
 
-    <p class="label">Form &amp; season</p>
+    <nav class="chartjump" aria-label="Jump to chart section">
+      <a href="#cs-form">Form &amp; season</a>
+      <a href="#cs-attack">Attack</a>
+      <a href="#cs-defence">Defence &amp; pressing</a>
+      <a href="#cs-timing">Timing &amp; game-state</a>
+      <a href="#cs-discipline">Discipline</a>
+      <a href="#cs-league">League context</a>
+    </nav>
+    <p class="label" id="cs-form">Form &amp; season</p>
     <div class="chartgrid">
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at the club's current rate (dashed), against the pace the 17th-placed team is on. Above the red line = on course to survive.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to GW38 at the club's current points-per-game. Source: Fantasy Premier League API.</span></button></div>
@@ -369,7 +377,7 @@
         <div class="canvas-holder"><canvas id="c-homeaway"></canvas></div><div class="note" id="n-homeaway" hidden></div>
       </div>
     </div>
-    <p class="label">Attack</p>
+    <p class="label" id="cs-attack">Attack</p>
     <div class="chartgrid">
       <div class="chartcard">
         <div class="cardhead"><div class="htitle"><h3>Attack: goals vs xG</h3><p class="sub">Cumulative goals vs expected goals (Understat). Above the line = finishing better than the chances created.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative goals vs Understat's expected goals model. Source: Understat.</span></button></div>
@@ -409,7 +417,7 @@
         </div>
       </div>
     </div>
-    <p class="label">Defence &amp; pressing</p>
+    <p class="label" id="cs-defence">Defence &amp; pressing</p>
     <div class="chartgrid">
       <div class="chartcard">
         <div class="cardhead"><div class="htitle"><h3>Defence: conceded vs xG against</h3><p class="sub">Cumulative goals conceded vs expected (Understat). Below the line = keeping out chances the club would expect to concede.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative goals conceded vs Understat's expected goals against. Source: Understat.</span></button></div>
@@ -424,7 +432,7 @@
         <div class="canvas-holder"><canvas id="c-deep"></canvas></div><div class="note" id="n-deep" hidden></div>
       </div>
     </div>
-    <p class="label">Timing &amp; game-state</p>
+    <p class="label" id="cs-timing">Timing &amp; game-state</p>
     <div class="chartgrid">
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Goals by 15-minute phase</h3><p class="sub">When the club scores and concedes across the match: a read on fast starts, strong finishes and vulnerable spells.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Goals scored and conceded, grouped into 15-minute windows across the match. Source: Understat shot timing.</span></button></div>
@@ -435,7 +443,7 @@
         <div class="canvas-holder"><canvas id="c-gamestate"></canvas></div><div class="note" id="n-gamestate" hidden></div>
       </div>
     </div>
-    <p class="label">Discipline</p>
+    <p class="label" id="cs-discipline">Discipline</p>
     <div class="chartgrid">
       <div class="chartcard">
         <div class="cardhead"><div class="htitle"><h3>Discipline</h3><p class="sub">Fouls and cards per game, for and against: how the club's discipline compares with what it draws from opponents.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Fouls and cards per game, for and against. Source: football-data.co.uk match stats.</span></button></div>
@@ -446,7 +454,7 @@
         <div id="ref-table"></div><div class="note" id="n-ref" hidden></div>
       </div>
     </div>
-    <p class="label">League context</p>
+    <p class="label" id="cs-league">League context</p>
     <div class="chartgrid">
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>League: chance creation vs concession</h3><p class="sub">Every club: xG made vs xG allowed per game. Bottom-right is best; Ipswich in red.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every club's xG for and against per game this season. Source: Understat league page.</span></button></div>
@@ -632,11 +640,21 @@
               y:{grid:{color:C.line},ticks:{font:{size:11}},beginAtZero:true}}};
     return Object.assign(o, extra||{});
   }
-  // Line charts get a line-shaped legend key instead of the default square,
-  // so the key reads as a miniature of the series it labels.
+  // Line charts get a line-shaped legend key instead of the default square, dashed
+  // to match a dashed series, so the key reads as a miniature of the series it labels.
+  // usePointStyle resolves per-point (not per-line) options, which drops borderDash,
+  // so the dash pattern is read straight off the dataset instead of Chart.js's default.
+  function lineLabels(chart){
+    return chart.data.datasets.map(function(d,i){
+      var meta = chart.getDatasetMeta(i);
+      return {text:d.label, fillStyle:'transparent', strokeStyle:d.borderColor,
+        lineWidth:2, lineDash:d.borderDash||[], pointStyle:'line',
+        hidden:!meta.visible, datasetIndex:i};
+    });
+  }
   function lineOpts(extra){
     return baseOpts(Object.assign({plugins:{legend:{labels:
-      {boxWidth:12,font:{size:12},usePointStyle:true,pointStyle:'line'}}}}, extra||{}));
+      {boxWidth:12,font:{size:12},usePointStyle:true,generateLabels:lineLabels}}}}, extra||{}));
   }
 
   function buildCharts(){
@@ -775,10 +793,10 @@
       if(ms.length){ new Chart(document.getElementById('c-shots'),{type:'bar',
         data:{labels:ms.map(function(m){return (m.opponent||'').slice(0,3).toUpperCase()+(m.home?' (H)':' (A)');}),
           datasets:[
-            {label:'Shots for',data:ms.map(function(m){return m.shots_for;}),backgroundColor:C.blue},
-            {label:'Shots against',data:ms.map(function(m){return m.shots_against;}),backgroundColor:C.red},
+            {label:'Shots for',data:ms.map(function(m){return m.shots_for;}),backgroundColor:C.blue,order:1},
+            {label:'Shots against',data:ms.map(function(m){return m.shots_against;}),backgroundColor:C.red,order:1},
             {type:'line',label:'On target (for)',data:ms.map(function(m){return m.sot_for;}),
-              borderColor:C.green,backgroundColor:C.green,pointRadius:3,fill:false,tension:.2}]},
+              borderColor:C.green,backgroundColor:C.green,pointRadius:3,fill:false,tension:.2,order:0}]},
         options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})}); }
       else showNote('shots','No shot-count data yet.');
 
