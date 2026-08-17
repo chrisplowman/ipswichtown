@@ -270,16 +270,16 @@ section.panel[hidden]{display:none}
 .block{margin-bottom:28px}
 .label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px;
   scroll-margin-top:calc(var(--tabs-h,57px) + var(--jump-h,56px) + 8px);margin-top:40px}
-/* Full-bleed like .tabs: break out of the centered .wrap column to span the
-   viewport, with an inner .wrap so the links themselves stay column-aligned.
+/* Full-bleed like .masthead/.tabs: break out of the centered .wrap column so
+   the bar itself spans the viewport, but (unlike those) the links inside sit
+   flush against the left edge rather than in a re-centered inner column.
    Background stays transparent until JS marks it .stuck (pinned under the
    tabs bar), so it only reads as a bar once it's actually docked there. */
-.chartjump{position:sticky;top:var(--tabs-h,57px);z-index:10;margin:0 0 20px;
-  width:100vw;margin-left:calc(-50vw + 50%);
+.chartjump{display:flex;flex-wrap:wrap;gap:8px;position:sticky;top:var(--tabs-h,57px);z-index:10;
+  width:100vw;margin-left:calc(-50vw + 50%);padding:14px var(--space-lg);margin-bottom:20px;
   background:transparent;border-bottom:1px solid transparent;
   transition:background-color .15s,border-color .15s}
 .chartjump.stuck{background:var(--canvas);border-bottom-color:var(--hairline)}
-.chartjump .wrap{display:flex;flex-wrap:wrap;gap:8px;padding:14px var(--space-lg)}
 .chartjump a{font-size:12px;font-weight:500;color:var(--steel);padding:8px 14px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
 .chartjump a:hover{color:var(--ink);background:var(--surface)}
 .chartjump a.active{background:var(--ink-deep);color:var(--canvas);border-color:var(--ink-deep)}
