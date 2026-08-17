@@ -74,10 +74,14 @@
   --win:#00ff00; --draw:#ffff00; --loss:#ff0000;
   --fdr-1:#00ff00; --fdr-2:#00ffff; --fdr-3:#ffff00; --fdr-4:#ff8000; --fdr-5:#ff0000;
   --radius-xs:0; --radius-sm:0; --radius-md:0; --radius-lg:0; --radius-full:0;
-  --font-sans:'VT323','Consolas','Courier New',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --font-sans:'Teletext50','Consolas','Courier New',ui-monospace,'SFMono-Regular',Menlo,monospace;
 }
-/* VT323 is a pixel font drawn thin and small at normal text sizes, so bump
-   the base size and loosen tracking rather than let it read as illegible */
+/* Self-hosted (assets/fonts/Teletext50.otf), not a Google Fonts request, so it
+   only loads when teletext mode actually needs it: @font-face is inert until
+   something on the page resolves to this font-family, and only :root[data-
+   theme="teletext"] ever sets --font-sans to it. */
+@font-face{font-family:'Teletext50';src:url('fonts/Teletext50.otf') format('opentype');
+  font-weight:normal;font-style:normal;font-display:swap}
 :root[data-theme="teletext"] body{font-size:19px;line-height:1.5;letter-spacing:.3px;text-transform:uppercase}
 :root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
 :root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
@@ -145,7 +149,7 @@
 :root[data-theme="teletext"] .previewbanner,
 :root[data-theme="teletext"] .tabs a,
 :root[data-theme="teletext"] .chartjump a,
-:root[data-theme="teletext"] .,
+:root[data-theme="teletext"] .label,
 :root[data-theme="teletext"] .board::before,
 :root[data-theme="teletext"] .board .side .full,
 :root[data-theme="teletext"] .board .vs,
@@ -158,7 +162,7 @@
 :root[data-theme="teletext"] .wp-bar,
 :root[data-theme="teletext"] .wp-key,
 :root[data-theme="teletext"] .h2h,
-:root[data-theme="teletext"] .h2h-,
+:root[data-theme="teletext"] .h2h-label,
 :root[data-theme="teletext"] ul.news .reason,
 :root[data-theme="teletext"] ul.news .tag,
 :root[data-theme="teletext"] .stat .k,
@@ -200,11 +204,11 @@
 :root[data-theme="teletext"] #squad thead th,
 :root[data-theme="teletext"] .pill,
 :root[data-theme="teletext"] .toggle,
-:root[data-theme="teletext"] .profile-controls ,
+:root[data-theme="teletext"] .profile-controls label,
 :root[data-theme="teletext"] .profile-controls input,
 :root[data-theme="teletext"] footer,
 :root[data-theme="teletext"] .health-note,
-:root[data-theme="teletext"] .fg-,
+:root[data-theme="teletext"] .fg-label,
 :root[data-theme="teletext"] .fg-summary,
 :root[data-theme="teletext"] .fg-trend,
 :root[data-theme="teletext"] .fg-analysis,
