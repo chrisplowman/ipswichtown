@@ -268,10 +268,14 @@ a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible,[
 section.panel{padding:28px 0}
 section.panel[hidden]{display:none}
 .block{margin-bottom:28px}
-.label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px;scroll-margin-top:70px}
-.chartjump{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px;
+  scroll-margin-top:calc(var(--tabs-h,57px) + var(--jump-h,56px) + 8px)}
+.chartjump{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:14px 0;
+  position:sticky;top:var(--tabs-h,57px);z-index:10;
+  background:var(--canvas);border-bottom:1px solid var(--hairline)}
 .chartjump a{font-size:12px;font-weight:500;color:var(--steel);padding:8px 14px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
 .chartjump a:hover{color:var(--ink);background:var(--surface)}
+.chartjump a.active{background:var(--ink-deep);color:var(--canvas);border-color:var(--ink-deep)}
 .chartjump a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .label::after{content:"";height:1px;background:var(--hairline);flex:1}
 .board{overflow:hidden;position:relative}
@@ -335,7 +339,7 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 .card>.cardhead:first-child h3{margin:0}
 .card .cardhead:not(:first-child){margin:16px 18px 10px}
 .hero>.cardhead{margin-bottom:4px}
-.chartcard>.cardhead{align-items:flex-start;margin:-18px -20px 16px;padding:14px 18px;
+.chartcard>.cardhead{align-items:flex-start;margin:-18px -20px 16px;padding:16px 18px 18px;
   border-bottom:1px solid var(--hairline);background:var(--surface-soft);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 .chartcard>.cardhead h3{margin:0}
@@ -467,7 +471,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .chartcard{padding:18px 20px 20px}
 .chartcard.wide{grid-column:1 / -1}
 .chartcard .htitle{min-width:0}
-.chartcard p.sub{margin:4px 0 0;font-size:13px;color:var(--steel);text-wrap:pretty}
+.chartcard p.sub{margin:8px 0 0;font-size:13px;color:var(--steel);text-wrap:pretty;line-height:1.5}
 .canvas-holder{position:relative;height:260px}
 .chartcard .note{color:var(--steel);font-size:14px;padding:40px 0;text-align:center}
 .shotbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}

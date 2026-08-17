@@ -621,6 +621,35 @@
     if(img.src.indexOf('resources.premierleague.com') === -1) return;
     img.addEventListener('error', function(){ img.style.visibility = 'hidden'; });
   });
+  // Charts page: keep the section jump-nav pinned directly under the tabs bar
+  // (heights vary by theme/viewport, so measure rather than hard-code), and
+  // highlight whichever section is currently under the sticky bars.
+  var jump = document.querySelector('.chartjump');
+  if(jump){
+    var tabsEl = document.querySelector('.tabs');
+    var root = document.documentElement;
+    function syncStickyOffsets(){
+      root.style.setProperty('--tabs-h', (tabsEl ? tabsEl.getBoundingClientRect().height : 0)+'px');
+      root.style.setProperty('--jump-h', jump.getBoundingClientRect().height+'px');
+    }
+    var links = [].slice.call(jump.querySelectorAll('a'));
+    var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+    function syncActive(){
+      var offset = jump.getBoundingClientRect().bottom + 8;
+      var current = sections[0];
+      sections.forEach(function(sec){ if(sec && sec.getBoundingClientRect().top - offset <= 1) current = sec; });
+      links.forEach(function(a, i){ a.classList.toggle('active', sections[i] === current); });
+    }
+    var ticking = false;
+    function onScroll(){
+      if(ticking) return; ticking = true;
+      requestAnimationFrame(function(){ syncActive(); ticking = false; });
+    }
+    syncStickyOffsets(); syncActive();
+    window.addEventListener('scroll', onScroll, {passive:true});
+    window.addEventListener('resize', function(){ syncStickyOffsets(); syncActive(); });
+  }
+
   var css = getComputedStyle(document.documentElement);
   function cv(n){ return css.getPropertyValue(n).trim(); }
   var C = {blue:cv('--primary'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid'),pitch:cv('--tint-mint'),pitchline:cv('--hairline-strong')};
