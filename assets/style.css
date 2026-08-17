@@ -80,7 +80,7 @@
    the base size and loosen tracking rather than let it read as illegible */
 :root[data-theme="teletext"] body{font-size:19px;line-height:1.5;letter-spacing:.3px;text-transform:uppercase}
 :root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
-:root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
+:root[data-theme="teletext"] .snapshot-,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
 /* a literal bright orange, not --brand-orange (a dark brick-red in this theme,
    too low-contrast as text-on-black); keeps "warning" visually distinct from
    the --loss red used elsewhere */
@@ -101,7 +101,7 @@
 /* ...and as text-on-navy (not a fill) it needs a genuinely bright colour rather
    than its own dark tone; reuse the same yellow already used for the info icons
    on these same cards */
-:root[data-theme="teletext"] .snapshot-label{color:#ffff00}
+:root[data-theme="teletext"] .snapshot-{color:#ffff00}
 /* position pills + news tags: loud solid blocks, not the dim tint tokens above */
 :root[data-theme="teletext"] .p-GKP{background:#ff00ff;color:#000}
 :root[data-theme="teletext"] .p-DEF{background:#00ff00;color:#000}
@@ -145,7 +145,7 @@
 :root[data-theme="teletext"] .previewbanner,
 :root[data-theme="teletext"] .tabs a,
 :root[data-theme="teletext"] .chartjump a,
-:root[data-theme="teletext"] .label,
+:root[data-theme="teletext"] .,
 :root[data-theme="teletext"] .board::before,
 :root[data-theme="teletext"] .board .side .full,
 :root[data-theme="teletext"] .board .vs,
@@ -158,7 +158,7 @@
 :root[data-theme="teletext"] .wp-bar,
 :root[data-theme="teletext"] .wp-key,
 :root[data-theme="teletext"] .h2h,
-:root[data-theme="teletext"] .h2h-label,
+:root[data-theme="teletext"] .h2h-,
 :root[data-theme="teletext"] ul.news .reason,
 :root[data-theme="teletext"] ul.news .tag,
 :root[data-theme="teletext"] .stat .k,
@@ -174,7 +174,7 @@
 :root[data-theme="teletext"] .reftable,
 :root[data-theme="teletext"] .reftable thead th,
 :root[data-theme="teletext"] .subhead,
-:root[data-theme="teletext"] .snapshot-label,
+:root[data-theme="teletext"] .snapshot-,
 :root[data-theme="teletext"] .surv-sub,
 :root[data-theme="teletext"] .surv-meta,
 :root[data-theme="teletext"] .rivaltable,
@@ -200,11 +200,11 @@
 :root[data-theme="teletext"] #squad thead th,
 :root[data-theme="teletext"] .pill,
 :root[data-theme="teletext"] .toggle,
-:root[data-theme="teletext"] .profile-controls label,
+:root[data-theme="teletext"] .profile-controls ,
 :root[data-theme="teletext"] .profile-controls input,
 :root[data-theme="teletext"] footer,
 :root[data-theme="teletext"] .health-note,
-:root[data-theme="teletext"] .fg-label,
+:root[data-theme="teletext"] .fg-,
 :root[data-theme="teletext"] .fg-summary,
 :root[data-theme="teletext"] .fg-trend,
 :root[data-theme="teletext"] .fg-analysis,
@@ -269,7 +269,7 @@ section.panel{padding:28px 0}
 section.panel[hidden]{display:none}
 .block{margin-bottom:28px}
 .label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px;
-  scroll-margin-top:calc(var(--tabs-h,57px) + var(--jump-h,56px) + 8px)}
+  scroll-margin-top:calc(var(--tabs-h,57px) + var(--jump-h,56px) + 8px);margin-top:40px}
 .chartjump{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:14px 0;
   position:sticky;top:var(--tabs-h,57px);z-index:10;
   background:var(--canvas);border-bottom:1px solid var(--hairline)}
