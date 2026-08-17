@@ -347,12 +347,14 @@
   <section class="panel">
 
     <nav class="chartjump" aria-label="Jump to chart section">
-      <a href="#cs-form">Form &amp; season</a>
-      <a href="#cs-attack">Attack</a>
-      <a href="#cs-defence">Defence &amp; pressing</a>
-      <a href="#cs-timing">Timing &amp; game-state</a>
-      <a href="#cs-discipline">Discipline</a>
-      <a href="#cs-league">League context</a>
+      <div class="wrap">
+        <a href="#cs-form">Form &amp; season</a>
+        <a href="#cs-attack">Attack</a>
+        <a href="#cs-defence">Defence &amp; pressing</a>
+        <a href="#cs-timing">Timing &amp; game-state</a>
+        <a href="#cs-discipline">Discipline</a>
+        <a href="#cs-league">League context</a>
+      </div>
     </nav>
     <p class="label" id="cs-form">Form &amp; season</p>
     <div class="chartgrid">
@@ -639,14 +641,20 @@
       sections.forEach(function(sec){ if(sec && sec.getBoundingClientRect().top - offset <= 1) current = sec; });
       links.forEach(function(a, i){ a.classList.toggle('active', sections[i] === current); });
     }
+    // Only show the bar's background once it's actually pinned under the tabs
+    // (its sticky "top" position), not while it's still scrolling with the page.
+    function syncStuck(){
+      var tabsH = tabsEl ? tabsEl.getBoundingClientRect().height : 0;
+      jump.classList.toggle('stuck', jump.getBoundingClientRect().top <= tabsH + 0.5);
+    }
     var ticking = false;
     function onScroll(){
       if(ticking) return; ticking = true;
-      requestAnimationFrame(function(){ syncActive(); ticking = false; });
+      requestAnimationFrame(function(){ syncActive(); syncStuck(); ticking = false; });
     }
-    syncStickyOffsets(); syncActive();
+    syncStickyOffsets(); syncActive(); syncStuck();
     window.addEventListener('scroll', onScroll, {passive:true});
-    window.addEventListener('resize', function(){ syncStickyOffsets(); syncActive(); });
+    window.addEventListener('resize', function(){ syncStickyOffsets(); syncActive(); syncStuck(); });
   }
 
   var css = getComputedStyle(document.documentElement);
