@@ -144,6 +144,7 @@
 :root[data-theme="teletext"] .previewtoggle,
 :root[data-theme="teletext"] .previewbanner,
 :root[data-theme="teletext"] .tabs a,
+:root[data-theme="teletext"] .chartjump a,
 :root[data-theme="teletext"] .label,
 :root[data-theme="teletext"] .board::before,
 :root[data-theme="teletext"] .board .side .full,
@@ -267,7 +268,11 @@ a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible,[
 section.panel{padding:28px 0}
 section.panel[hidden]{display:none}
 .block{margin-bottom:28px}
-.label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px}
+.label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px;scroll-margin-top:70px}
+.chartjump{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.chartjump a{font-size:12px;font-weight:500;color:var(--steel);padding:8px 14px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
+.chartjump a:hover{color:var(--ink);background:var(--surface)}
+.chartjump a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .label::after{content:"";height:1px;background:var(--hairline);flex:1}
 .board{overflow:hidden;position:relative}
 .board::before{content:"NEXT";position:absolute;top:16px;left:18px;font-size:11px;letter-spacing:1px;font-weight:600;color:var(--steel)}
