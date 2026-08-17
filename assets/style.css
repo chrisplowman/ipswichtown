@@ -80,7 +80,7 @@
    the base size and loosen tracking rather than let it read as illegible */
 :root[data-theme="teletext"] body{font-size:19px;line-height:1.5;letter-spacing:.3px;text-transform:uppercase}
 :root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
-:root[data-theme="teletext"] .snapshot-,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
+:root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
 /* a literal bright orange, not --brand-orange (a dark brick-red in this theme,
    too low-contrast as text-on-black); keeps "warning" visually distinct from
    the --loss red used elsewhere */
@@ -101,7 +101,7 @@
 /* ...and as text-on-navy (not a fill) it needs a genuinely bright colour rather
    than its own dark tone; reuse the same yellow already used for the info icons
    on these same cards */
-:root[data-theme="teletext"] .snapshot-{color:#ffff00}
+:root[data-theme="teletext"] .snapshot-label{color:#ffff00}
 /* position pills + news tags: loud solid blocks, not the dim tint tokens above */
 :root[data-theme="teletext"] .p-GKP{background:#ff00ff;color:#000}
 :root[data-theme="teletext"] .p-DEF{background:#00ff00;color:#000}
@@ -174,7 +174,7 @@
 :root[data-theme="teletext"] .reftable,
 :root[data-theme="teletext"] .reftable thead th,
 :root[data-theme="teletext"] .subhead,
-:root[data-theme="teletext"] .snapshot-,
+:root[data-theme="teletext"] .snapshot-label,
 :root[data-theme="teletext"] .surv-sub,
 :root[data-theme="teletext"] .surv-meta,
 :root[data-theme="teletext"] .rivaltable,
@@ -231,7 +231,7 @@
 :root[data-theme="teletext"] .page-player .tile .k{font-size:16px}
 
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
 body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
 a{color:var(--link-blue);text-decoration:none}
 .wrap{max-width:1080px;margin:0 auto;padding:0 var(--space-lg)}
@@ -270,9 +270,16 @@ section.panel[hidden]{display:none}
 .block{margin-bottom:28px}
 .label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--steel);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:12px;
   scroll-margin-top:calc(var(--tabs-h,57px) + var(--jump-h,56px) + 8px);margin-top:40px}
-.chartjump{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:14px 0;
-  position:sticky;top:var(--tabs-h,57px);z-index:10;
-  background:var(--canvas);border-bottom:1px solid var(--hairline)}
+/* Full-bleed like .tabs: break out of the centered .wrap column to span the
+   viewport, with an inner .wrap so the links themselves stay column-aligned.
+   Background stays transparent until JS marks it .stuck (pinned under the
+   tabs bar), so it only reads as a bar once it's actually docked there. */
+.chartjump{position:sticky;top:var(--tabs-h,57px);z-index:10;margin:0 0 20px;
+  width:100vw;margin-left:calc(-50vw + 50%);
+  background:transparent;border-bottom:1px solid transparent;
+  transition:background-color .15s,border-color .15s}
+.chartjump.stuck{background:var(--canvas);border-bottom-color:var(--hairline)}
+.chartjump .wrap{display:flex;flex-wrap:wrap;gap:8px;padding:14px var(--space-lg)}
 .chartjump a{font-size:12px;font-weight:500;color:var(--steel);padding:8px 14px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
 .chartjump a:hover{color:var(--ink);background:var(--surface)}
 .chartjump a.active{background:var(--ink-deep);color:var(--canvas);border-color:var(--ink-deep)}
