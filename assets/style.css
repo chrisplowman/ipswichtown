@@ -356,7 +356,6 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
   border-bottom:1px solid var(--hairline);background:var(--surface-soft);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 .chartcard>.cardhead h3{margin:0}
-.chartcard>.cardhead .infobtn{margin-top:1px;flex:none}
 .snapshot>.cardhead,.survival>.cardhead,.formguide>.cardhead{margin-bottom:8px}
 .cardhead .snapshot-label{margin-bottom:0}
 /* the info icon: a small "i" badge that reveals a tooltip explaining the
@@ -381,6 +380,21 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 .snapshot .infobtn,.survival .infobtn{color:var(--on-dark-muted);border-color:rgba(255,255,255,.35)}
 .snapshot .infobtn:hover,.snapshot .infobtn:focus-visible,
 .survival .infobtn:hover,.survival .infobtn:focus-visible{color:var(--brand-navy);background:#fff;border-color:#fff}
+/* groups the share + info icons together at the header's trailing edge;
+   injected by share.js so every card gets one without a per-card template edit */
+.cardactions{display:inline-flex;align-items:center;gap:8px;flex:none}
+.chartcard>.cardhead .cardactions{margin-top:1px}
+.sharebtn{all:unset;cursor:pointer;flex:none;width:17px;height:17px;border-radius:50%;
+  border:1px solid var(--hairline-strong);color:var(--steel);
+  display:inline-flex;align-items:center;justify-content:center;position:relative}
+.sharebtn svg{width:10px;height:10px}
+.sharebtn::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px}
+.sharebtn:hover,.sharebtn:focus-visible{color:var(--on-primary);background:var(--primary);border-color:var(--primary)}
+.sharebtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.sharebtn.busy{opacity:.5;pointer-events:none}
+.snapshot .sharebtn,.survival .sharebtn{color:var(--on-dark-muted);border-color:rgba(255,255,255,.35)}
+.snapshot .sharebtn:hover,.snapshot .sharebtn:focus-visible,
+.survival .sharebtn:hover,.survival .sharebtn:focus-visible{color:var(--brand-navy);background:#fff;border-color:#fff}
 /* When a component that is normally its own card sits inside a section card,
    flatten its chrome so we get one clean card with an h3 header bar on top. */
 .card .board,.card .tablewrap{border:0;box-shadow:none;border-radius:0;background:transparent}
