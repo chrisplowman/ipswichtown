@@ -27,8 +27,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 DATA = Path("data/itfc.json")
 SITE = Path("site")
 TEMPLATES = Path("templates")
-ASSETS = Path("assets/style.css")
-FONTS = Path("assets/fonts")
+ASSETS = Path("assets")
 
 # (page id, output filename, nav label) — order defines the nav order.
 PAGES = [
@@ -633,9 +632,7 @@ def render_site(template, match_template, player_template, data, preview):
     outdir = SITE / "preview" if preview else SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
     if ASSETS.exists():
-        shutil.copy(ASSETS, outdir / "style.css")   # one stylesheet per site root
-    if FONTS.exists():
-        shutil.copytree(FONTS, outdir / "fonts", dirs_exist_ok=True)
+        shutil.copytree(ASSETS, outdir, dirs_exist_ok=True)   # style.css, fonts/, share.js per site root
     player_pages = build_player_pages(data)     # stamps slug on each squad entry
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)
