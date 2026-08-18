@@ -28,6 +28,7 @@ DATA = Path("data/itfc.json")
 SITE = Path("site")
 TEMPLATES = Path("templates")
 ASSETS = Path("assets/style.css")
+FONTS = Path("assets/fonts")
 
 # (page id, output filename, nav label) — order defines the nav order.
 PAGES = [
@@ -633,6 +634,8 @@ def render_site(template, match_template, player_template, data, preview):
     (outdir / "data").mkdir(parents=True, exist_ok=True)
     if ASSETS.exists():
         shutil.copy(ASSETS, outdir / "style.css")   # one stylesheet per site root
+    if FONTS.exists():
+        shutil.copytree(FONTS, outdir / "fonts", dirs_exist_ok=True)
     player_pages = build_player_pages(data)     # stamps slug on each squad entry
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)
