@@ -201,6 +201,9 @@
 :root[data-theme="teletext"] .matchreport,
 :root[data-theme="teletext"] .matchreport .mr .k,
 :root[data-theme="teletext"] .shotkey,
+:root[data-theme="teletext"] .cl-player,
+:root[data-theme="teletext"] .cl-xg,
+:root[data-theme="teletext"] .cl-meta,
 :root[data-theme="teletext"] .rankrow .top,
 :root[data-theme="teletext"] .rankrow .top .pos,
 :root[data-theme="teletext"] #squad thead th,
@@ -529,6 +532,13 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .shotkey{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--steel)}
 .shotkey span{display:flex;align-items:center;gap:6px}
 .shotkey i{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.12)}
+ul.chancelist li{align-items:flex-start}
+.chancelist .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.chance-dot{width:11px;height:11px;border-radius:50%;flex:none;margin-top:5px;border:1px solid rgba(0,0,0,.12)}
+.chance-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.cl-player{font-weight:600;font-size:14px;color:var(--ink)}
+.cl-xg{font-weight:600;font-size:13px;color:var(--steel);white-space:nowrap}
+.cl-meta{font-size:12.5px;color:var(--stone)}
 .ranks{display:grid;grid-template-columns:1fr 1fr;gap:14px 28px}
 .rankrow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
 .rankrow .top .pos{color:var(--steel);font-size:12px}

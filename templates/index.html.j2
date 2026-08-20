@@ -456,6 +456,20 @@
           <span style="margin-left:auto">Circle size = xG</span>
         </div>
       </div>
+      <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>Chances taken &amp; missed</h3><p class="sub">Season extremes by chance quality (xG): the toughest chance converted, and the easiest chances spurned.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">The lowest-xG shot that produced a goal, and the highest-xG shots that didn't, this season. Source: Understat shot-level data.</span></button></div>
+        <div class="cols2" id="chances-cols">
+          <div>
+            <h4 class="subhead">Hardest chances taken</h4>
+            <ul class="list chancelist" id="chances-hardest"></ul>
+          </div>
+          <div>
+            <h4 class="subhead">Easiest chances missed</h4>
+            <ul class="list chancelist" id="chances-easiest"></ul>
+          </div>
+        </div>
+        <div class="note" id="n-chances" hidden></div>
+      </div>
     </div>
     <p class="label" id="cs-defence">Defence &amp; pressing</p>
     <div class="chartgrid">
@@ -883,13 +897,17 @@
         options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})}); }
       else showNote('shots','No shot-count data yet.');
 
-      // Where shots come from + set-piece conversion — one pass over every match's shots
-      // for the whole season (not just the last few), sharing the shot/goal counts.
-      var sit={}; (DATA.match_pages||[]).forEach(function(m){(m.shots_for||[]).forEach(function(s){
+      // Where shots come from + set-piece conversion + hardest/easiest chances —
+      // one pass over every match's shots for the whole season (not just the last
+      // few), sharing the shot/goal counts and per-shot records.
+      var sit={}, chanceShots=[];
+      (DATA.match_pages||[]).forEach(function(m){(m.shots_for||[]).forEach(function(s){
         var k=s.situation||'Unknown';
         if(!sit[k]) sit[k]={shots:0,goals:0};
         sit[k].shots++;
         if(s.result==='Goal') sit[k].goals++;
+        chanceShots.push({player:s.player,xg:s.xg,minute:s.minute,result:s.result,
+          mid:m.id,opp:m.opponent,home:m.home});
       });});
       var sk=Object.keys(sit);
       var niceSit={OpenPlay:'Open play',FromCorner:'From corner',SetPiece:'Set piece',DirectFreekick:'Free kick',Penalty:'Penalty'};
@@ -915,6 +933,32 @@
             scales:{x:{beginAtZero:true,grid:{color:C.line},ticks:{callback:function(v){return v+'%';}}},
                     y:{grid:{display:false}}}}}); }
       else showNote('setpiece','No shot-location data yet.');
+
+      // Hardest chances taken (lowest-xG goals) and easiest chances missed
+      // (highest-xG non-goals) — season extremes, sharing chanceShots above.
+      function chanceRow(s){
+        var col=SHOT[s.result]||'#9aa6b8';
+        return '<li class="has-link"><a class="rowlink" href="match/'+s.mid+'.html" aria-label="Match report: Ipswich '+
+          (s.home?'vs ':'at ')+esc(s.opp)+'"></a>'+
+          '<i class="chance-dot" style="background:'+col+'"></i>'+
+          '<div class="body"><div class="chance-top"><span class="cl-player">'+esc(s.player)+'</span>'+
+          '<span class="cl-xg">'+s.xg.toFixed(2)+' xG</span></div>'+
+          '<div class="cl-meta">'+(s.home?'vs ':'at ')+esc(s.opp)+' · '+s.minute+"'</div></div></li>";
+      }
+      var hardest = chanceShots.filter(function(s){return s.result==='Goal';})
+        .sort(function(a,b){return a.xg-b.xg;}).slice(0,5);
+      var easiest = chanceShots.filter(function(s){return s.result!=='Goal';})
+        .sort(function(a,b){return b.xg-a.xg;}).slice(0,5);
+      var hEl=document.getElementById('chances-hardest'), eEl=document.getElementById('chances-easiest');
+      if(chanceShots.length){
+        hEl.innerHTML = hardest.length ? hardest.map(chanceRow).join('')
+          : '<li class="empty-note" style="padding:10px 2px">No goals yet this season.</li>';
+        eEl.innerHTML = easiest.length ? easiest.map(chanceRow).join('')
+          : '<li class="empty-note" style="padding:10px 2px">No missed chances yet.</li>';
+      } else {
+        document.getElementById('chances-cols').style.display='none';
+        showNote('chances','No shot-location data yet.');
+      }
 
       // Elo trend
       var eh = DATA.elo_history||[];
