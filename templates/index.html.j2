@@ -306,6 +306,47 @@
     {% else %}<p class="empty-note">Available once the season is under way.</p>{% endif %}
     </div>
 
+    <div class="block card">
+    <div class="cardhead"><h3>Underlying numbers</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every club's actual points next to the numbers behind them: expected goals for/against, non-penalty xG, pressing intensity (PPDA) and current Elo rating. The Δ column is actual points minus Understat's xPts — positive means outperforming the underlying play, negative means the table flatters them. Source: Understat and ClubElo.</span></button></div>
+    {% if league_table %}
+    <p class="empty-note" style="padding:0 2px 12px">Same 20 clubs, ranked by actual points — but with the numbers a plain table can't show. Click any column to sort.</p>
+    <div class="tablewrap">
+      <table class="ltable" id="underlying-table">
+        <thead><tr>
+          <th class="rk" aria-sort="none"><button>#</button></th>
+          <th class="tm" aria-sort="none"><button>Team</button></th>
+          <th aria-sort="none"><button>Pts</button></th>
+          <th aria-sort="none"><button>GD</button></th>
+          <th aria-sort="none"><button>xG</button></th>
+          <th aria-sort="none"><button>xGA</button></th>
+          <th aria-sort="none"><button>npxG</button></th>
+          <th aria-sort="none"><button>PPDA</button></th>
+          <th aria-sort="none"><button>Elo</button></th>
+          <th aria-sort="none"><button>xPts</button></th>
+          <th aria-sort="none"><button>Δ</button></th>
+        </tr></thead>
+        <tbody>
+          {% for row in league_table %}
+          <tr class="{{ 'ips ' if row.is_ipswich }}{{ 'eur' if row.rank<=5 else 'rel' if row.rank>=18 else '' }}">
+            <td class="rk">{{ row.rank }}</td>
+            <td class="tm">{% if row.badge %}<img class="badge" src="{{ row.badge }}" alt="">{% endif %}{{ row.team }}</td>
+            <td><b>{{ row.points }}</b></td>
+            <td>{{ '%+d'|format(row.gd) if row.gd else 0 }}</td>
+            <td>{{ '%.1f'|format(row.xg) if row.xg is not none else '–' }}</td>
+            <td>{{ '%.1f'|format(row.xga) if row.xga is not none else '–' }}</td>
+            <td>{{ '%.1f'|format(row.npxg) if row.npxg is not none else '–' }}</td>
+            <td>{{ '%.1f'|format(row.ppda) if row.ppda is not none else '–' }}</td>
+            <td>{{ row.elo if row.elo is not none else '–' }}</td>
+            <td>{{ '%.1f'|format(row.xpts) if row.xpts is not none else '–' }}</td>
+            <td class="diff {{ 'pos' if (row.xpts_diff or 0) > 0 else 'neg' if (row.xpts_diff or 0) < 0 else '' }}">{{ '%+.1f'|format(row.xpts_diff) if row.xpts_diff is not none else '–' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="empty-note">Available once the season is under way.</p>{% endif %}
+    </div>
+
     {% if home_table %}
     {% for title, tbl in [('Home table', home_table), ('Away table', away_table)] %}
     <div class="block card">
@@ -465,8 +506,18 @@
         <div class="canvas-holder"><canvas id="c-strength"></canvas></div><div class="note" id="n-strength" hidden></div>
       </div>
       <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Upcoming difficulty</h3><p class="sub">FPL difficulty of the next fixtures (1 easy to 5 hard): a quick look at the run ahead.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">FPL's fixture difficulty rating for each upcoming match (1 easy to 5 hard). Source: Fantasy Premier League API.</span></button></div>
-        <div class="canvas-holder"><canvas id="c-fdr"></canvas></div><div class="note" id="n-fdr" hidden></div>
+        <div class="cardhead"><div class="htitle"><h3>Fixture difficulty: rest of season</h3><p class="sub">FPL's difficulty rating (1 easy to 5 hard) for every remaining fixture: scan the whole run-in for a tough patch or a kind one.</p></div><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">FPL's fixture difficulty rating for every remaining match this season (1 easy to 5 hard). Source: Fantasy Premier League API.</span></button></div>
+        {% if upcoming %}
+        <div class="fdr-strip">
+          {% for f in upcoming %}
+          <div class="fdr-chip">
+            <span class="fdr-gw">GW{{ f.event }}</span>
+            <span class="fdr fdr-{{ f.difficulty or 3 }}" title="Fixture difficulty {{ f.difficulty }}/5">{{ f.difficulty or '–' }}</span>
+            <span class="fdr-opp">{{ f.opponent_short }}{{ ' (H)' if f.home else ' (A)' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<p class="empty-note">No upcoming fixtures scheduled.</p>{% endif %}
       </div>
     </div>
   </section>
@@ -653,7 +704,6 @@
   var css = getComputedStyle(document.documentElement);
   function cv(n){ return css.getPropertyValue(n).trim(); }
   var C = {blue:cv('--primary'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid'),pitch:cv('--tint-mint'),pitchline:cv('--hairline-strong')};
-  var FDR = {1:cv('--fdr-1'),2:cv('--fdr-2'),3:cv('--fdr-3'),4:cv('--fdr-4'),5:cv('--fdr-5')};
   var SHOT = {Goal:cv('--win'),SavedShot:cv('--link-blue'),BlockedShot:cv('--brand-orange'),MissedShots:cv('--stone'),ShotOnPost:cv('--loss'),OwnGoal:cv('--stone')};
 
   // Each section is its own page now — build whatever this page contains.
@@ -687,7 +737,7 @@
   }
 
   function buildCharts(){
-    if(!window.Chart){ ['points','xpts','goals','xg','xga','xgd','ppda','deep','homeaway','shots','situation','finish','fdr','elo','timing','gamestate','discipline','strength'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
+    if(!window.Chart){ ['points','xpts','goals','xg','xga','xgd','ppda','deep','homeaway','shots','situation','finish','elo','timing','gamestate','discipline','strength'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
     else {
       Chart.defaults.font.family="Inter, system-ui, sans-serif"; Chart.defaults.color=C.muted;
       var gw = DATA.by_gameweek||[], labels = gw.map(function(d){return 'GW'+d.gw;});
@@ -934,15 +984,6 @@
                     y:{title:{display:true,text:'Goals'},beginAtZero:true,grid:{color:C.line}}}})});
       } else showNote('finish','No shot data yet.');
 
-      var up = DATA.upcoming||[];
-      if(up.length){ new Chart(document.getElementById('c-fdr'),{type:'bar',
-        data:{labels:up.map(function(f){return f.opponent_short+(f.home?' (H)':' (A)');}),
-          datasets:[{label:'Difficulty',data:up.map(function(f){return f.difficulty||0;}),
-            backgroundColor:up.map(function(f){return FDR[f.difficulty]||C.muted;})}]},
-        options:baseOpts({plugins:{legend:{display:false}},
-          scales:{x:{grid:{display:false}},y:{beginAtZero:true,max:5,ticks:{stepSize:1}}}})}); }
-      else showNote('fdr','No upcoming fixtures scheduled.');
-
       // League team scatter: xG vs xGA per game
       var ts = DATA.team_scatter||[];
       if(ts.length){
@@ -1027,11 +1068,12 @@
   }
   function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-  // squad sort
-  var table=document.getElementById('squad');
-  if(table){
-    var heads=table.tHead.rows[0].cells, body=table.tBodies[0];
-    function val(row,i){var t=row.cells[i].textContent.trim().replace('%','');var n=parseFloat(t);return isNaN(n)?t.toLowerCase():n;}
+  // click-to-sort tables (squad, underlying-numbers)
+  function makeSortable(id){
+    var t=document.getElementById(id);
+    if(!t) return;
+    var heads=t.tHead.rows[0].cells, body=t.tBodies[0];
+    function val(row,i){var s=row.cells[i].textContent.trim().replace('%','');var n=parseFloat(s);return isNaN(n)?s.toLowerCase():n;}
     [].forEach.call(heads,function(th,i){
       th.querySelector('button').addEventListener('click',function(){
         var dir=th.getAttribute('aria-sort')==='ascending'?'descending':'ascending';
@@ -1043,6 +1085,8 @@
       });
     });
   }
+  makeSortable('squad');
+  makeSortable('underlying-table');
   // per-90 toggle
   var per90=document.getElementById('per90-toggle');
   if(per90){

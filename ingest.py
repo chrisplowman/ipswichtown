@@ -452,6 +452,16 @@ def fetch_understat_league():
     teams_raw = _us_json(html, "teamsData") or {}
     players_raw = _us_json(html, "playersData") or []
 
+    def _match_pts(h):
+        p = h.get("pts")
+        if p not in (None, ""):
+            try:
+                return int(p)
+            except (TypeError, ValueError):
+                pass
+        r = (h.get("result", "") or "").lower()
+        return 3 if r == "w" else 1 if r == "d" else 0
+
     league_teams = {}
     for t in teams_raw.values():
         hist = t.get("history", [])
@@ -467,6 +477,8 @@ def fetch_understat_league():
                "ppda": round(att / dfn, 2) if dfn else None,
                "xg_pg": round(sum(to_float(h["xG"]) for h in hist) / g, 2),
                "xga_pg": round(sum(to_float(h["xGA"]) for h in hist) / g, 2),
+               "pts": sum(_match_pts(h) for h in hist),
+               "xpts": round(sum(to_float(h.get("xpts", 0)) for h in hist), 1),
                "form": [h.get("result", "").upper()[:1] for h in hist[-5:]
                         if h.get("result", "").upper()[:1] in ("W", "D", "L")]}
         league_teams[t["title"]] = agg
@@ -935,7 +947,10 @@ def main():
     except Exception as e:
         print(f"  understat: skipped ({e})")
 
-    upcoming = fpl["upcoming"][:8]
+    # the whole remaining season — the fixture-difficulty strip on the Charts
+    # page needs every game, not just the next few; next_fixture only ever
+    # needs the first entry regardless
+    upcoming = fpl["upcoming"]
     next_fixture = dict(upcoming[0]) if upcoming else None
 
     # ---- league-wide comparison data (Understat league page) -------------- #
@@ -1046,6 +1061,30 @@ def main():
                                   "rank": ips_row["rank"], "total": nt, "low_good": False})
             team_ranks.append({"label": "Goal difference", "value": ips_row["gd"],
                                "rank": gd_rank, "total": nt, "low_good": False})
+
+    # full underlying-numbers table: every club's actual points (derived the same
+    # way from Understat's own match-by-match record, so it needs no join against
+    # the ESPN table) next to xG, xGA, npxG, pressing and current Elo, plus how far
+    # actual points have drifted from Understat's xPts — the "who's over/under-
+    # performing" read a plain points table can't show.
+    league_table = []
+    for title, agg in league_teams.items():
+        short, badge = team_meta(title)
+        pts, xpts = agg.get("pts"), agg.get("xpts")
+        league_table.append({
+            "team": title, "short": short, "badge": badge,
+            "is_ipswich": TEAM_NAME_MATCH in title.lower(),
+            "played": agg["games"], "points": pts,
+            "gf": agg["scored"], "ga": agg["conceded"], "gd": agg["scored"] - agg["conceded"],
+            "xg": agg["xg"], "xga": agg["xga"], "npxg": agg["npxg"],
+            "xg_pg": agg["xg_pg"], "xga_pg": agg["xga_pg"], "ppda": agg["ppda"],
+            "elo": round(elos[canon(title)]) if elos.get(canon(title)) is not None else None,
+            "xpts": xpts,
+            "xpts_diff": round(pts - xpts, 1) if pts is not None and xpts is not None else None,
+        })
+    league_table.sort(key=lambda r: (-(r["points"] or 0), -(r["gd"] or 0), -(r["gf"] or 0)))
+    for i, r in enumerate(league_table, 1):
+        r["rank"] = i
 
     # player profiles: per-90 + percentile vs positional peers (league-wide)
     player_profiles = []
@@ -1219,6 +1258,7 @@ def main():
         "table": table or [],
         "team_scatter": team_scatter,
         "team_ranks": team_ranks,
+        "league_table": league_table,
         "player_profiles": player_profiles,
         "by_gameweek": fpl["by_gameweek"],
         "understat_matches": understat["matches"],
