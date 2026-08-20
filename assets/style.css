@@ -462,7 +462,7 @@ ul.list li.has-link .opp{color:var(--primary)}
 @media(max-width:760px){.cols2{grid-template-columns:1fr}}
 .subhead{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--ink)}
 .ltable.compact th,.ltable.compact td{padding:6px 8px}
-.snapshot-label{font-size:16px;font-weight:600;letter-spacing:.7px;color:var(--on-primary);margin-bottom:8px}
+.snapshot-label{font-size:16px;font-weight:600;letter-spacing:.7px;color:var(--on-primary)}
 .survival{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
 .surv-big{font-size:52px;font-weight:700;line-height:1;letter-spacing:-1px}
 .surv-sub{font-size:14px;color:var(--on-dark-muted);margin:4px 0 14px}
