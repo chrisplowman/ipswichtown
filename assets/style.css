@@ -84,7 +84,7 @@
   font-weight:normal;font-style:normal;font-display:swap}
 :root[data-theme="teletext"] body{font-size:19px;line-height:1.5;letter-spacing:.3px;text-transform:uppercase}
 :root[data-theme="teletext"] h3,:root[data-theme="teletext"] .wordmark,
-:root[data-theme="teletext"] .snapshot-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
+:root[data-theme="teletext"] .-label,:root[data-theme="teletext"] .surv-big{text-transform:uppercase}
 /* a literal bright orange, not --brand-orange (a dark brick-red in this theme,
    too low-contrast as text-on-black); keeps "warning" visually distinct from
    the --loss red used elsewhere */
@@ -105,7 +105,7 @@
 /* ...and as text-on-navy (not a fill) it needs a genuinely bright colour rather
    than its own dark tone; reuse the same yellow already used for the info icons
    on these same cards */
-:root[data-theme="teletext"] .snapshot-label{color:#ffff00}
+:root[data-theme="teletext"] .-label{color:#ffff00}
 /* position pills + news tags: loud solid blocks, not the dim tint tokens above */
 :root[data-theme="teletext"] .p-GKP{background:#ff00ff;color:#000}
 :root[data-theme="teletext"] .p-DEF{background:#00ff00;color:#000}
@@ -180,12 +180,12 @@
 :root[data-theme="teletext"] .reftable,
 :root[data-theme="teletext"] .reftable thead th,
 :root[data-theme="teletext"] .subhead,
-:root[data-theme="teletext"] .snapshot-label,
+:root[data-theme="teletext"] .-label,
 :root[data-theme="teletext"] .surv-sub,
 :root[data-theme="teletext"] .surv-meta,
 :root[data-theme="teletext"] .rivaltable,
 :root[data-theme="teletext"] .rivaltable thead th,
-:root[data-theme="teletext"] .snapshot p,
+:root[data-theme="teletext"] . p,
 :root[data-theme="teletext"] .newslist .src,
 :root[data-theme="teletext"] .newslist .date,
 :root[data-theme="teletext"] .newslist .headline,
@@ -358,8 +358,8 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
   border-bottom:1px solid var(--hairline);background:var(--surface-soft);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 .chartcard>.cardhead h3{margin:0}
-.cardhead .snapshot-label{margin-bottom:0}
-/* the navy hero cards (snapshot/survival) get the same boxed header band as
+.cardhead .-label{margin-bottom:0}
+/* the navy hero cards (/survival) get the same boxed header band as
    every .card/.chartcard, just tinted for a dark background instead of
    var(--surface-soft) */
 .snapshot>.cardhead,.survival>.cardhead{margin:-20px -22px 16px;padding:14px 22px;
@@ -462,7 +462,7 @@ ul.list li.has-link .opp{color:var(--primary)}
 @media(max-width:760px){.cols2{grid-template-columns:1fr}}
 .subhead{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--ink)}
 .ltable.compact th,.ltable.compact td{padding:6px 8px}
-.snapshot-label{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--brand-orange);margin-bottom:8px}
+.snapshot-label{font-size:16px;font-weight:600;letter-spacing:.7px;color:var(--on-primary);margin-bottom:8px}
 .survival{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
 .surv-big{font-size:52px;font-weight:700;line-height:1;letter-spacing:-1px}
 .surv-sub{font-size:14px;color:var(--on-dark-muted);margin:4px 0 14px}
