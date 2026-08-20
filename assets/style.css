@@ -593,7 +593,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
   margin:-16px -18px 14px;padding:14px 18px;
   background:var(--surface-soft);border-bottom:1px solid var(--hairline);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0}
-.fg-label{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--steel)}
+.fg-label{font-size:16px;font-weight:600;letter-spacing:.7px;color:var(--steel)}
 .fg-summary{font-size:14px;font-weight:600;color:var(--ink)}
 .fg-trend{font-size:13px;margin-left:4px}
 .fg-trend.up{color:var(--win)}.fg-trend.down{color:var(--loss)}.fg-trend.flat{color:var(--stone)}
