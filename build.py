@@ -25,6 +25,7 @@ except Exception:  # pragma: no cover
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 DATA = Path("data/itfc.json")
+DATA_WOMEN = Path("data/itfc_women.json")
 SITE = Path("site")
 TEMPLATES = Path("templates")
 ASSETS = Path("assets")
@@ -34,6 +35,16 @@ PAGES = [
     ("overview", "index.html", "Overview"),
     ("table",    "table.html", "Table"),
     ("charts",   "charts.html", "Charts"),
+    ("matches",  "matches.html", "Matches"),
+    ("squad",    "squad.html",  "Squad"),
+    ("news",     "news.html",   "News"),
+]
+
+# Women's team pages: a trimmed subset — no Charts (no free xG/shot source for
+# WSL2 exists yet; see templates/women.html.j2's footer note).
+WOMEN_PAGES = [
+    ("overview", "index.html", "Overview"),
+    ("table",    "table.html", "Table"),
     ("matches",  "matches.html", "Matches"),
     ("squad",    "squad.html",  "Squad"),
     ("news",     "news.html",   "News"),
@@ -642,6 +653,117 @@ def rival_tracker(data):
     return out
 
 
+def form_guide_women(data, n=6):
+    """Simplified form_guide(): results only, no xG/xPts/odds — those sources
+    don't exist for free for women's football (see templates/women.html.j2)."""
+    results = data.get("results") or []
+    recent = results[:n]
+    if not recent:
+        return None
+    pts_of = lambda r: 3 if r["result"] == "W" else 1 if r["result"] == "D" else 0
+    pts = sum(pts_of(r) for r in recent)
+    ppg = round(pts / len(recent), 2)
+    k = len(recent)
+    half = max(1, k // 2)
+    newer, older = recent[:half], recent[half:half * 2] or recent[half:]
+    np_ = sum(pts_of(r) for r in newer) / len(newer)
+    op = sum(pts_of(r) for r in older) / len(older) if older else np_
+    trend = "up" if np_ > op + 0.25 else "down" if np_ < op - 0.25 else "flat"
+    matches = [{"result": r["result"], "opponent": r.get("opponent", ""),
+                "opponent_short": r.get("opponent_short", ""), "home": r.get("home"),
+                "score": r.get("score", ""), "event": r.get("event"), "pts": pts_of(r)}
+               for r in reversed(recent)]
+    return {"matches": matches, "pts": pts, "ppg": ppg, "trend": trend, "count": k}
+
+
+def render_women_site(template, data, outdir):
+    """Renders into outdir (e.g. site/women/), sharing style.css/fonts/share.js
+    from outdir's parent rather than duplicating them — main() copies those
+    into SITE before calling this."""
+    outdir.mkdir(parents=True, exist_ok=True)
+    if ASSETS.exists() and not (outdir.parent / "style.css").exists():
+        shutil.copytree(ASSETS, outdir.parent, dirs_exist_ok=True)
+    league_name = data.get("league_name", "Women's Super League 2")
+    fguide = form_guide_women(data)
+
+    for page_id, filename, _label in WOMEN_PAGES:
+        html = template.render(page=page_id, current=page_id, pages=WOMEN_PAGES,
+                               css_href="../style.css", form_guide=fguide,
+                               og_title=f"Ipswich Town Women · {filename.replace('.html', '').title()}",
+                               og_description=f"Ipswich Town Women {league_name} stats.",
+                               canonical=f"{SITE_URL}/women/{filename}", **data)
+        (outdir / filename).write_text(html)
+    (outdir / "data.json").write_text(json.dumps(data))
+
+
+def sample_data_women():
+    """Realistic fake data for the women's-team site — no live ingest source
+    exists yet (see ingest_women.py), so this is what's rendered for now."""
+    opponents = ["Charlton Athletic", "Southampton", "Birmingham City", "Sunderland",
+                 "Sheffield United", "Blackburn Rovers", "Newcastle United", "Watford",
+                 "Reading", "London City Lionesses", "Bristol City"]
+    results, badges = [], {}
+    random_results = ["W", "W", "D", "L", "W", "D", "L", "W"]
+    for i, (opp, res) in enumerate(zip(opponents[:8], random_results)):
+        home = i % 2 == 0
+        gf, ga = {"W": (2, 1), "D": (1, 1), "L": (0, 2)}[res]
+        results.append({"event": i + 1, "opponent": opp, "opponent_short": opp[:3].upper(),
+                        "home": home, "score": f"{gf}-{ga}", "result": res,
+                        "date": f"2026-{9 + i // 4:02d}-{(i % 4) * 7 + 6:02d}"})
+    results.reverse()  # most recent first, matching itfc.json's convention
+    won = sum(r["result"] == "W" for r in results)
+    drawn = sum(r["result"] == "D" for r in results)
+    lost = sum(r["result"] == "L" for r in results)
+    gf = sum(int(r["score"].split("-")[0]) for r in results)
+    ga = sum(int(r["score"].split("-")[1]) for r in results)
+    squad_names = [("Bethany Rutter", "GKP"), ("Freya Cook", "DEF"), ("Amelia Sharp", "DEF"),
+                   ("Chloe Wardle", "DEF"), ("Isla Barnes", "MID"), ("Millie Radford", "MID"),
+                   ("Grace Oduya", "MID"), ("Poppy Fenn", "FWD"), ("Ruby Halston", "FWD"),
+                   ("Neve Colbeck", "DEF"), ("Tilly Vance", "MID")]
+    squad = [{"name": n.split()[-1], "full_name": n, "pos": p,
+              "apps": 8 - i % 3, "goals": max(0, 5 - i) if p == "FWD" else max(0, 2 - i % 3),
+              "assists": max(0, 3 - i % 4)} for i, (n, p) in enumerate(squad_names)]
+    table = []
+    for i, opp in enumerate(opponents):
+        is_ips = opp == "Ipswich Town"
+        table.append({"rank": i + 1, "team": opp, "badge": None, "played": 8,
+                      "won": max(0, 6 - i), "drawn": 1, "lost": min(7, i),
+                      "gf": max(2, 20 - i * 2), "ga": 5 + i, "gd": max(2, 20 - i * 2) - (5 + i),
+                      "points": max(0, 6 - i) * 3 + 1, "form": ["W", "D", "L", "W", "W"],
+                      "is_ipswich": is_ips})
+    table.insert(8, {"rank": 9, "team": "Ipswich Town", "badge": None, "played": 8,
+                     "won": won, "drawn": drawn, "lost": lost, "gf": gf, "ga": ga, "gd": gf - ga,
+                     "points": won * 3 + drawn, "form": [r["result"] for r in results[:5]],
+                     "is_ipswich": True})
+    for i, row in enumerate(table):
+        row["rank"] = i + 1
+    return {
+        "season": "2026/27", "league_name": "Barclays Women's Super League 2",
+        "team": {"short_name": "Ipswich", "badge": None}, "position": 9,
+        "summary": {"played": 8, "won": won, "drawn": drawn, "lost": lost,
+                    "gf": gf, "ga": ga, "gd": gf - ga, "points": won * 3 + drawn},
+        "summary_text": f"Ipswich Town Women sit 9th in the Barclays Women's Super League 2 "
+                        f"after 8 matches, with {won} wins, {drawn} draws and {lost} defeats.",
+        "next_fixture": {"opponent": "Southampton", "opponent_short": "SOU", "home": True,
+                         "kickoff": "2026-09-27T14:00:00Z", "event": 9, "badge": None},
+        "results": results,
+        "upcoming": [{"event": 9, "opponent": "Southampton", "home": True,
+                     "kickoff": "2026-09-27T14:00:00Z"},
+                    {"event": 10, "opponent": "Birmingham City", "home": False,
+                     "kickoff": "2026-10-04T14:00:00Z"}],
+        "table": table,
+        "squad": squad,
+        "news": [{"source": "TWTD", "date_display": "2 days ago",
+                  "title": "Ipswich Women fall short in narrow defeat at Charlton",
+                  "link": "https://www.twtd.co.uk/", "summary": None, "image": None},
+                 {"source": "ITFC", "date_display": "5 days ago",
+                  "title": "Matchday programme: Ipswich Town Women vs Southampton",
+                  "link": "https://www.itfc.co.uk/itfc-women/", "summary": None, "image": None}],
+        "health": {"missing": []},
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def render_site(template, match_template, player_template, data, preview):
     outdir = SITE / "preview" if preview else SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
@@ -735,6 +857,14 @@ def main():
     (SITE / ".nojekyll").write_text("")
     n = len(real.get("match_pages", []))
     print(f"Built {len(PAGES)} pages + {n} match pages + {len(real.get('squad', []))} player pages (+ preview).")
+
+    # Women's team: free-sources-only trimmed site. No ingest_women.py output yet,
+    # so this renders sample data until that lands — see WOMEN_PAGES's comment.
+    women_template = env.get_template("women.html.j2")
+    women_data = json.loads(DATA_WOMEN.read_text()) if DATA_WOMEN.exists() else sample_data_women()
+    render_women_site(women_template, women_data, SITE / "women")
+    print(f"Built {len(WOMEN_PAGES)} women's pages"
+          f"{' (sample data — no live source yet)' if not DATA_WOMEN.exists() else ''}.")
 
 
 if __name__ == "__main__":

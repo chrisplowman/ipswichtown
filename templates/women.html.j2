@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ og_title or ('Ipswich Town Women · ' + season) }}</title>
+<meta name="description" content="{{ og_description or 'Ipswich Town Women WSL2 stats.' }}">
+{% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ og_title or 'Ipswich Town Women' }}">
+<meta property="og:description" content="{{ og_description or '' }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ og_title or 'Ipswich Town Women' }}">
+<meta name="twitter:description" content="{{ og_description or '' }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ css_href }}">
+<script>
+(function(){var K='itfc-theme',d=document.documentElement;
+ try{if(sessionStorage.getItem('itfc-seen')){d.classList.add('seen');}else{sessionStorage.setItem('itfc-seen','1');}}catch(e){}
+ function set(t){d.setAttribute('data-theme',t);}
+ try{set(localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch(e){set('light');}
+ window.__setTheme=function(t){set(t);try{localStorage.setItem(K,t);}catch(e){}location.reload();};
+})();
+</script>
+</head>
+<body class="page-{{ page }}">
+<a class="skiplink" href="#main">Skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <div class="crest">
+      {% if team.badge %}<div class="mark"><img src="{{ team.badge }}" alt=""></div>{% endif %}
+      <div>
+        <div class="eyebrow">{{ league_name }} · {{ season }}{% if position %} <span class="pos">{{ position|ordinal }}</span>{% endif %}</div>
+        <div class="wordmark">Ipswich Town Women</div>
+      </div>
+    </div>
+    <div class="headright">
+      <div class="themeswitch" role="group" aria-label="Theme">
+        <button type="button" class="opt" data-theme-opt="light" onclick="__setTheme('light')">Light</button>
+        <button type="button" class="opt" data-theme-opt="dark" onclick="__setTheme('dark')">Dark</button>
+        <button type="button" class="opt" data-theme-opt="teletext" onclick="__setTheme('teletext')">Txt</button>
+      </div>
+      <div class="updated">Updated<b>{{ generated_at|updated }}</b></div>
+    </div>
+  </div>
+</header>
+<script>(function(){var t=document.documentElement.getAttribute('data-theme');
+  document.querySelectorAll('.themeswitch .opt').forEach(function(b){
+    b.setAttribute('aria-pressed', b.dataset.themeOpt===t ? 'true' : 'false');});})();</script>
+<nav class="tabs">
+  <div class="wrap">
+    {% for pid, filename, label in pages %}
+    <a href="{{ filename }}"{% if pid == current %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </div>
+</nav>
+
+<main class="wrap" id="main" tabindex="-1">
+
+  <!-- OVERVIEW -->
+  {% if page == 'overview' %}
+  <section class="panel">
+    {% if summary_text %}
+    <div class="block">
+      <div class="snapshot">
+        <div class="cardhead">
+          <div class="snapshot-label">Season snapshot</div>
+        </div>
+        <p>{{ summary_text }}</p>
+      </div>
+    </div>
+    {% endif %}
+    {% if form_guide %}
+    <div class="block">
+      <div class="formguide">
+        <div class="fg-head">
+          <div class="hgroup">
+            <span class="fg-label">Form guide · last {{ form_guide.count }}</span>
+          </div>
+          <span class="fg-summary">{{ form_guide.pts }} pts · {{ '%.2f'|format(form_guide.ppg) }} PPG
+            <span class="fg-trend {{ form_guide.trend }}" title="Momentum {{ form_guide.trend }}">{{ {'up':'▲','down':'▼','flat':'▬'}[form_guide.trend] }}</span></span>
+        </div>
+        <div class="fg-tiles">
+          {% for m in form_guide.matches %}
+          <div class="fg-tile">
+            <div class="fg-tile-top">
+              <span class="res {{ m.result }}">{{ m.result }}</span>
+              <span class="fg-tile-opp">{{ m.opponent_short or m.opponent }}</span>
+            </div>
+            <div class="fg-tile-meta">{{ 'H' if m.home else 'A' }}{% if m.event %} · MD{{ m.event }}{% endif %}</div>
+            <div class="fg-tile-score">{{ m.score }}</div>
+            <div class="fg-tile-rows">
+              <div><span class="k">Pts</span><span class="v">{{ m.pts }}</span></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="block card">
+      <div class="cardhead"><h3>Next fixture</h3></div>
+      {% if next_fixture %}
+      <div class="board">
+        <div class="row">
+          <div class="side">{% if team.badge %}<img class="badge-lg" src="{{ team.badge }}" alt="">{% endif %}<div class="abbr">{{ team.short_name }}</div><div class="full">Ipswich Town</div></div>
+          <div class="vs">{{ "HOME" if next_fixture.home else "AWAY" }}</div>
+          <div class="side">{% if next_fixture.badge %}<img class="badge-lg" src="{{ next_fixture.badge }}" alt="">{% endif %}<div class="abbr">{{ next_fixture.opponent_short }}</div><div class="full">{{ next_fixture.opponent }}</div></div>
+        </div>
+        <div class="when">{{ next_fixture.kickoff|kickoff }}{% if next_fixture.event %} · Matchday {{ next_fixture.event }}{% endif %}</div>
+      </div>
+      {% else %}<div class="board empty"><div class="row">No upcoming fixtures scheduled yet.</div></div>{% endif %}
+    </div>
+
+    <div class="block card">
+      <div class="cardhead"><h3>Season record</h3></div>
+      <div class="stats">
+        <div class="stat accent"><div class="v">{{ summary.points }}</div><div class="k">Points</div></div>
+        <div class="stat"><div class="v">{{ summary.played }}</div><div class="k">Played</div></div>
+        <div class="stat"><div class="v">{{ summary.won }}</div><div class="k">Won</div></div>
+        <div class="stat"><div class="v">{{ summary.drawn }}</div><div class="k">Drawn</div></div>
+        <div class="stat"><div class="v">{{ summary.lost }}</div><div class="k">Lost</div></div>
+        <div class="stat"><div class="v">{{ summary.gf }}</div><div class="k">For</div></div>
+        <div class="stat"><div class="v">{{ summary.ga }}</div><div class="k">Against</div></div>
+        <div class="stat"><div class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</div><div class="k">Goal diff</div></div>
+      </div>
+    </div>
+
+    {% if news %}
+    <div class="block card">
+      <div class="cardhead"><h3>Latest news</h3></div>
+      <ul class="list newslist">
+        {% for a in news[:5] %}
+        <li>
+          {% if a.image %}<img class="thumb" src="{{ a.image|e }}" alt="" loading="lazy">{% endif %}
+          <div class="body">
+            <div class="meta"><span class="src">{{ a.source|e }}</span>{% if a.date_display %}<span class="date">{{ a.date_display|e }}</span>{% endif %}</div>
+            <a class="headline" href="{{ a.link|e }}" target="_blank" rel="noopener noreferrer">{{ a.title|e }}</a>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- TABLE -->
+  {% if page == 'table' %}
+  <section class="panel">
+    <div class="block card">
+    <div class="cardhead"><h3>{{ league_name }} table</h3></div>
+    {% if table %}
+    <div class="tablewrap">
+      <table class="ltable">
+        <thead><tr>
+          <th class="rk">#</th><th class="tm">Team</th>
+          <th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th class="formcol">Form</th>
+        </tr></thead>
+        <tbody>
+          {% for row in table %}
+          <tr class="{{ 'ips ' if row.is_ipswich }}">
+            <td class="rk">{{ row.rank }}</td>
+            <td class="tm">{% if row.badge %}<img class="badge" src="{{ row.badge }}" alt="">{% endif %}{{ row.team }}</td>
+            <td>{{ row.played }}</td><td>{{ row.won }}</td><td>{{ row.drawn }}</td><td>{{ row.lost }}</td>
+            <td>{{ row.gf }}</td><td>{{ row.ga }}</td><td>{{ '%+d'|format(row.gd) if row.gd else 0 }}</td>
+            <td><b>{{ row.points }}</b></td>
+            <td class="formcol">{% for r in row.form %}<span class="fdot {{ r }}" title="{{ r }}"></span>{% endfor %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="lkey">
+      <span><i style="background:var(--tint-sky);border:1px solid var(--hairline)"></i> Ipswich</span>
+    </div>
+    {% else %}<p class="empty-note">League table unavailable right now. It will appear on the next successful update.</p>{% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- MATCHES -->
+  {% if page == 'matches' %}
+  <section class="panel">
+    <div class="block card">
+    <div class="cardhead"><h3>Results &amp; fixtures</h3></div>
+    {% if results %}
+    <div class="tablewrap">
+      <table class="ltable">
+        <thead><tr><th>Date</th><th class="tm">Opponent</th><th>Result</th><th>Score</th></tr></thead>
+        <tbody>
+          {% for m in results %}
+          <tr>
+            <td>{{ m.date }}</td>
+            <td class="tm">{% if m.opponent_badge %}<img class="badge" src="{{ m.opponent_badge }}" alt="">{% endif %}{{ m.opponent }} <span class="ha">{{ '(H)' if m.home else '(A)' }}</span></td>
+            <td><span class="res {{ m.result }}">{{ m.result }}</span></td>
+            <td><b>{{ m.score }}</b></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="empty-note">No matches played yet.</p>{% endif %}
+    </div>
+    {% if upcoming %}
+    <div class="block card" style="margin-top:30px">
+    <div class="cardhead"><h3>Upcoming</h3></div>
+    <div class="tablewrap">
+      <table class="ltable">
+        <thead><tr><th>Date</th><th class="tm">Opponent</th><th>Venue</th></tr></thead>
+        <tbody>
+          {% for m in upcoming %}
+          <tr>
+            <td>{{ m.kickoff|kickoff }}</td>
+            <td class="tm">{{ m.opponent }}</td>
+            <td>{{ 'Home' if m.home else 'Away' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- SQUAD -->
+  {% if page == 'squad' %}
+  <section class="panel">
+    <div class="block card">
+    <div class="cardhead"><h3>Squad · {{ squad|length }} players</h3></div>
+    {% if squad %}
+    <div class="tablewrap">
+      <table id="squad">
+        <thead><tr>
+          <th class="player" aria-sort="none"><button>Player</button></th>
+          <th class="pos" aria-sort="none"><button>Pos</button></th>
+          <th aria-sort="none"><button>Apps</button></th>
+          <th aria-sort="none"><button>G</button></th>
+          <th aria-sort="none"><button>A</button></th>
+        </tr></thead>
+        <tbody>
+          {% for p in squad %}
+          <tr>
+            <td class="player" title="{{ p.full_name }}">{{ p.name }}</td>
+            <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
+            <td>{{ p.apps if p.apps is not none else '-' }}</td>
+            <td>{{ p.goals if p.goals is not none else '-' }}</td>
+            <td>{{ p.assists if p.assists is not none else '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="empty-note">Squad list unavailable right now.</p>{% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- NEWS -->
+  {% if page == 'news' %}
+  <section class="panel">
+    <div class="block card">
+    <div class="cardhead"><h3>Latest news</h3></div>
+    {% if news %}
+    <ul class="list newslist">
+      {% for a in news %}
+      <li>
+        {% if a.image %}<img class="thumb" src="{{ a.image|e }}" alt="" loading="lazy">{% endif %}
+        <div class="body">
+          <div class="meta"><span class="src">{{ a.source|e }}</span>{% if a.date_display %}<span class="date">{{ a.date_display|e }}</span>{% endif %}</div>
+          <a class="headline" href="{{ a.link|e }}" target="_blank" rel="noopener noreferrer">{{ a.title|e }}</a>
+          {% if a.summary %}<p class="summary">{{ a.summary|e }}</p>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="empty-note" style="padding:14px 2px 0">Headlines from Ipswich-focused RSS feeds. Links open on the publisher's site.</p>
+    {% else %}<p class="empty-note">No news available right now.</p>{% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+</main>
+
+<footer class="wrap">
+  {% if health and health.missing %}<div class="health-note" role="status">⚠ Some data sources returned nothing on the last update: {{ health.missing|join(', ') }}. Those sections may be incomplete until the next successful rebuild.</div>{% endif %}
+  Data from free, public sources — {{ league_name }} results and TheSportsDB (badges), Ipswich RSS feeds (news) · rebuilt automatically via GitHub Actions.<br>
+  This page deliberately omits xG, shot maps and other advanced stats shown on the men's team pages — those rely on data sources with no free women's-football coverage. <a href="../index.html">Men's team stats →</a><br>
+  Raw data: <code>data/itfc_women.json</code> · A reference page, not affiliated with Ipswich Town FC.
+</footer>
+
+</body>
+</html>
