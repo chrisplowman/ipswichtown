@@ -172,6 +172,8 @@
 :root[data-theme="teletext"] .kick,
 :root[data-theme="teletext"] .gw,
 :root[data-theme="teletext"] .fdr,
+:root[data-theme="teletext"] .fdr-gw,
+:root[data-theme="teletext"] .fdr-opp,
 :root[data-theme="teletext"] .res,
 :root[data-theme="teletext"] .score,
 :root[data-theme="teletext"] .empty-note,
@@ -356,8 +358,13 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
   border-bottom:1px solid var(--hairline);background:var(--surface-soft);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 .chartcard>.cardhead h3{margin:0}
-.snapshot>.cardhead,.survival>.cardhead,.formguide>.cardhead{margin-bottom:8px}
 .cardhead .snapshot-label{margin-bottom:0}
+/* the navy hero cards (snapshot/survival) get the same boxed header band as
+   every .card/.chartcard, just tinted for a dark background instead of
+   var(--surface-soft) */
+.snapshot>.cardhead,.survival>.cardhead{margin:-20px -22px 16px;padding:14px 22px;
+  background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.14);
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 /* the info icon: a small "i" badge that reveals a tooltip explaining the
    calculation and data source on hover/focus */
 .infobtn{all:unset;cursor:help;flex:none;width:17px;height:17px;border-radius:50%;
@@ -424,6 +431,14 @@ ul.list li.has-link .opp{color:var(--primary)}
 .fdr-3{background:var(--fdr-3)}
 .fdr-4{background:var(--fdr-4)}
 .fdr-5{background:var(--fdr-5)}
+/* full-season fixture-difficulty strip: a scrollable row of chips (one per
+   remaining game) reusing the .fdr colour chip already used in the fixtures list */
+.fdr-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.fdr-chip{flex:none;display:flex;flex-direction:column;align-items:center;gap:5px;
+  min-width:54px;padding:10px 6px;border:1px solid var(--hairline);border-radius:var(--radius-md);
+  background:var(--surface-soft)}
+.fdr-gw{font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--steel)}
+.fdr-opp{font-size:11px;font-weight:600;color:var(--ink);white-space:nowrap}
 .res{font-weight:700;font-size:12px;width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:#fff}
 .res.W{background:var(--win)}
 .res.D{background:var(--draw)}
@@ -491,6 +506,8 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .ltable tbody tr.ips td.tm{font-weight:700;color:var(--primary)}
 .ltable tbody tr.eur td.rk{border-left-color:var(--win)}
 .ltable tbody tr.rel td.rk{border-left-color:var(--loss)}
+.ltable td.diff.pos{color:var(--win);font-weight:600}
+.ltable td.diff.neg{color:var(--loss);font-weight:600}
 .lkey{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--steel)}
 .lkey span{display:flex;align-items:center;gap:6px}
 .lkey i{width:10px;height:10px;border-radius:2px;display:inline-block}
@@ -521,12 +538,16 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .rankbar span.bad{background:var(--loss)}
 #squad{min-width:720px}
 #squad thead th{position:sticky;top:0;background:var(--surface);color:var(--charcoal);font-weight:600;font-size:11px;letter-spacing:.5px;text-transform:uppercase;text-align:right;padding:0;white-space:nowrap;border-bottom:1px solid var(--hairline)}
-#squad thead th button{all:unset;cursor:pointer;padding:12px;width:100%;box-sizing:border-box;display:block;text-align:right}
-#squad thead th button:focus-visible{outline:2px solid var(--primary);outline-offset:-3px}
-#squad thead th.player button,#squad thead th.pos button{text-align:left}
-#squad thead th[aria-sort] button::after{content:" ↕";opacity:.4}
-#squad thead th[aria-sort="ascending"] button::after{content:" ↑";opacity:1}
-#squad thead th[aria-sort="descending"] button::after{content:" ↓";opacity:1}
+/* sortable-table header buttons: shared by #squad and any .ltable that opts
+   into click-to-sort via aria-sort, so a new sortable table needs no extra CSS */
+thead th[aria-sort] button{all:unset;cursor:pointer;padding:12px;width:100%;box-sizing:border-box;display:block;text-align:right}
+thead th[aria-sort] button:focus-visible{outline:2px solid var(--primary);outline-offset:-3px}
+#squad thead th.player button,#squad thead th.pos button,
+.ltable thead th.rk button,.ltable thead th.tm button{text-align:left}
+thead th[aria-sort] button::after{content:" ↕";opacity:.4}
+thead th[aria-sort="ascending"] button::after{content:" ↑";opacity:1}
+thead th[aria-sort="descending"] button::after{content:" ↓";opacity:1}
+.ltable thead th[aria-sort]{padding:0}
 #squad tbody td{padding:11px 12px;text-align:right;border-bottom:1px solid var(--hairline-soft)}
 #squad tbody td.player{text-align:left;font-weight:500}
 #squad tbody td.pos{text-align:left}
@@ -566,7 +587,12 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 
 .health-note{background:#fff4e6;border:1px solid #ffd8a8;color:#8a4b00;border-radius:var(--radius-md);padding:10px 14px;margin-bottom:14px;font-size:13px}
 .formguide{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:16px 18px}
-.fg-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+/* boxed header band matching every other card, bled out to the formguide
+   card's own edges the same way .chartcard>.cardhead does */
+.fg-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;
+  margin:-16px -18px 14px;padding:14px 18px;
+  background:var(--surface-soft);border-bottom:1px solid var(--hairline);
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 .fg-label{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--steel)}
 .fg-summary{font-size:14px;font-weight:600;color:var(--ink)}
 .fg-trend{font-size:13px;margin-left:4px}

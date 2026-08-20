@@ -249,6 +249,19 @@ def sample_data(live=None):
                   {"label": "Pressing (PPDA)", "value": 11.8, "rank": 8, "total": 20, "low_good": True},
                   {"label": "Goal difference", "value": ipr["gd"], "rank": 14, "total": 20, "low_good": False}]
 
+    league_table = []
+    for i, (r, ts) in enumerate(zip(table, team_scatter), 1):
+        xg, xga = round(ts["xg_pg"] * r["played"], 1), round(ts["xga_pg"] * r["played"], 1)
+        xpts = round(r["points"] * (0.9 + (i % 5) * 0.05), 1)
+        league_table.append({
+            "team": r["team"], "short": r["short"], "badge": r["badge"],
+            "is_ipswich": r["is_ipswich"], "rank": i, "played": r["played"], "points": r["points"],
+            "gf": r["gf"], "ga": r["ga"], "gd": r["gd"],
+            "xg": xg, "xga": xga, "npxg": round(xg * 0.88, 1),
+            "xg_pg": ts["xg_pg"], "xga_pg": ts["xga_pg"],
+            "ppda": round(8 + (i % 7), 1), "elo": 1620 - i * 8,
+            "xpts": xpts, "xpts_diff": round(r["points"] - xpts, 1)})
+
     # 38-game fixture list (each opponent home then away); ~first third finished
     schedule = [(c, True) for c in opponents] + [(c, False) for c in opponents]
     finished_count = min(12, len(schedule) // 2)
@@ -273,7 +286,7 @@ def sample_data(live=None):
                        "kickoff": (base + timedelta(days=7 * (gw - 1))).isoformat().replace("+00:00", "Z"),
                        "difficulty": (gw % 5) + 1})
         fixtures.append(fx)
-    upcoming = [f for f in fixtures if not f["finished"]][:8]
+    upcoming = [f for f in fixtures if not f["finished"]]
     results = list(reversed(results))
 
     nxt = upcoming[0] if upcoming else None
@@ -438,7 +451,8 @@ def sample_data(live=None):
             {"player": "Wes Burns", "news": "Hamstring injury - 50% chance of playing", "tag": "Injured", "sev": "doubt"},
             {"player": "Sam Morsy", "news": "Suspended - 1 match ban", "tag": "Suspended", "sev": "out"}],
         "position": ipr["rank"], "summary": summary, "table": table,
-        "team_scatter": team_scatter, "team_ranks": team_ranks, "player_profiles": player_profiles,
+        "team_scatter": team_scatter, "team_ranks": team_ranks, "league_table": league_table,
+        "player_profiles": player_profiles,
         "by_gameweek": by_gameweek, "understat_matches": understat_matches, "shot_maps": shot_maps,
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
         "understat_history": understat_history, "match_stats": match_stats,
