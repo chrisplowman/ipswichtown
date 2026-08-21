@@ -34,7 +34,6 @@ FPL = "https://fantasy.premierleague.com/api"
 UNDERSTAT_SEASON = "2026"          # Understat labels 2026/27 as "2026"
 ESPN_SEASON = "2026"
 UNDERSTAT_TEAM_SLUG = "Ipswich_Town"
-TSDB_PL_LEAGUE_ID = "4328"         # English Premier League on TheSportsDB
 FBD_SEASONS = ["2223", "2324", "2425", "2526"]  # football-data.co.uk season codes
 FBD_CURRENT = "2627"               # current season, for per-match shot stats
 FBD_DIVS = ["E0", "E1"]            # Premier League, Championship
@@ -286,24 +285,32 @@ ALIASES = {  # bridge FPL/ESPN naming to TheSportsDB where a plain match fails
 }
 
 def fetch_badges(fpl_teams):
-    url = f"https://www.thesportsdb.com/api/v1/json/3/lookup_all_teams.php?id={TSDB_PL_LEAGUE_ID}"
-    j = get_json(url)
-    by_canon = {}
-    for t in (j.get("teams") or []):
-        badge = t.get("strBadge") or t.get("strTeamBadge")
+    """TheSportsDB's bulk lookup_all_teams.php?id=<league> serves stale/wrong
+    data for the Premier League specifically (confirmed: it returns League
+    One's roster even though 4328 is genuinely the Premier League's id) —
+    likely that bulk endpoint is now gated behind a paid key and silently
+    falls back instead of erroring. Individual searchteams.php calls return
+    correct, current data, so badges are fetched one club at a time instead."""
+    by_short = {}
+    for t in fpl_teams.values():
+        try:
+            j = get_json("https://www.thesportsdb.com/api/v1/json/3/searchteams.php"
+                         f"?t={t['name'].replace(' ', '%20')}")
+        except requests.RequestException:
+            continue
+        want = canon(t["name"])
+        best = None
+        for team in (j.get("teams") or []):
+            if team.get("strSport") != "Soccer":
+                continue
+            if canon(team.get("strTeam", "")) == want:
+                best = team
+                break
+            best = best or team
+        badge = (best.get("strBadge") or best.get("strTeamBadge")) if best else None
         if badge:
-            by_canon[canon(t.get("strTeam", ""))] = badge
-
-    def lookup(name):
-        k = canon(name)
-        if k in by_canon:
-            return by_canon[k]
-        for ck, badge in by_canon.items():          # contains fallback
-            if len(k) > 3 and (k in ck or ck in k):
-                return badge
-        return None
-
-    return {t["short_name"]: lookup(t["name"]) for t in fpl_teams.values()}
+            by_short[t["short_name"]] = badge
+    return by_short
 
 
 # --------------------------------------------------------------------------- #
