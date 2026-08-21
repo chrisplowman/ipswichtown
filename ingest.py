@@ -268,6 +268,46 @@ def fetch_table():
     return rows, position
 
 
+def fetch_table_from_fbd(fbd_rows):
+    """Fallback league table computed from football-data.co.uk's current-season
+    CSV (already fetched for match_stats/league_tables) for when ESPN's hidden
+    standings API is unreachable — it blocks datacenter/CI IP ranges even
+    though the endpoint itself is otherwise fine (confirmed by testing the
+    same URL from a normal connection)."""
+    teams = {}
+    for r in fbd_rows:
+        h, a = r.get("HomeTeam", ""), r.get("AwayTeam", "")
+        try:
+            hg, ag = int(r["FTHG"]), int(r["FTAG"])
+        except (KeyError, ValueError):
+            continue
+        if not h or not a:
+            continue
+        H = teams.setdefault(canon(h), {"team": h, "played": 0, "won": 0, "drawn": 0,
+                                        "lost": 0, "gf": 0, "ga": 0, "espn_logo": None})
+        A = teams.setdefault(canon(a), {"team": a, "played": 0, "won": 0, "drawn": 0,
+                                        "lost": 0, "gf": 0, "ga": 0, "espn_logo": None})
+        H["played"] += 1; H["gf"] += hg; H["ga"] += ag
+        A["played"] += 1; A["gf"] += ag; A["ga"] += hg
+        if hg > ag: H["won"] += 1; A["lost"] += 1
+        elif hg < ag: H["lost"] += 1; A["won"] += 1
+        else: H["drawn"] += 1; A["drawn"] += 1
+    if not teams:
+        return None, None
+    rows = list(teams.values())
+    for r in rows:
+        r["gd"] = r["gf"] - r["ga"]
+        r["points"] = r["won"] * 3 + r["drawn"]
+    rows.sort(key=lambda r: (-r["points"], -r["gd"], -r["gf"], r["team"]))
+    position = None
+    for i, r in enumerate(rows, 1):
+        r["rank"] = i
+        r["is_ipswich"] = TEAM_NAME_MATCH in r["team"].lower()
+        if r["is_ipswich"]:
+            position = i
+    return rows, position
+
+
 # --------------------------------------------------------------------------- #
 #  TheSportsDB — club badges (public test key "3")                            #
 # --------------------------------------------------------------------------- #
@@ -924,20 +964,26 @@ def main():
             return f"https://resources.premierleague.com/premierleague25/badges/{code}.svg"
         return badges.get(short) or espn_by_short.get(short)
 
-    # league table
-    table, position = None, None
+    # league table — football-data.co.uk's current-season CSV is fetched early
+    # here so it's ready as a fallback if ESPN's standings API is unreachable
+    # (it blocks datacenter/CI IP ranges; see fetch_table_from_fbd's docstring).
+    fbd_rows = _fbd_rows()
+    table, position, table_source = None, None, "espn"
     try:
         table, position = fetch_table()
-        if table:
-            short_by_norm = {_norm(t["name"]): t["short_name"] for t in teams.values()}
-            for row in table:
-                short = short_by_norm.get(_norm(row["team"]))
-                if short and row.get("espn_logo"):
-                    espn_by_short[short] = row["espn_logo"]
-                row["badge"] = badge_for(short) if short else row.get("espn_logo")
-        print(f"  table: {len(table) if table else 0} teams, Ipswich {position or '—'}")
     except Exception as e:
-        print(f"  table: skipped ({e})")
+        print(f"  table (ESPN): skipped ({e})")
+    if not table:
+        table, position = fetch_table_from_fbd(fbd_rows)
+        table_source = "football-data.co.uk"
+    if table:
+        short_by_canon = {canon(t["name"]): t["short_name"] for t in teams.values()}
+        for row in table:
+            short = short_by_canon.get(canon(row["team"]))
+            if short and row.get("espn_logo"):
+                espn_by_short[short] = row["espn_logo"]
+            row["badge"] = badge_for(short) if short else row.get("espn_logo")
+    print(f"  table: {len(table) if table else 0} teams, Ipswich {position or '—'} (source: {table_source})")
 
     for f in fpl["upcoming"]:
         f["badge"] = badge_for(f["opponent_short"])
@@ -971,7 +1017,6 @@ def main():
 
     match_stats, home_table, away_table, league_form = [], [], [], {}
     try:
-        fbd_rows = _fbd_rows()
         match_stats = fetch_match_stats(fbd_rows)
         home_table, away_table, league_form = fetch_league_tables(fbd_rows)
         print(f"  match stats: {len(match_stats)} Ipswich matches; "
