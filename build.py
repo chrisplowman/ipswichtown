@@ -452,6 +452,35 @@ def sample_data(live=None):
     releg_odds = {r["team"]: round(max(0.2, (r["rank"] - 12) * 9 + (r["rank"] - 12)**2), 1)
                   if r["rank"] >= 12 else 0.2 for r in table}
 
+    # top scorers / assists — a handful of real-name dummy rows (rest of the league,
+    # plus one Ipswich player mid-table) so the preview has something to show.
+    ips_leader = squad[0] if squad else {"full_name": "Ipswich Striker", "starts": 10,
+                                         "minutes": 900, "goals": 6, "assists": 2, "xg": 5.4, "xa": 1.8}
+    ips_leader_row = {"player": ips_leader["full_name"], "team": "Ipswich Town", "team_short": ips_short,
+                      "badge": ips_badge, "games": ips_leader["starts"], "minutes": ips_leader["minutes"],
+                      "goals": ips_leader["goals"], "assists": ips_leader["assists"],
+                      "xg": ips_leader["xg"], "xa": ips_leader["xa"], "is_ipswich": True}
+    top_scorers = [
+        {"player": "Erling Haaland", "team": "Manchester City", "team_short": "MCI", "badge": None,
+         "games": 14, "minutes": 1250, "goals": 17, "assists": 3, "xg": 15.2, "xa": 2.8, "is_ipswich": False},
+        {"player": "Mohamed Salah", "team": "Liverpool", "team_short": "LIV", "badge": None,
+         "games": 14, "minutes": 1260, "goals": 13, "assists": 9, "xg": 11.4, "xa": 7.9, "is_ipswich": False},
+        {"player": "Cole Palmer", "team": "Chelsea", "team_short": "CHE", "badge": None,
+         "games": 13, "minutes": 1150, "goals": 10, "assists": 6, "xg": 9.1, "xa": 5.3, "is_ipswich": False},
+        {**ips_leader_row},
+    ]
+    top_assists = [
+        {"player": "Bruno Fernandes", "team": "Manchester United", "team_short": "MUN", "badge": None,
+         "games": 14, "minutes": 1240, "goals": 6, "assists": 11, "xg": 5.0, "xa": 9.6, "is_ipswich": False},
+        {"player": "Mohamed Salah", "team": "Liverpool", "team_short": "LIV", "badge": None,
+         "games": 14, "minutes": 1260, "goals": 13, "assists": 9, "xg": 11.4, "xa": 7.9, "is_ipswich": False},
+        {"player": "Cole Palmer", "team": "Chelsea", "team_short": "CHE", "badge": None,
+         "games": 13, "minutes": 1150, "goals": 10, "assists": 6, "xg": 9.1, "xa": 5.3, "is_ipswich": False},
+        {**ips_leader_row},
+    ]
+    for i, r in enumerate(top_scorers, 1): r["rank"] = i
+    for i, r in enumerate(top_assists, 1): r["rank"] = i
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "season": live.get("season", "2026/27"),
@@ -463,6 +492,7 @@ def sample_data(live=None):
             {"player": "Sam Morsy", "news": "Suspended - 1 match ban", "tag": "Suspended", "sev": "out"}],
         "position": ipr["rank"], "summary": summary, "table": table,
         "team_scatter": team_scatter, "team_ranks": team_ranks, "league_table": league_table,
+        "top_scorers": top_scorers, "top_assists": top_assists,
         "player_profiles": player_profiles,
         "by_gameweek": by_gameweek, "understat_matches": understat_matches, "shot_maps": shot_maps,
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,

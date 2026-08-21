@@ -540,6 +540,47 @@
         </div>
         {% else %}<p class="empty-note">No upcoming fixtures scheduled.</p>{% endif %}
       </div>
+      <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>Top scorers &amp; assists</h3><p class="sub">Every club, ranked by Understat goals and assists this season. Ipswich players highlighted.</p></div><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every club's leading scorers and assist-makers this season. Source: Understat league page.</span></button></div>
+        <div class="cols2">
+          <div>
+            <h4 class="subhead">Top scorers</h4>
+            {% if top_scorers %}
+            <table class="rivaltable">
+              <thead><tr><th>#</th><th>Player</th><th>Gls</th><th>xG</th></tr></thead>
+              <tbody>
+                {% for p in top_scorers %}
+                <tr class="{{ 'ips' if p.is_ipswich }}">
+                  <td>{{ p.rank }}</td>
+                  <td class="tm">{% if p.badge %}<img class="badge" src="{{ p.badge }}" alt="">{% endif %}{{ p.player }} <span class="assist">{{ p.team_short }}</span></td>
+                  <td><b>{{ p.goals }}</b></td>
+                  <td>{{ '%.1f'|format(p.xg) }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}<p class="empty-note">No scorer data yet.</p>{% endif %}
+          </div>
+          <div>
+            <h4 class="subhead">Top assists</h4>
+            {% if top_assists %}
+            <table class="rivaltable">
+              <thead><tr><th>#</th><th>Player</th><th>Ast</th><th>xA</th></tr></thead>
+              <tbody>
+                {% for p in top_assists %}
+                <tr class="{{ 'ips' if p.is_ipswich }}">
+                  <td>{{ p.rank }}</td>
+                  <td class="tm">{% if p.badge %}<img class="badge" src="{{ p.badge }}" alt="">{% endif %}{{ p.player }} <span class="assist">{{ p.team_short }}</span></td>
+                  <td><b>{{ p.assists }}</b></td>
+                  <td>{{ '%.1f'|format(p.xa) }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}<p class="empty-note">No assist data yet.</p>{% endif %}
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 

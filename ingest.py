@@ -50,6 +50,7 @@ NEWS_FEEDS = [
 ]
 NEWS_LIMIT = 18                    # max articles to keep after merging feeds
 SHOT_MAP_MATCHES = 5               # how many recent matches to keep shot maps for
+LEADERS_LIMIT = 10                 # how many players to keep in the top scorers/assists lists
 TEAM_NAME_MATCH = "ipswich"
 OUT = Path("data/itfc.json")
 TIMEOUT = 30
@@ -1144,6 +1145,30 @@ def main():
             if len(k) > 3 and (k in nk or nk in k): return v
         return (title[:3].upper(), None)
 
+    # top scorers / assists — every club, from the Understat league page's
+    # per-player data (already fetched above for team_scatter; just unused
+    # until now). Same field names fetch_understat() already relies on for
+    # Ipswich's own players (player_name/games/time/goals/assists/xG/xA),
+    # plus team_title which the league page adds per player.
+    top_scorers, top_assists = [], []
+    if league_players:
+        def leader_row(p, rank):
+            title = p.get("team_title", "")
+            short, badge = team_meta(title)
+            return {"rank": rank, "player": p.get("player_name", "?"),
+                    "team": title, "team_short": short, "badge": badge,
+                    "games": int(p.get("games", 0) or 0), "minutes": int(p.get("time", 0) or 0),
+                    "goals": int(p.get("goals", 0) or 0), "assists": int(p.get("assists", 0) or 0),
+                    "xg": to_float(p.get("xG", 0)), "xa": to_float(p.get("xA", 0)),
+                    "is_ipswich": TEAM_NAME_MATCH in title.lower()}
+        by_goals = sorted(league_players,
+                          key=lambda p: (-int(p.get("goals", 0) or 0), -to_float(p.get("xG", 0))))
+        by_assists = sorted(league_players,
+                            key=lambda p: (-int(p.get("assists", 0) or 0), -to_float(p.get("xA", 0))))
+        top_scorers = [leader_row(p, i) for i, p in enumerate(by_goals[:LEADERS_LIMIT], 1)]
+        top_assists = [leader_row(p, i) for i, p in enumerate(by_assists[:LEADERS_LIMIT], 1)]
+        print(f"  leaders: top {len(top_scorers)} scorers, top {len(top_assists)} assists")
+
     # team scatter: xG vs xGA per game, all clubs
     team_scatter = []
     for title, a in league_teams.items():
@@ -1391,12 +1416,13 @@ def main():
         "Badges": bool(badge_for(ipswich["short_name"])),
         "News": bool(news),
         "Bookings/subs": bool(espn_events_by_date),
+        "Top scorers/assists": bool(top_scorers),
     }
     # Pre-season is expected to have no match-derived data; don't flag those.
     preseason = fpl["summary"]["played"] == 0
     match_derived = {"Understat matches", "Match detail", "football-data stats",
                      "Home/away tables", "Understat players", "Survival model",
-                     "Bookings/subs"}
+                     "Bookings/subs", "Top scorers/assists"}
     missing = [name for name, ok in checks.items()
                if not ok and not (preseason and name in match_derived)]
     health = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -1418,6 +1444,8 @@ def main():
         "table": table or [],
         "team_scatter": team_scatter,
         "team_ranks": team_ranks,
+        "top_scorers": top_scorers,
+        "top_assists": top_assists,
         "league_table": league_table,
         "player_profiles": player_profiles,
         "by_gameweek": fpl["by_gameweek"],
