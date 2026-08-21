@@ -134,6 +134,34 @@
     </div>
   </div>
 
+  <!-- CARDS + SUBSTITUTIONS -->
+  {% if m.cards is defined or m.subs is defined %}
+  <div class="block">
+    <div class="cols">
+      <div class="card">
+        <div class="cardhead"><h3>Cards</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Bookings from this match, in order. Source: ESPN.</span></button></div>
+        {% if m.cards %}
+        <ul class="plain">
+          {% for c in m.cards %}
+          <li><span class="min">{{ c.minute }}'</span><span class="dot {{ 'f' if c.side=='for' else 'a' }}"></span><span class="cardchip {{ c.kind }}"></span><span class="eventtext">{{ c.text }}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="empty-note">No cards in this match.</p>{% endif %}
+      </div>
+      <div class="card">
+        <div class="cardhead"><h3>Substitutions</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Substitutions from this match, in order. Source: ESPN.</span></button></div>
+        {% if m.subs %}
+        <ul class="plain">
+          {% for s in m.subs %}
+          <li><span class="min">{{ s.minute }}'</span><span class="dot {{ 'f' if s.side=='for' else 'a' }}"></span><span class="eventtext">{{ s.text }}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}<p class="empty-note">No substitutions recorded for this match.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- PLAYER LINES -->
   <div class="block">
     <p class="label">Player performances</p>

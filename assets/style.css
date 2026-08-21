@@ -22,7 +22,7 @@
   --on-dark:#ffffff; --on-dark-muted:#E0E0E0;
   --success:#1aae39; --warning:#dd5b00; --error:#e03131;
   
-  --win:#1aae39; --draw:#a4a097; --loss:#e03131;
+  --win:#1aae39; --draw:#a4a097; --loss:#e03131; --card-yellow:#e2b203;
   --fdr-1:#1aae39; --fdr-2:#2a9d99; --fdr-3:#c98a2b; --fdr-4:#dd5b00; --fdr-5:#e03131;
   --chart-grid:#ede9e4;
   
@@ -71,7 +71,7 @@
   --brand-orange:#6E120D; --brand-orange-deep:#6E120D;
   --brand-purple-800:#ff00ff;
   --success:#00ff00; --warning:#ff8000; --error:#ff0000;
-  --win:#00ff00; --draw:#ffff00; --loss:#ff0000;
+  --win:#00ff00; --draw:#ffff00; --loss:#ff0000; --card-yellow:#ffff00;
   --fdr-1:#00ff00; --fdr-2:#00ffff; --fdr-3:#ffff00; --fdr-4:#ff8000; --fdr-5:#ff0000;
   --radius-xs:0; --radius-sm:0; --radius-md:0; --radius-lg:0; --radius-full:0;
   --font-sans:'Teletext50','Consolas','Courier New',ui-monospace,'SFMono-Regular',Menlo,monospace;
@@ -676,6 +676,10 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .page-match .dot.f{background:var(--primary)}
 .page-match .dot.a{background:var(--loss)}
 .page-match .assist{color:var(--stone);font-size:12px}
+.page-match .cardchip{display:inline-block;width:9px;height:13px;border-radius:1px;flex:none}
+.page-match .cardchip.yellow{background:var(--card-yellow)}
+.page-match .cardchip.red{background:var(--loss)}
+.page-match .eventtext{flex:1}
 .page-match .odds{display:flex;gap:10px;text-align:center}
 .page-match .odds .o{flex:1;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-md);padding:12px}
 .page-match .odds .o .p{font-size:22px;font-weight:700}
