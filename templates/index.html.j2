@@ -44,62 +44,18 @@
   <!-- OVERVIEW -->
   {% if page == 'overview' %}
   <section class="panel">
-    {% if summary_text %}
-    <div class="block">
-      <div class="snapshot">
-        <div class="cardhead">
-          <div class="snapshot-label">Season snapshot</div>
-          <button class="infobtn" type="button" aria-label="About this summary"><span aria-hidden="true">i</span><span class="tip" role="tooltip">An auto-written read of the season from points-per-game pace, Understat expected points and goal difference. Source: FPL API and Understat.</span></button>
-        </div>
-        <p>{{ summary_text }}</p>
-      </div>
-    </div>
-    {% endif %}
-    {% if form_guide %}
-    <div class="block">
-      <div class="formguide">
-        <div class="fg-head">
-          <div class="hgroup">
-            <span class="fg-label">Form guide · last {{ form_guide.count }}</span>
-            <button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points from the last {{ form_guide.count }} matches, momentum from the newer half's PPG vs the older half's, and a verdict against xPts or bookmaker-implied expected points. Source: FPL results, Understat and football-data.co.uk odds.</span></button>
-          </div>
-          <span class="fg-summary">{{ form_guide.pts }} pts · {{ '%.2f'|format(form_guide.ppg) }} PPG
-            <span class="fg-trend {{ form_guide.trend }}" title="Momentum {{ form_guide.trend }}">{{ {'up':'▲','down':'▼','flat':'▬'}[form_guide.trend] }}</span></span>
-        </div>
-        <div class="fg-tiles">
-          {% for m in form_guide.matches %}
-          <div class="fg-tile">
-            <div class="fg-tile-top">
-              <span class="res {{ m.result }}">{{ m.result }}</span>
-              <span class="fg-tile-opp">{{ m.opponent_short or m.opponent }}</span>
-            </div>
-            <div class="fg-tile-meta">{{ 'H' if m.home else 'A' }}{% if m.event %} · GW{{ m.event }}{% endif %}</div>
-            <div class="fg-tile-score">{{ m.score }}</div>
-            <div class="fg-tile-rows">
-              <div><span class="k">Pts</span><span class="v">{{ m.pts }}</span></div>
-              {% if m.exp_odds is not none %}<div><span class="k">Odds</span><span class="v">{{ m.exp_odds }}</span></div>{% endif %}
-              {% if m.xpts is not none %}<div><span class="k">xPts</span><span class="v">{{ '%.2f'|format(m.xpts) }}</span></div>{% endif %}
-              {% if m.xg_for is not none %}<div><span class="k">xG</span><span class="v">{{ '%.2f'|format(m.xg_for) }}-{{ '%.2f'|format(m.xg_against) }}</span></div>{% endif %}
-            </div>
-            {% if m.match_id %}<a class="fg-tile-link" href="match/{{ m.match_id }}.html">Report →</a>{% endif %}
-          </div>
-          {% endfor %}
-        </div>
-        {% if form_guide.xpts is not none or form_guide.exp_odds is not none or form_guide.run_label %}
-        <div class="fg-analysis">
-          {% if form_guide.exp_odds is not none %}<span class="fg-chip"><span class="k">Expected (odds)</span> <b>{{ form_guide.exp_odds }}</b> pts</span>{% endif %}
-          {% if form_guide.xpts is not none %}<span class="fg-chip"><span class="k">Deserved (xPts)</span> <b>{{ form_guide.xpts }}</b> pts</span>{% endif %}
-          {% if form_guide.xgf is not none %}<span class="fg-chip"><span class="k">xG</span> <b>{{ form_guide.xgf }}</b>-<b>{{ form_guide.xga }}</b></span>{% endif %}
-          {% if form_guide.run_label %}<span class="fg-chip"><span class="k">Run</span> {{ form_guide.run_label }} (opponents avg {{ form_guide.opp_avg_rank|ordinal }})</span>{% endif %}
-          {% if form_guide.verdict %}<span class="fg-verdict {{ form_guide.verdict }}">{{ {'over':'Outperforming expectation','under':'Underperforming expectation','par':'In line with expectation'}[form_guide.verdict] }}</span>{% endif %}
-        </div>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
-    {% if survival or rivals %}
+    {% if summary_text or survival %}
     <div class="block">
       <div class="cols">
+        {% if summary_text %}
+        <div class="snapshot">
+          <div class="cardhead">
+            <div class="snapshot-label">Season snapshot</div>
+            <button class="infobtn" type="button" aria-label="About this summary"><span aria-hidden="true">i</span><span class="tip" role="tooltip">An auto-written read of the season from points-per-game pace, Understat expected points and goal difference. Source: FPL API and Understat.</span></button>
+          </div>
+          <p>{{ summary_text }}</p>
+        </div>
+        {% endif %}
         {% if survival %}
         <div class="survival">
           <div class="cardhead">
@@ -112,25 +68,6 @@
             <span class="surv-safe" style="width:{{ survival.survive_pct }}%"></span><span class="surv-rel" style="width:{{ survival.releg_pct }}%"></span>
           </div>
           <div class="surv-meta">Projected finish ~{{ survival.avg_position }}th on {{ survival.avg_points }} pts (likely {{ survival.pts_lo }}–{{ survival.pts_hi }}). From {{ '{:,}'.format(survival.sims) }} simulations.</div>
-        </div>
-        {% endif %}
-        {% if rivals %}
-        <div class="card">
-          <div class="cardhead"><h3>The relegation picture</h3><button class="infobtn" type="button" aria-label="About this table"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Clubs immediately around Ipswich, with recent form and relegation odds from the season-simulation model. Source: ESPN table and ClubElo-based simulation.</span></button></div>
-          <table class="rivaltable">
-            <thead><tr><th>#</th><th>Team</th><th>Pts</th><th>Form</th><th>Drop%</th></tr></thead>
-            <tbody>
-              {% for r in rivals %}
-              <tr class="{{ 'ips' if r.is_ipswich }}">
-                <td>{{ r.rank }}</td>
-                <td class="tm">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.team }}</td>
-                <td><b>{{ r.points }}</b></td>
-                <td class="formcol">{% for f in r.form %}<span class="fdot {{ f }}"></span>{% endfor %}</td>
-                <td>{{ ('%.0f'|format(r.releg)) + '%' if r.releg is not none else '-' }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
         </div>
         {% endif %}
       </div>
@@ -201,17 +138,83 @@
     </div>
     {% endif %}
 
-    <div class="block card">
-      <div class="cardhead"><h3>Season record</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results and goals for the season so far. Source: Fantasy Premier League API.</span></button></div>
-      <div class="stats">
-        <div class="stat accent"><div class="v">{{ summary.points }}</div><div class="k">Points</div></div>
-        <div class="stat"><div class="v">{{ summary.played }}</div><div class="k">Played</div></div>
-        <div class="stat"><div class="v">{{ summary.won }}</div><div class="k">Won</div></div>
-        <div class="stat"><div class="v">{{ summary.drawn }}</div><div class="k">Drawn</div></div>
-        <div class="stat"><div class="v">{{ summary.lost }}</div><div class="k">Lost</div></div>
-        <div class="stat"><div class="v">{{ summary.gf }}</div><div class="k">For</div></div>
-        <div class="stat"><div class="v">{{ summary.ga }}</div><div class="k">Against</div></div>
-        <div class="stat"><div class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</div><div class="k">Goal diff</div></div>
+    {% if form_guide %}
+    <div class="block">
+      <div class="formguide">
+        <div class="fg-head">
+          <div class="hgroup">
+            <span class="fg-label">Form guide · last {{ form_guide.count }}</span>
+            <button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points from the last {{ form_guide.count }} matches, momentum from the newer half's PPG vs the older half's, and a verdict against xPts or bookmaker-implied expected points. Source: FPL results, Understat and football-data.co.uk odds.</span></button>
+          </div>
+          <span class="fg-summary">{{ form_guide.pts }} pts · {{ '%.2f'|format(form_guide.ppg) }} PPG
+            <span class="fg-trend {{ form_guide.trend }}" title="Momentum {{ form_guide.trend }}">{{ {'up':'▲','down':'▼','flat':'▬'}[form_guide.trend] }}</span></span>
+        </div>
+        <div class="fg-tiles">
+          {% for m in form_guide.matches %}
+          <div class="fg-tile">
+            <div class="fg-tile-top">
+              <span class="res {{ m.result }}">{{ m.result }}</span>
+              <span class="fg-tile-opp">{{ m.opponent_short or m.opponent }}</span>
+            </div>
+            <div class="fg-tile-meta">{{ 'H' if m.home else 'A' }}{% if m.event %} · GW{{ m.event }}{% endif %}</div>
+            <div class="fg-tile-score">{{ m.score }}</div>
+            <div class="fg-tile-rows">
+              <div><span class="k">Pts</span><span class="v">{{ m.pts }}</span></div>
+              {% if m.exp_odds is not none %}<div><span class="k">Odds</span><span class="v">{{ m.exp_odds }}</span></div>{% endif %}
+              {% if m.xpts is not none %}<div><span class="k">xPts</span><span class="v">{{ '%.2f'|format(m.xpts) }}</span></div>{% endif %}
+              {% if m.xg_for is not none %}<div><span class="k">xG</span><span class="v">{{ '%.2f'|format(m.xg_for) }}-{{ '%.2f'|format(m.xg_against) }}</span></div>{% endif %}
+            </div>
+            {% if m.match_id %}<a class="fg-tile-link" href="match/{{ m.match_id }}.html">Report →</a>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% if form_guide.xpts is not none or form_guide.exp_odds is not none or form_guide.run_label %}
+        <div class="fg-analysis">
+          {% if form_guide.exp_odds is not none %}<span class="fg-chip"><span class="k">Expected (odds)</span> <b>{{ form_guide.exp_odds }}</b> pts</span>{% endif %}
+          {% if form_guide.xpts is not none %}<span class="fg-chip"><span class="k">Deserved (xPts)</span> <b>{{ form_guide.xpts }}</b> pts</span>{% endif %}
+          {% if form_guide.xgf is not none %}<span class="fg-chip"><span class="k">xG</span> <b>{{ form_guide.xgf }}</b>-<b>{{ form_guide.xga }}</b></span>{% endif %}
+          {% if form_guide.run_label %}<span class="fg-chip"><span class="k">Run</span> {{ form_guide.run_label }} (opponents avg {{ form_guide.opp_avg_rank|ordinal }})</span>{% endif %}
+          {% if form_guide.verdict %}<span class="fg-verdict {{ form_guide.verdict }}">{{ {'over':'Outperforming expectation','under':'Underperforming expectation','par':'In line with expectation'}[form_guide.verdict] }}</span>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="block">
+      <div class="cols">
+        {% if rivals %}
+        <div class="card">
+          <div class="cardhead"><h3>The relegation picture</h3><button class="infobtn" type="button" aria-label="About this table"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Clubs immediately around Ipswich, with recent form and relegation odds from the season-simulation model. Source: ESPN table and ClubElo-based simulation.</span></button></div>
+          <table class="rivaltable">
+            <thead><tr><th>#</th><th>Team</th><th>Pts</th><th>Form</th><th>Drop%</th></tr></thead>
+            <tbody>
+              {% for r in rivals %}
+              <tr class="{{ 'ips' if r.is_ipswich }}">
+                <td>{{ r.rank }}</td>
+                <td class="tm">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.team }}</td>
+                <td><b>{{ r.points }}</b></td>
+                <td class="formcol">{% for f in r.form %}<span class="fdot {{ f }}"></span>{% endfor %}</td>
+                <td>{{ ('%.0f'|format(r.releg)) + '%' if r.releg is not none else '-' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+        <div class="card">
+          <div class="cardhead"><h3>Season record</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results and goals for the season so far. Source: Fantasy Premier League API.</span></button></div>
+          <div class="stats">
+            <div class="stat accent"><div class="v">{{ summary.points }}</div><div class="k">Points</div></div>
+            <div class="stat"><div class="v">{{ summary.played }}</div><div class="k">Played</div></div>
+            <div class="stat"><div class="v">{{ summary.won }}</div><div class="k">Won</div></div>
+            <div class="stat"><div class="v">{{ summary.drawn }}</div><div class="k">Drawn</div></div>
+            <div class="stat"><div class="v">{{ summary.lost }}</div><div class="k">Lost</div></div>
+            <div class="stat"><div class="v">{{ summary.gf }}</div><div class="k">For</div></div>
+            <div class="stat"><div class="v">{{ summary.ga }}</div><div class="k">Against</div></div>
+            <div class="stat"><div class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</div><div class="k">Goal diff</div></div>
+          </div>
+        </div>
       </div>
     </div>
 
