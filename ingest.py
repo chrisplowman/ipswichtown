@@ -5,7 +5,7 @@ data/itfc.json that build.py renders into the static page.
 Sources (all free; only football-data-style keys avoided — none needed here):
   FPL              https://fantasy.premierleague.com/api/...   squad, fixtures, difficulty
   Understat        https://understat.com/team|match/...         shot-level xG, match xG, player npxG
-  ESPN (hidden)    https://site.api.espn.com/.../eng.1/standings  league table  (keyless)
+  ESPN (hidden)    https://site.web.api.espn.com/.../eng.1/standings  league table  (keyless)
   TheSportsDB      https://www.thesportsdb.com/api/v1/json/3/...   club badges   (public test key)
 
 Each non-FPL source is wrapped so a failure just drops that section — the page
@@ -232,7 +232,12 @@ def _stat(stats, name, default=0):
 
 
 def fetch_table():
-    url = (f"https://site.api.espn.com/apis/v2/sports/soccer/eng.1/standings?season={ESPN_SEASON}")
+    # site.api.espn.com blocks GitHub Actions' IP ranges with a 403 (confirmed:
+    # the same path on this host, site.web.api.espn.com, returns identical valid
+    # data from a normal connection and is reported elsewhere as the fix for
+    # exactly this CI-blocking symptom). fetch_table_from_fbd() is still the
+    # fallback below if this host ever fails too.
+    url = (f"https://site.web.api.espn.com/apis/v2/sports/soccer/eng.1/standings?season={ESPN_SEASON}")
     j = get_json(url)
     entries = []
     def collect(node):
