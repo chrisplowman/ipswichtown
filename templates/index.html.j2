@@ -203,17 +203,20 @@
         </div>
         {% endif %}
         <div class="card">
-          <div class="cardhead"><h3>Season record</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results and goals for the season so far. Source: Fantasy Premier League API.</span></button></div>
-          <div class="stats">
-            <div class="stat accent"><div class="v">{{ summary.points }}</div><div class="k">Points</div></div>
-            <div class="stat"><div class="v">{{ summary.played }}</div><div class="k">Played</div></div>
-            <div class="stat"><div class="v">{{ summary.won }}</div><div class="k">Won</div></div>
-            <div class="stat"><div class="v">{{ summary.drawn }}</div><div class="k">Drawn</div></div>
-            <div class="stat"><div class="v">{{ summary.lost }}</div><div class="k">Lost</div></div>
-            <div class="stat"><div class="v">{{ summary.gf }}</div><div class="k">For</div></div>
-            <div class="stat"><div class="v">{{ summary.ga }}</div><div class="k">Against</div></div>
-            <div class="stat"><div class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</div><div class="k">Goal diff</div></div>
-          </div>
+          <div class="cardhead"><h3>Season record</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results and goals for the season so far, with Ipswich's league rank on each measure. Source: Fantasy Premier League API and the league table.</span></button></div>
+          <table class="reftable">
+            <thead><tr><th>Record</th><th></th><th>Rank</th></tr></thead>
+            <tbody>
+              <tr><td>Points</td><td class="v accent">{{ summary.points }}</td><td>{% if summary_ranks.points %}{{ summary_ranks.points|ordinal }}{% else %}–{% endif %}</td></tr>
+              <tr><td>Played</td><td class="v">{{ summary.played }}</td><td>–</td></tr>
+              <tr><td>Won</td><td class="v">{{ summary.won }}</td><td>{% if summary_ranks.won %}{{ summary_ranks.won|ordinal }}{% else %}–{% endif %}</td></tr>
+              <tr><td>Drawn</td><td class="v">{{ summary.drawn }}</td><td>–</td></tr>
+              <tr><td>Lost</td><td class="v">{{ summary.lost }}</td><td>{% if summary_ranks.lost %}{{ summary_ranks.lost|ordinal }}{% else %}–{% endif %}</td></tr>
+              <tr><td>Goals for</td><td class="v">{{ summary.gf }}</td><td>{% if summary_ranks.gf %}{{ summary_ranks.gf|ordinal }}{% else %}–{% endif %}</td></tr>
+              <tr><td>Goals against</td><td class="v">{{ summary.ga }}</td><td>{% if summary_ranks.ga %}{{ summary_ranks.ga|ordinal }}{% else %}–{% endif %}</td></tr>
+              <tr><td>Goal diff</td><td class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</td><td>{% if summary_ranks.gd %}{{ summary_ranks.gd|ordinal }}{% else %}–{% endif %}</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
