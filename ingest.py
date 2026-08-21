@@ -1052,6 +1052,20 @@ def main():
             row["badge"] = badge_for(short) if short else row.get("espn_logo")
     print(f"  table: {len(table) if table else 0} teams, Ipswich {position or '—'} (source: {table_source})")
 
+    # season-record ranks — where Ipswich sit among the league on each basic
+    # stat (won/lost/goals for/against/etc.), computed straight from `table`
+    # so the Overview page's Season record card can show "Nth in league"
+    # next to each number without any extra fetch.
+    summary_ranks = {}
+    if table and any(r.get("is_ipswich") for r in table):
+        def rank_on(key, low_good=False):
+            arr = sorted(table, key=lambda r: r[key], reverse=not low_good)
+            return next((i for i, r in enumerate(arr, 1) if r.get("is_ipswich")), None)
+        summary_ranks = {
+            "total": len(table), "points": rank_on("points"), "won": rank_on("won"),
+            "lost": rank_on("lost", low_good=True), "gf": rank_on("gf"),
+            "ga": rank_on("ga", low_good=True), "gd": rank_on("gd")}
+
     for f in fpl["upcoming"]:
         f["badge"] = badge_for(f["opponent_short"])
     for r in fpl["results"]:
@@ -1441,6 +1455,7 @@ def main():
         "team_news": team_news,
         "position": position,
         "summary": fpl["summary"],
+        "summary_ranks": summary_ranks,
         "table": table or [],
         "team_scatter": team_scatter,
         "team_ranks": team_ranks,

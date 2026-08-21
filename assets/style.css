@@ -456,6 +456,10 @@ ul.list li.has-link .opp{color:var(--primary)}
 .reftable th:first-child,.reftable td:first-child{text-align:left}
 .reftable thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
 .reftable tbody tr:last-child td{border-bottom:0}
+.reftable td.v{font-weight:600;color:var(--ink)}
+.reftable td.v.accent{color:var(--primary)}
+.reftable td.v.pos{color:var(--win)}
+.reftable td.v.neg{color:var(--loss)}
 .fdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 1px;vertical-align:middle}
 .fdot.W{background:var(--win)}
 .fdot.D{background:var(--draw)}

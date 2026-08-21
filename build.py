@@ -250,6 +250,13 @@ def sample_data(live=None):
     ipr = next((r for r in table if r["is_ipswich"]), table[-1])
     summary = {k: ipr[k] for k in ("played", "won", "drawn", "lost", "gf", "ga", "gd", "points")}
 
+    def _rank_on(key, low_good=False):
+        arr = sorted(table, key=lambda r: r[key], reverse=not low_good)
+        return next((i for i, r in enumerate(arr, 1) if r["is_ipswich"]), None)
+    summary_ranks = {"total": len(table), "points": _rank_on("points"), "won": _rank_on("won"),
+                     "lost": _rank_on("lost", low_good=True), "gf": _rank_on("gf"),
+                     "ga": _rank_on("ga", low_good=True), "gd": _rank_on("gd")}
+
     team_scatter = [{"team": r["team"], "short": r["short"], "badge": r["badge"],
                      "xg_pg": round(2.4 - r["rank"] * 0.07, 2), "xga_pg": round(0.7 + r["rank"] * 0.05, 2),
                      "is_ipswich": r["is_ipswich"]} for r in table]
@@ -490,7 +497,7 @@ def sample_data(live=None):
         "team_news": [
             {"player": "Wes Burns", "news": "Hamstring injury - 50% chance of playing", "tag": "Injured", "sev": "doubt"},
             {"player": "Sam Morsy", "news": "Suspended - 1 match ban", "tag": "Suspended", "sev": "out"}],
-        "position": ipr["rank"], "summary": summary, "table": table,
+        "position": ipr["rank"], "summary": summary, "summary_ranks": summary_ranks, "table": table,
         "team_scatter": team_scatter, "team_ranks": team_ranks, "league_table": league_table,
         "top_scorers": top_scorers, "top_assists": top_assists,
         "player_profiles": player_profiles,
