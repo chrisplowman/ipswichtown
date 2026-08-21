@@ -6,6 +6,7 @@ Sources (all free; only football-data-style keys avoided — none needed here):
   FPL              https://fantasy.premierleague.com/api/...   squad, fixtures, difficulty
   Understat        https://understat.com/team|match/...         shot-level xG, match xG, player npxG
   ESPN (hidden)    https://site.web.api.espn.com/.../eng.1/standings  league table  (keyless)
+  ESPN Core API    https://sports.core.api.espn.com/.../events/.../plays  bookings/subs (keyless)
   TheSportsDB      https://www.thesportsdb.com/api/v1/json/3/...   club badges   (public test key)
 
 Each non-FPL source is wrapped so a failure just drops that section — the page
@@ -49,6 +50,7 @@ NEWS_FEEDS = [
 ]
 NEWS_LIMIT = 18                    # max articles to keep after merging feeds
 SHOT_MAP_MATCHES = 5               # how many recent matches to keep shot maps for
+LEADERS_LIMIT = 10                 # how many players to keep in the top scorers/assists lists
 TEAM_NAME_MATCH = "ipswich"
 OUT = Path("data/itfc.json")
 TIMEOUT = 30
@@ -311,6 +313,66 @@ def fetch_table_from_fbd(fbd_rows):
         if r["is_ipswich"]:
             position = i
     return rows, position
+
+
+# --------------------------------------------------------------------------- #
+#  ESPN — match bookings & substitutions (Core API play-by-play)              #
+# --------------------------------------------------------------------------- #
+IPSWICH_ESPN_TEAM_ID = "373"
+PLAY_CACHE_DIR = "play_cache"
+_TEAM_ID_RE = re.compile(r"/teams/(\d+)")
+
+
+def fetch_espn_schedule(team_id=IPSWICH_ESPN_TEAM_ID):
+    """Ipswich's ESPN fixture list for the current season, keyed by kickoff
+    date, so Understat match_pages (keyed by Understat's own match id) can be
+    matched to an ESPN event id. Same site.web.api.espn.com host as
+    fetch_table() to dodge the CI IP block that hits site.api.espn.com."""
+    url = (f"https://site.web.api.espn.com/apis/site/v2/sports/soccer/eng.1/"
+           f"teams/{team_id}/schedule?season={ESPN_SEASON}")
+    j = get_json(url)
+    by_date = {}
+    for ev in j.get("events", []):
+        comp = (ev.get("competitions") or [{}])[0]
+        if not comp.get("status", {}).get("type", {}).get("completed"):
+            continue
+        date = (ev.get("date") or "")[:10]
+        if date and ev.get("id"):
+            by_date[date] = ev["id"]
+    return by_date
+
+
+def fetch_bookings_subs(event_id):
+    """Cards + substitutions for one match from ESPN's Core API play-by-play.
+    Verified against a real payload (event 740604, Arsenal vs Man Utd): each
+    play's `text` already has the full human-readable description (player +
+    team baked in), and flat `yellowCard`/`redCard`/`substitution` booleans
+    make filtering trivial — no separate athlete/team lookups needed."""
+    url = (f"https://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.1/"
+           f"events/{event_id}/competitions/{event_id}/plays?limit=300")
+    items = get_json(url).get("items", [])
+    cards, subs = [], []
+    for p in items:
+        is_card = p.get("yellowCard") or p.get("redCard")
+        is_sub = p.get("substitution")
+        if not (is_card or is_sub):
+            continue
+        m = _TEAM_ID_RE.search((p.get("team") or {}).get("$ref", ""))
+        side = "for" if m and m.group(1) == IPSWICH_ESPN_TEAM_ID else "against"
+        clock = p.get("clock", {})
+        entry = {"minute": (clock.get("displayValue") or "").rstrip("'"),
+                 "sort": clock.get("value", 0.0),
+                 "text": p.get("text", ""), "side": side}
+        if is_card:
+            entry["kind"] = "red" if p.get("redCard") else "yellow"
+            cards.append(entry)
+        else:
+            subs.append(entry)
+    cards.sort(key=lambda e: e["sort"])
+    subs.sort(key=lambda e: e["sort"])
+    for e in cards + subs:
+        del e["sort"]
+    return cards, subs
 
 
 # --------------------------------------------------------------------------- #
@@ -1083,6 +1145,30 @@ def main():
             if len(k) > 3 and (k in nk or nk in k): return v
         return (title[:3].upper(), None)
 
+    # top scorers / assists — every club, from the Understat league page's
+    # per-player data (already fetched above for team_scatter; just unused
+    # until now). Same field names fetch_understat() already relies on for
+    # Ipswich's own players (player_name/games/time/goals/assists/xG/xA),
+    # plus team_title which the league page adds per player.
+    top_scorers, top_assists = [], []
+    if league_players:
+        def leader_row(p, rank):
+            title = p.get("team_title", "")
+            short, badge = team_meta(title)
+            return {"rank": rank, "player": p.get("player_name", "?"),
+                    "team": title, "team_short": short, "badge": badge,
+                    "games": int(p.get("games", 0) or 0), "minutes": int(p.get("time", 0) or 0),
+                    "goals": int(p.get("goals", 0) or 0), "assists": int(p.get("assists", 0) or 0),
+                    "xg": to_float(p.get("xG", 0)), "xa": to_float(p.get("xA", 0)),
+                    "is_ipswich": TEAM_NAME_MATCH in title.lower()}
+        by_goals = sorted(league_players,
+                          key=lambda p: (-int(p.get("goals", 0) or 0), -to_float(p.get("xG", 0))))
+        by_assists = sorted(league_players,
+                            key=lambda p: (-int(p.get("assists", 0) or 0), -to_float(p.get("xA", 0))))
+        top_scorers = [leader_row(p, i) for i, p in enumerate(by_goals[:LEADERS_LIMIT], 1)]
+        top_assists = [leader_row(p, i) for i, p in enumerate(by_assists[:LEADERS_LIMIT], 1)]
+        print(f"  leaders: top {len(top_scorers)} scorers, top {len(top_assists)} assists")
+
     # team scatter: xG vs xGA per game, all clubs
     team_scatter = []
     for title, a in league_teams.items():
@@ -1250,6 +1336,46 @@ def main():
                            key=lambda m: m["date"], reverse=True)[:5]
     print(f"  match pages: {len(match_pages)} assembled")
 
+    # bookings & substitutions, from ESPN's play-by-play — matched onto each
+    # match page by kickoff date. Best-effort: an empty/unreachable schedule
+    # (e.g. before a season has any finished fixtures) just leaves each page
+    # without a bookings/subs section, same as every other optional source.
+    try:
+        espn_events_by_date = fetch_espn_schedule()
+    except Exception as e:
+        print(f"  bookings/subs: skipped ({e})")
+        espn_events_by_date = {}
+    if espn_events_by_date:
+        os.makedirs(PLAY_CACHE_DIR, exist_ok=True)
+        matched, fetched_plays = 0, 0
+        for mp in match_pages:
+            event_id = espn_events_by_date.get(mp["date"])
+            if not event_id:
+                continue
+            cache_file = os.path.join(PLAY_CACHE_DIR, f"{event_id}.json")
+            cards = subs = None
+            if os.path.exists(cache_file):
+                try:
+                    with open(cache_file) as fh:
+                        cards, subs = json.load(fh)
+                except (ValueError, OSError):
+                    cards = subs = None
+            if cards is None:
+                try:
+                    cards, subs = fetch_bookings_subs(event_id)
+                except requests.RequestException:
+                    continue
+                try:
+                    with open(cache_file, "w") as fh:
+                        json.dump([cards, subs], fh)
+                except OSError:
+                    pass
+                fetched_plays += 1
+            mp["cards"] = cards
+            mp["subs"] = subs
+            matched += 1
+        print(f"  bookings/subs: {matched} matches matched ({fetched_plays} freshly fetched, rest cached)")
+
     # link each result row to its match page
     mpid_by_key = {(canon(mp["opponent"]), mp["home"]): mp["id"] for mp in match_pages}
     for r in fpl["results"]:
@@ -1289,11 +1415,14 @@ def main():
         "Survival model": survival is not None,
         "Badges": bool(badge_for(ipswich["short_name"])),
         "News": bool(news),
+        "Bookings/subs": bool(espn_events_by_date),
+        "Top scorers/assists": bool(top_scorers),
     }
     # Pre-season is expected to have no match-derived data; don't flag those.
     preseason = fpl["summary"]["played"] == 0
     match_derived = {"Understat matches", "Match detail", "football-data stats",
-                     "Home/away tables", "Understat players", "Survival model"}
+                     "Home/away tables", "Understat players", "Survival model",
+                     "Bookings/subs", "Top scorers/assists"}
     missing = [name for name, ok in checks.items()
                if not ok and not (preseason and name in match_derived)]
     health = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -1315,6 +1444,8 @@ def main():
         "table": table or [],
         "team_scatter": team_scatter,
         "team_ranks": team_ranks,
+        "top_scorers": top_scorers,
+        "top_assists": top_assists,
         "league_table": league_table,
         "player_profiles": player_profiles,
         "by_gameweek": fpl["by_gameweek"],

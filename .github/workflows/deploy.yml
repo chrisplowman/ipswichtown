@@ -51,6 +51,15 @@ jobs:
           restore-keys: |
             match-cache-
 
+      # Finished-match bookings/subs (ESPN play-by-play) never change either.
+      - name: Restore play cache
+        uses: actions/cache@v4
+        with:
+          path: play_cache
+          key: play-cache-${{ github.run_id }}
+          restore-keys: |
+            play-cache-
+
       - name: Fetch data
         run: python ingest.py
 
