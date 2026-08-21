@@ -19,7 +19,7 @@
   --hairline:#e5e3df; --hairline-soft:#ede9e4; --hairline-strong:#c8c4be;
   --ink-deep:#000000; --ink:#1a1a1a; --charcoal:#37352f; --slate:#5d5b54;
   --steel:#787671; --stone:#a4a097; --muted:#bbb8b1;
-  --on-dark:#ffffff; --on-dark-muted:#a4a097;
+  --on-dark:#ffffff; --on-dark-muted:#E0E0E0;
   --success:#1aae39; --warning:#dd5b00; --error:#e03131;
   
   --win:#1aae39; --draw:#a4a097; --loss:#e03131;
