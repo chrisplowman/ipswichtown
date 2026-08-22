@@ -4,7 +4,7 @@ data/itfc.json that build.py renders into the static page.
 
 Sources (all free; only football-data-style keys avoided — none needed here):
   FPL              https://fantasy.premierleague.com/api/...   squad, fixtures, difficulty
-  Understat        https://understat.com/team|match/...         shot-level xG, match xG, player npxG
+  Understat        https://understat.com/getTeamData|getMatchData|getLeagueData/...  shot-level xG, match xG, player npxG
   ESPN (hidden)    https://site.web.api.espn.com/.../eng.1/standings  league table  (keyless)
   ESPN Core API    https://sports.core.api.espn.com/.../events/.../plays  bookings/subs (keyless)
   TheSportsDB      https://www.thesportsdb.com/api/v1/json/3/...   club badges   (public test key)
@@ -15,7 +15,6 @@ still builds from whatever succeeded.
 Run:  python ingest.py
 """
 
-import codecs
 import csv
 import io
 import json
@@ -34,7 +33,7 @@ import requests
 FPL = "https://fantasy.premierleague.com/api"
 UNDERSTAT_SEASON = "2026"          # Understat labels 2026/27 as "2026"
 ESPN_SEASON = "2026"
-UNDERSTAT_TEAM_SLUG = "Ipswich_Town"
+UNDERSTAT_TEAM_SLUG = "Ipswich"    # confirmed via Understat's own team dropdown — not "Ipswich_Town"
 FBD_SEASONS = ["2223", "2324", "2425", "2526"]  # football-data.co.uk season codes
 FBD_CURRENT = "2627"               # current season, for per-match shot stats
 FBD_DIVS = ["E0", "E1"]            # Premier League, Championship
@@ -65,12 +64,16 @@ UA = {
 }
 
 
-def _get(url):
-    """GET with a browser UA and a few retries/backoff on transient failures."""
+def _get(url, headers=None, session=None):
+    """GET with a browser UA and a few retries/backoff on transient failures.
+    Optional session/headers let callers that need extra headers (e.g. Understat's
+    AJAX endpoints, which require X-Requested-With + a matching Referer) reuse
+    this same retry logic instead of duplicating it."""
     last = None
+    requester = session or requests
     for attempt in range(RETRIES):
         try:
-            r = requests.get(url, headers=UA, timeout=TIMEOUT)
+            r = requester.get(url, headers=headers or UA, timeout=TIMEOUT)
             r.raise_for_status()
             return r
         except requests.RequestException as e:
@@ -80,8 +83,8 @@ def _get(url):
     raise last
 
 
-def get_json(url, base=None):
-    return _get(f"{base}/{url}" if base else url).json()
+def get_json(url, base=None, headers=None, session=None):
+    return _get(f"{base}/{url}" if base else url, headers=headers, session=session).json()
 
 
 def get_text(url):
@@ -428,24 +431,31 @@ def fetch_badges(fpl_teams):
 
 # --------------------------------------------------------------------------- #
 #  Understat — match xG, shot maps, player npxG                               #
+#  Understat moved from embedding a JSON blob in each page's HTML (the old
+#  `datesData`/`playersData`/`shotsData`/`rostersData`/`teamsData` you'd find
+#  via a `JSON.parse('...')` regex) to plain JSON AJAX endpoints the page's own
+#  JS calls after load. Confirmed via a real browser Network-tab capture: the
+#  field names inside each payload are unchanged, only the delivery mechanism
+#  is different — so only the fetch itself changes here, not the parsing below.
+#  The endpoints require an X-Requested-With header and a matching Referer (a
+#  plain page-navigation request 404s; the AJAX-shaped one succeeds), so calls
+#  go through a shared session that also carries cookies the same way a real
+#  browser would across the sequence of Understat requests in one run.
 # --------------------------------------------------------------------------- #
-def _us_json(html, var):
-    m = re.search(var + r"\s*=\s*JSON\.parse\('(.*?)'\)", html, re.S)
-    if not m:
-        return None
-    raw = m.group(1)
-    try:
-        decoded = codecs.escape_decode(raw.encode())[0].decode("utf-8")
-    except Exception:
-        decoded = raw.encode("utf8").decode("unicode_escape")
-    return json.loads(decoded)
+UNDERSTAT_SESSION = requests.Session()
+
+
+def _understat_json(path, referer):
+    headers = {**UA, "Accept": "application/json, text/javascript, */*; q=0.01",
+               "X-Requested-With": "XMLHttpRequest", "Referer": referer}
+    return get_json(f"https://understat.com/{path}", headers=headers, session=UNDERSTAT_SESSION)
 
 
 def fetch_match_detail(mid, side):
-    """Both teams' shots + player match-lines from an Understat match page."""
-    mh = get_text(f"https://understat.com/match/{mid}")
-    shots = _us_json(mh, "shotsData") or {}
-    rosters = _us_json(mh, "rostersData") or {}
+    """Both teams' shots + player match-lines, from Understat's getMatchData API."""
+    data = _understat_json(f"getMatchData/{mid}", f"https://understat.com/match/{mid}")
+    shots = data.get("shots") or {}
+    rosters = data.get("rosters") or {}
     them = "a" if side == "h" else "h"
 
     def shot_list(key):
@@ -474,9 +484,10 @@ def fetch_match_detail(mid, side):
 
 
 def fetch_understat():
-    team_html = get_text(f"https://understat.com/team/{UNDERSTAT_TEAM_SLUG}/{UNDERSTAT_SEASON}")
-    dates = _us_json(team_html, "datesData") or []
-    players_raw = _us_json(team_html, "playersData") or []
+    team_data = _understat_json(f"getTeamData/{UNDERSTAT_TEAM_SLUG}/{UNDERSTAT_SEASON}",
+                                f"https://understat.com/team/{UNDERSTAT_TEAM_SLUG}/{UNDERSTAT_SEASON}")
+    dates = team_data.get("dates") or []
+    players_raw = team_data.get("players") or []
 
     matches, finished_ids = [], []
     for d in dates:
@@ -568,9 +579,10 @@ def simplify_pos(p):
 
 
 def fetch_understat_league():
-    html = get_text(f"https://understat.com/league/EPL/{UNDERSTAT_SEASON}")
-    teams_raw = _us_json(html, "teamsData") or {}
-    players_raw = _us_json(html, "playersData") or []
+    league_data = _understat_json(f"getLeagueData/EPL/{UNDERSTAT_SEASON}",
+                                  f"https://understat.com/league/EPL/{UNDERSTAT_SEASON}")
+    teams_raw = league_data.get("teams") or {}
+    players_raw = league_data.get("players") or []
 
     def _match_pts(h):
         p = h.get("pts")
