@@ -234,7 +234,6 @@
 :root[data-theme="teletext"] .page-match thead th,
 :root[data-theme="teletext"] .page-match ul.plain li,
 :root[data-theme="teletext"] .page-match .assist,
-:root[data-theme="teletext"] .page-match .odds .o .k,
 :root[data-theme="teletext"] .page-player .hero .pos,
 :root[data-theme="teletext"] .page-player .hero .fpl .k,
 :root[data-theme="teletext"] .page-player .tile .k{font-size:16px}
@@ -246,7 +245,7 @@ a{color:var(--link-blue);text-decoration:none}
 .wrap{max-width:1080px;margin:0 auto;padding:0 var(--space-lg)}
 img.badge{width:20px;height:20px;object-fit:contain;flex:none;vertical-align:middle}
 td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr,
-.surv-big,.wp-bar,.page-match .score-row .sc,.page-match .odds .o .p{font-variant-numeric:tabular-nums}
+.surv-big,.wp-bar,.page-match .score-row .sc{font-variant-numeric:tabular-nums}
 .card,.board,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
 .innerboard{background:var(--canvas)}
 .masthead{background:var(--brand-navy);color:var(--on-dark)}
@@ -684,10 +683,6 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .page-match .cardchip.yellow{background:var(--card-yellow)}
 .page-match .cardchip.red{background:var(--loss)}
 .page-match .eventtext{flex:1}
-.page-match .odds{display:flex;gap:10px;text-align:center}
-.page-match .odds .o{flex:1;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-md);padding:12px}
-.page-match .odds .o .p{font-size:22px;font-weight:700}
-.page-match .odds .o .k{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--steel);margin-top:2px}
 
 /* ---- player profile pages ---- */
 .page-player .hero{background:var(--canvas);color:var(--ink);border:1px solid var(--hairline);box-shadow:var(--shadow-card);border-radius:var(--radius-lg);padding:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}

@@ -384,14 +384,12 @@ def sample_data(live=None):
             "gf": g["gf"], "ga": g["ga"], "result": "W" if g["pts"] == 3 else "D" if g["pts"] == 1 else "L",
             "ht_for": min(g["gf"], 1), "ht_against": min(g["ga"], 1),
             "ht_state": "ahead" if min(g["gf"], 1) > min(g["ga"], 1) else "behind" if min(g["gf"], 1) < min(g["ga"], 1) else "level",
-            "referee": ["M. Oliver", "A. Taylor", "P. Tierney", "S. Attwell"][i % 4],
             "shots_for": 10 + (i*3) % 8, "shots_against": 8 + (i*2) % 7,
             "sot_for": 3 + (i*2) % 5, "sot_against": 2 + i % 4,
             "corners_for": 4 + i % 5, "corners_against": 3 + i % 4,
             "fouls_for": 9 + i % 5, "fouls_against": 10 + i % 6,
             "yellows_for": 1 + i % 3, "yellows_against": 2 + i % 2,
-            "reds_for": 1 if i % 7 == 0 else 0, "reds_against": 0,
-            "odds": {"win": 30 + (i * 7) % 25, "draw": 27, "opp": 43 - (i * 7) % 25}})
+            "reds_for": 1 if i % 7 == 0 else 0, "reds_against": 0})
 
     # full detail match pages (dummy) for the most recent results, and link them in
     def _shot(x, y, xg, res, pl, mn, sit):
@@ -421,8 +419,7 @@ def sample_data(live=None):
             "opponent_badge": r["badge"], "team_badge": ips_badge, "home": r["home"], "date": "2026-10-04",
             "score": r["score"], "gf": gf, "ga": ga, "result": r["result"],
             "xg_for": round(1.4 + gf * 0.3, 2), "xg_against": round(0.8 + ga * 0.3, 2),
-            "ht_score": f"{min(gf,1)}-{min(ga,1)}", "referee": "M. Oliver",
-            "odds": {"win": 42, "draw": 27, "opp": 31}, "xpts": round(1.2 + gf * 0.4, 2),
+            "ht_score": f"{min(gf,1)}-{min(ga,1)}", "xpts": round(1.2 + gf * 0.4, 2),
             "deep": 9 + i, "deep_allowed": 6 + i, "ppda": round(9.5 + i, 2), "ppda_allowed": round(11.0 - i, 2),
             "fbd": {"shots_for": 14, "shots_against": 9, "sot_for": 6, "sot_against": 3,
                     "corners_for": 7, "corners_against": 4, "fouls_for": 10, "fouls_against": 12,
@@ -607,8 +604,8 @@ def _make_env():
 
 def form_guide(data, n=6):
     """Last n results with rolling points/PPG, a momentum trend, and an 'expected
-    form' read: pre-match expected points (bookmaker odds), performance-based
-    expected points (xPts), xG for/against, and how tough the run of opponents was."""
+    form' read: performance-based expected points (xPts), xG for/against, and
+    how tough the run of opponents was."""
     results = data.get("results") or []          # most recent first
     recent = results[:n]
     if not recent:
@@ -631,12 +628,8 @@ def form_guide(data, n=6):
     xgf = round(sum(h.get("xg", 0) for h in uh), 1) if uh else None
     xga = round(sum(h.get("xga", 0) for h in uh), 1) if uh else None
 
-    # pre-match expected points from bookmaker odds (last k matches with odds)
-    ms = [m for m in (data.get("match_stats") or []) if m.get("odds")][-k:]
-    exp_odds = round(sum(3 * m["odds"]["win"] / 100 + m["odds"]["draw"] / 100 for m in ms), 1) if ms else None
-
-    # over/under-performance verdict (vs the clearer of the two expectations)
-    ref = xpts if xpts is not None else exp_odds
+    # over/under-performance verdict (vs deserved expectation)
+    ref = xpts
     verdict = None
     if ref is not None:
         d = pts - ref
@@ -652,12 +645,11 @@ def form_guide(data, n=6):
         run_label = "a tough run" if opp_avg_rank <= 8 else "a kind run" if opp_avg_rank >= 13 else "an average run"
 
     # per-match expectation breakdown, joined from the same match-report data
-    # (match_pages) that already carries odds + Understat xG/xPts per match
+    # (match_pages) that already carries Understat xG/xPts per match
     mp_by_id = {mp["id"]: mp for mp in (data.get("match_pages") or [])}
     matches = []
     for r in reversed(recent):          # oldest first (reads left→right)
         mp = mp_by_id.get(r.get("match_id")) or {}
-        odds = mp.get("odds")
         matches.append({
             "result": r["result"], "opponent": r.get("opponent", ""),
             "opponent_short": r.get("opponent_short", ""), "home": r.get("home"),
@@ -665,10 +657,9 @@ def form_guide(data, n=6):
             "event": r.get("event"), "pts": pts_of(r), "date": mp.get("date"),
             "xg_for": mp.get("xg_for"), "xg_against": mp.get("xg_against"),
             "xpts": mp.get("xpts"),
-            "exp_odds": round(3 * odds["win"] / 100 + odds["draw"] / 100, 1) if odds else None,
         })
     return {"matches": matches, "pts": pts, "ppg": ppg, "trend": trend, "count": k,
-            "xpts": xpts, "xgf": xgf, "xga": xga, "exp_odds": exp_odds, "verdict": verdict,
+            "xpts": xpts, "xgf": xgf, "xga": xga, "verdict": verdict,
             "opp_avg_rank": opp_avg_rank, "run_label": run_label}
 
 
