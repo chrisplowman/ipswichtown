@@ -123,7 +123,13 @@ def fetch_fpl():
         home = f["team_h"] == tid
         opp = teams[f["team_a"] if home else f["team_h"]]
         difficulty = f["team_h_difficulty"] if home else f["team_a_difficulty"]
-        if f["finished"] and f["team_h_score"] is not None:
+        # FPL flips `finished` only once bonus points are officially confirmed,
+        # which can lag kickoff by hours; `finished_provisional` is set right at
+        # full-time with the final score already in, so treat that as done too
+        # (confirmed via a real gameweek-1 fixtures response: every played match
+        # had finished_provisional=true, started=true, minutes=90, real scores,
+        # but finished=false for hours afterwards).
+        if (f["finished"] or f["finished_provisional"]) and f["team_h_score"] is not None:
             our = f["team_h_score"] if home else f["team_a_score"]
             their = f["team_a_score"] if home else f["team_h_score"]
             gf += our; ga += their
@@ -852,7 +858,11 @@ def monte_carlo(teams, all_fixtures, elos, ips_tid, n=10000):
     # pre-compute home win / draw probabilities for each remaining fixture from Elo
     fx = []
     for f in all_fixtures:
-        if f.get("finished") or f["team_h"] not in base or f["team_a"] not in base:
+        # same finished_provisional caveat as fetch_fpl() — a played-but-not-yet-
+        # officially-confirmed match must still be excluded from "remaining
+        # fixtures to simulate", or the sim replays it on top of the real result.
+        if (f.get("finished") or f.get("finished_provisional")
+                or f["team_h"] not in base or f["team_a"] not in base):
             continue
         eh = elos.get(canon(base[f["team_h"]]["name"]), 1500)
         ea = elos.get(canon(base[f["team_a"]]["name"]), 1500)
