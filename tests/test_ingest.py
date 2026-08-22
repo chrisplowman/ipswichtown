@@ -110,13 +110,12 @@ def test_fetch_league_tables_home_away_form():
 
 
 # ---- Match stats -----------------------------------------------------------
-def test_fetch_match_stats_extracts_result_and_odds():
+def test_fetch_match_stats_extracts_result():
     from ingest import fetch_match_stats
     rows = [{"HomeTeam": "Ipswich", "AwayTeam": "Arsenal", "FTHG": "2", "FTAG": "1",
              "HTHG": "1", "HTAG": "0", "HS": "12", "AS": "9", "HST": "5", "AST": "3",
              "HC": "6", "AC": "4", "HF": "10", "AF": "11", "HY": "1", "AY": "2",
-             "HR": "0", "AR": "0", "Referee": "M Oliver", "Date": "01/09/26",
-             "B365H": "2.0", "B365D": "3.4", "B365A": "3.6"},
+             "HR": "0", "AR": "0", "Date": "01/09/26"},
             {"HomeTeam": "Spurs", "AwayTeam": "Chelsea", "FTHG": "1", "FTAG": "1"}]
     ms = fetch_match_stats(rows)
     assert len(ms) == 1
@@ -124,8 +123,8 @@ def test_fetch_match_stats_extracts_result_and_odds():
     assert m["opponent"] == "Arsenal" and m["home"] is True
     assert (m["result"], m["gf"], m["ga"]) == ("W", 2, 1)
     assert (m["shots_for"], m["shots_against"]) == (12, 9)
-    assert m["ht_state"] == "ahead" and m["referee"] == "M Oliver"
-    assert 99 <= sum(m["odds"].values()) <= 101
+    assert m["ht_state"] == "ahead"
+    assert "referee" not in m and "odds" not in m
 
 
 # ---- FDR fallback probabilities --------------------------------------------

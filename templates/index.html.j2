@@ -144,7 +144,7 @@
         <div class="fg-head">
           <div class="hgroup">
             <span class="fg-label">Form guide · last {{ form_guide.count }}</span>
-            <button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points from the last {{ form_guide.count }} matches, momentum from the newer half's PPG vs the older half's, and a verdict against xPts or bookmaker-implied expected points. Source: FPL results, Understat and football-data.co.uk odds.</span></button>
+            <button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points from the last {{ form_guide.count }} matches, momentum from the newer half's PPG vs the older half's, and a verdict against xPts. Source: FPL results and Understat.</span></button>
           </div>
           <span class="fg-summary">{{ form_guide.pts }} pts · {{ '%.2f'|format(form_guide.ppg) }} PPG
             <span class="fg-trend {{ form_guide.trend }}" title="Momentum {{ form_guide.trend }}">{{ {'up':'▲','down':'▼','flat':'▬'}[form_guide.trend] }}</span></span>
@@ -160,7 +160,6 @@
             <div class="fg-tile-score">{{ m.score }}</div>
             <div class="fg-tile-rows">
               <div><span class="k">Pts</span><span class="v">{{ m.pts }}</span></div>
-              {% if m.exp_odds is not none %}<div><span class="k">Odds</span><span class="v">{{ m.exp_odds }}</span></div>{% endif %}
               {% if m.xpts is not none %}<div><span class="k">xPts</span><span class="v">{{ '%.2f'|format(m.xpts) }}</span></div>{% endif %}
               {% if m.xg_for is not none %}<div><span class="k">xG</span><span class="v">{{ '%.2f'|format(m.xg_for) }}-{{ '%.2f'|format(m.xg_against) }}</span></div>{% endif %}
             </div>
@@ -168,9 +167,8 @@
           </div>
           {% endfor %}
         </div>
-        {% if form_guide.xpts is not none or form_guide.exp_odds is not none or form_guide.run_label %}
+        {% if form_guide.xpts is not none or form_guide.run_label %}
         <div class="fg-analysis">
-          {% if form_guide.exp_odds is not none %}<span class="fg-chip"><span class="k">Expected (odds)</span> <b>{{ form_guide.exp_odds }}</b> pts</span>{% endif %}
           {% if form_guide.xpts is not none %}<span class="fg-chip"><span class="k">Deserved (xPts)</span> <b>{{ form_guide.xpts }}</b> pts</span>{% endif %}
           {% if form_guide.xgf is not none %}<span class="fg-chip"><span class="k">xG</span> <b>{{ form_guide.xgf }}</b>-<b>{{ form_guide.xga }}</b></span>{% endif %}
           {% if form_guide.run_label %}<span class="fg-chip"><span class="k">Run</span> {{ form_guide.run_label }} (opponents avg {{ form_guide.opp_avg_rank|ordinal }})</span>{% endif %}
@@ -506,12 +504,8 @@
     <p class="label" id="cs-discipline">Discipline</p>
     <div class="chartgrid">
       <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Discipline</h3><p class="sub">Fouls and cards per game, for and against: how the club's discipline compares with what it draws from opponents.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Fouls and cards per game, for and against. Source: football-data.co.uk match stats.</span></button></div>
+        <div class="cardhead"><div class="htitle"><h3>Discipline</h3><p class="sub">Fouls and cards per game, for and against: how the club's discipline compares with what it draws from opponents.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Fouls and cards per game, for and against. Source: ESPN match events, with football-data.co.uk as a fallback.</span></button></div>
         <div class="canvas-holder"><canvas id="c-discipline"></canvas></div><div class="note" id="n-discipline" hidden></div>
-      </div>
-      <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Record by referee</h3><p class="sub">The club's results broken down by match official this season.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results broken down by match official. Source: football-data.co.uk match data.</span></button></div>
-        <div id="ref-table"></div><div class="note" id="n-ref" hidden></div>
       </div>
     </div>
     <p class="label" id="cs-league">League context</p>
@@ -1055,19 +1049,6 @@
             {label:'Opponents',data:[avg('fouls_against'),avg('yellows_against'),avg('reds_against')],backgroundColor:C.red}]},
           options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})});
       } else showNote('discipline','No discipline data yet.');
-
-      // Record by referee (HTML table)
-      var refBox=document.getElementById('ref-table');
-      if(refBox && ms.length){
-        var refs={};
-        ms.forEach(function(m){var r=m.referee||'Unknown'; refs[r]=refs[r]||{w:0,d:0,l:0,p:0};
-          refs[r].p++; refs[r][m.result==='W'?'w':m.result==='D'?'d':'l']++;});
-        var keys=Object.keys(refs).sort(function(a,b){return refs[b].p-refs[a].p;});
-        var html='<table class="reftable"><thead><tr><th>Referee</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PPG</th></tr></thead><tbody>';
-        keys.forEach(function(r){var x=refs[r];var ppg=((x.w*3+x.d)/x.p).toFixed(2);
-          html+='<tr><td>'+r+'</td><td>'+x.p+'</td><td>'+x.w+'</td><td>'+x.d+'</td><td>'+x.l+'</td><td>'+ppg+'</td></tr>';});
-        refBox.innerHTML=html+'</tbody></table>';
-      } else if(refBox){ showNote('ref','No referee data yet.'); }
 
       // Team strength radar (percentile vs league)
       var ts=DATA.team_strength||[];

@@ -52,7 +52,6 @@
         &nbsp; {{ 'Home' if m.home else 'Away' }}
         {% if m.ht_score %} · HT {{ m.ht_score }}{% endif %}
         {% if m.date %} · {{ m.date }}{% endif %}
-        {% if m.referee %} · Ref: {{ m.referee }}{% endif %}
       </div>
     </div>
   </div>
@@ -61,7 +60,7 @@
   <div class="block">
     <p class="label">Match stats</p>
     <div class="card">
-      <div class="cardhead"><h3>Match statistics</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Shots, cards, corners, pressing (PPDA) and Understat's expected points for this match. Source: Understat and football-data.co.uk.</span></button></div>
+      <div class="cardhead"><h3>Match statistics</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Shots, cards, corners, pressing (PPDA) and Understat's expected points for this match. Source: Understat and ESPN, with football-data.co.uk as a fallback.</span></button></div>
       <div class="legend"><span><i style="background:var(--primary)"></i>Ipswich</span><span><i style="background:var(--loss)"></i>{{ m.opponent }}</span></div>
       {% macro statrow(label, a, b, dp=0) %}
         {% set af = (a|float) %}{% set bf = (b|float) %}{% set tot = af + bf %}
@@ -100,7 +99,7 @@
     </div>
   </div>
 
-  <!-- GOALS + ODDS/H2H -->
+  <!-- GOALS + H2H -->
   <div class="block">
     <div class="cols">
       <div class="card">
@@ -114,16 +113,8 @@
         {% else %}<p class="empty-note">No goals in this match.</p>{% endif %}
       </div>
       <div class="card">
-        {% if m.odds %}
-        <div class="cardhead"><h3>Pre-match odds</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Bookmakers' implied win probability before kickoff. Source: football-data.co.uk (Bet365).</span></button></div><p class="empty-note" style="padding-top:0">Bookmakers' implied probability (B365).</p>
-        <div class="odds">
-          <div class="o"><div class="p">{{ m.odds.win }}%</div><div class="k">Ipswich</div></div>
-          <div class="o"><div class="p">{{ m.odds.draw }}%</div><div class="k">Draw</div></div>
-          <div class="o"><div class="p">{{ m.odds.opp }}%</div><div class="k">{{ m.opponent_short or m.opponent }}</div></div>
-        </div>
-        {% endif %}
         {% if m.h2h %}
-        <div class="cardhead" style="margin-top:16px"><h3>Recent meetings</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results from previous meetings between these two clubs. Source: football-data.co.uk historical results.</span></button></div>
+        <div class="cardhead"><h3>Recent meetings</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results from previous meetings between these two clubs. Source: football-data.co.uk historical results.</span></button></div>
         <ul class="plain">
           {% for h in m.h2h %}
           <li><span class="res {{ h.result }}">{{ h.result }}</span>{{ h.opponent }} <span class="assist">{{ '(H)' if h.home else '(A)' }} {{ h.score }} · {{ h.date }}</span></li>
@@ -185,7 +176,7 @@
   </div>
 </main>
 
-<footer>Data from Understat (xG, shots, player lines), football-data.co.uk (shots, cards, odds) and the FPL API · a reference page, not affiliated with Ipswich Town FC.</footer>
+<footer>Data from Understat (xG, shots, player lines), ESPN (shots, cards, subs) and the FPL API · a reference page, not affiliated with Ipswich Town FC.</footer>
 
 <script id="match-data" type="application/json">{{ match_json|safe }}</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>

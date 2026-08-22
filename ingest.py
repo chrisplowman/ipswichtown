@@ -6,7 +6,7 @@ Sources (all free; only football-data-style keys avoided — none needed here):
   FPL              https://fantasy.premierleague.com/api/...   squad, fixtures, difficulty
   Understat        https://understat.com/getTeamData|getMatchData|getLeagueData/...  shot-level xG, match xG, player npxG
   ESPN (hidden)    https://site.web.api.espn.com/.../eng.1/standings  league table  (keyless)
-  ESPN Core API    https://sports.core.api.espn.com/.../events/.../plays  bookings/subs (keyless)
+  ESPN Core API    https://sports.core.api.espn.com/.../events/.../plays  bookings/subs, shots/corners/fouls/HT (keyless)
   TheSportsDB      https://www.thesportsdb.com/api/v1/json/3/...   club badges   (public test key)
 
 Each non-FPL source is wrapped so a failure just drops that section — the page
@@ -351,29 +351,66 @@ def fetch_espn_schedule(team_id=IPSWICH_ESPN_TEAM_ID):
     return by_date
 
 
-def fetch_bookings_subs(event_id):
-    """Cards + substitutions for one match from ESPN's Core API play-by-play.
-    Verified against a real payload (event 740604, Arsenal vs Man Utd): each
-    play's `text` already has the full human-readable description (player +
-    team baked in), and flat `yellowCard`/`redCard`/`substitution` booleans
-    make filtering trivial — no separate athlete/team lookups needed."""
+MATCH_STAT_KEYS = ("shots_for", "shots_against", "sot_for", "sot_against",
+                    "corners_for", "corners_against", "fouls_for", "fouls_against",
+                    "yellows_for", "yellows_against", "reds_for", "reds_against")
+_ESPN_SOT_TYPES = {"shot-on-target"}
+_ESPN_OFF_TARGET_TYPES = {"shot-off-target", "shot-blocked", "shot-hit-woodwork"}
+
+
+def fetch_espn_match_events(event_id, is_home):
+    """Cards, substitutions and match stats (shots/SOT/corners/fouls/HT score)
+    for one match, from a single ESPN Core API play-by-play fetch — the primary
+    source for these, ahead of football-data.co.uk. Verified against a real
+    payload (event 740604, Arsenal vs Man Utd): each play's `text` already has
+    the full human-readable description, flat `yellowCard`/`redCard`/
+    `substitution` booleans make card/sub filtering trivial, and `type.type`
+    carries the shot/foul/corner/halftime classification (e.g.
+    "shot-on-target", "shot-off-target", "shot-blocked", "shot-hit-woodwork",
+    goal types prefixed "goal", "corner-awarded", "foul", "halftime" — the
+    latter carrying global (not team-specific) homeScore/awayScore, mapped
+    onto Ipswich's for/against via `is_home`). Returns (None, None, None) when
+    the match has no play-by-play yet, so callers can fall back cleanly."""
     url = (f"https://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.1/"
            f"events/{event_id}/competitions/{event_id}/plays?limit=300")
     items = get_json(url).get("items", [])
+    if not items:
+        return None, None, None
     cards, subs = [], []
+    stats = {k: 0 for k in MATCH_STAT_KEYS}
+    stats["ht_for"] = stats["ht_against"] = None
     for p in items:
+        ptype = (p.get("type") or {}).get("type", "")
+        m = _TEAM_ID_RE.search((p.get("team") or {}).get("$ref", ""))
+        side = "for" if m and m.group(1) == IPSWICH_ESPN_TEAM_ID else "against"
+
+        if ptype == "halftime":
+            hs, as_ = p.get("homeScore"), p.get("awayScore")
+            if hs is not None and as_ is not None:
+                stats["ht_for"], stats["ht_against"] = (hs, as_) if is_home else (as_, hs)
+            continue
+
+        if ptype in _ESPN_SOT_TYPES or ptype.startswith("goal"):
+            stats[f"shots_{side}"] += 1
+            stats[f"sot_{side}"] += 1
+        elif ptype in _ESPN_OFF_TARGET_TYPES:
+            stats[f"shots_{side}"] += 1
+        elif ptype == "corner-awarded":
+            stats[f"corners_{side}"] += 1
+        elif ptype == "foul":
+            stats[f"fouls_{side}"] += 1
+
         is_card = p.get("yellowCard") or p.get("redCard")
         is_sub = p.get("substitution")
         if not (is_card or is_sub):
             continue
-        m = _TEAM_ID_RE.search((p.get("team") or {}).get("$ref", ""))
-        side = "for" if m and m.group(1) == IPSWICH_ESPN_TEAM_ID else "against"
         clock = p.get("clock", {})
         entry = {"minute": (clock.get("displayValue") or "").rstrip("'"),
                  "sort": clock.get("value", 0.0),
                  "text": p.get("text", ""), "side": side}
         if is_card:
             entry["kind"] = "red" if p.get("redCard") else "yellow"
+            stats[f"{'reds' if entry['kind'] == 'red' else 'yellows'}_{side}"] += 1
             cards.append(entry)
         else:
             subs.append(entry)
@@ -381,7 +418,7 @@ def fetch_bookings_subs(event_id):
     subs.sort(key=lambda e: e["sort"])
     for e in cards + subs:
         del e["sort"]
-    return cards, subs
+    return cards, subs, stats
 
 
 # --------------------------------------------------------------------------- #
@@ -721,7 +758,9 @@ def _fbd_rows():
 
 
 def fetch_match_stats(rows):
-    """Ipswich's current-season per-match shots/cards/odds/result from football-data.co.uk."""
+    """Ipswich's current-season per-match shots/cards/result from football-data.co.uk.
+    Fallback only — ESPN's play-by-play (fetch_espn_match_events) is the primary
+    source for these stats and is preferred wherever it's available."""
     out = []
     for r in rows:
         h, a = r.get("HomeTeam", ""), r.get("AwayTeam", "")
@@ -737,16 +776,6 @@ def fetch_match_stats(rows):
         opp = a if ips_home else h
         pick = lambda hk, ak: gi(hk) if ips_home else gi(ak)
 
-        def odds():
-            try:
-                oh, od, oa = float(r["B365H"]), float(r["B365D"]), float(r["B365A"])
-                ph, pd, pa = 1 / oh, 1 / od, 1 / oa
-                tot = ph + pd + pa
-                win, opp_ = (ph, pa) if ips_home else (pa, ph)
-                return {"win": round(win / tot * 100), "draw": round(pd / tot * 100),
-                        "opp": round(opp_ / tot * 100)}
-            except (KeyError, ValueError, TypeError, ZeroDivisionError):
-                return None
         hth, hta = gi("HTHG"), gi("HTAG")
         gf, ga = pick("FTHG", "FTAG"), pick("FTAG", "FTHG")
         htf, hta_ = (hth, hta) if ips_home else (hta, hth)
@@ -759,8 +788,7 @@ def fetch_match_stats(rows):
                     "yellows_for": pick("HY", "AY"), "yellows_against": pick("AY", "HY"),
                     "reds_for": pick("HR", "AR"), "reds_against": pick("AR", "HR"),
                     "ht_for": htf, "ht_against": hta_, "ht_state": (
-                        "ahead" if htf > hta_ else "behind" if htf < hta_ else "level"),
-                    "referee": r.get("Referee", ""), "odds": odds()})
+                        "ahead" if htf > hta_ else "behind" if htf < hta_ else "level")})
     return out
 
 
@@ -1118,11 +1146,11 @@ def main():
     except Exception as e:
         print(f"  understat league: skipped ({e})")
 
-    match_stats, home_table, away_table, league_form = [], [], [], {}
+    fbd_stats, home_table, away_table, league_form = [], [], [], {}
     try:
-        match_stats = fetch_match_stats(fbd_rows)
+        fbd_stats = fetch_match_stats(fbd_rows)
         home_table, away_table, league_form = fetch_league_tables(fbd_rows)
-        print(f"  match stats: {len(match_stats)} Ipswich matches; "
+        print(f"  match stats (football-data fallback): {len(fbd_stats)} Ipswich matches; "
               f"home/away tables {len(home_table)}/{len(away_table)} clubs")
     except Exception as e:
         print(f"  match stats: skipped ({e})")
@@ -1346,71 +1374,85 @@ def main():
             next_opponent["prob"] = fdr_win_probs(next_fixture["difficulty"])
 
     # ---- assemble a full detail page for every finished match ------------ #
+    # Shots/SOT/corners/fouls/cards/HT score come from ESPN's play-by-play
+    # (fetch_espn_match_events) wherever a match is matched onto an ESPN event;
+    # football-data.co.uk's per-match CSV row is only a fallback for matches
+    # ESPN hasn't got yet. Best-effort throughout: an empty/unreachable ESPN
+    # schedule (e.g. before a season has any finished fixtures) just leaves
+    # each page without cards/subs, same as every other optional source.
     match_pages = understat.get("match_pages", [])
-    fbd_by_key = {(canon(m["opponent"]), m["home"]): m for m in match_stats}
+    fbd_by_key = {(canon(m["opponent"]), m["home"]): m for m in fbd_stats}
     hist_by_date = {h["date"]: h for h in ips_history}
     ips_badge = badge_for(ipswich["short_name"])
+    try:
+        espn_events_by_date = fetch_espn_schedule()
+    except Exception as e:
+        print(f"  ESPN match events: skipped ({e})")
+        espn_events_by_date = {}
+    if espn_events_by_date:
+        os.makedirs(PLAY_CACHE_DIR, exist_ok=True)
+
+    match_stats = []
+    espn_matched, espn_fetched = 0, 0
     for mp in match_pages:
         short, _ = team_meta(mp["opponent"])
         mp["opponent_short"] = short
         mp["opponent_badge"] = badge_for(short)
         mp["team_badge"] = ips_badge
         fb = fbd_by_key.get((canon(mp["opponent"]), mp["home"]))
-        if fb:
-            mp["ht_score"] = f"{fb['ht_for']}-{fb['ht_against']}"
-            mp["odds"] = fb.get("odds")
-            mp["referee"] = fb.get("referee", "")
-            mp["fbd"] = {k: fb[k] for k in (
-                "shots_for", "shots_against", "sot_for", "sot_against",
-                "corners_for", "corners_against", "fouls_for", "fouls_against",
-                "yellows_for", "yellows_against", "reds_for", "reds_against")}
+
+        cards = subs = stats = None
+        event_id = espn_events_by_date.get(mp["date"])
+        if event_id:
+            cache_file = os.path.join(PLAY_CACHE_DIR, f"{event_id}.json")
+            if os.path.exists(cache_file):
+                try:
+                    with open(cache_file) as fh:
+                        cards, subs, stats = json.load(fh)
+                except (ValueError, OSError):
+                    cards = subs = stats = None
+            if cards is None:
+                try:
+                    cards, subs, stats = fetch_espn_match_events(event_id, mp["home"])
+                except requests.RequestException:
+                    cards = subs = stats = None
+                else:
+                    try:
+                        with open(cache_file, "w") as fh:
+                            json.dump([cards, subs, stats], fh)
+                    except OSError:
+                        pass
+                    espn_fetched += 1
+            if cards is not None:
+                mp["cards"] = cards
+                mp["subs"] = subs
+                espn_matched += 1
+
+        if stats:
+            mp["fbd"] = {k: stats[k] for k in MATCH_STAT_KEYS}
+            ht_for, ht_against = stats["ht_for"], stats["ht_against"]
+        elif fb:
+            mp["fbd"] = {k: fb[k] for k in MATCH_STAT_KEYS}
+            ht_for, ht_against = fb["ht_for"], fb["ht_against"]
+        else:
+            ht_for = ht_against = None
+        if ht_for is not None and ht_against is not None:
+            mp["ht_score"] = f"{ht_for}-{ht_against}"
+            ht_state = "ahead" if ht_for > ht_against else "behind" if ht_for < ht_against else "level"
+            match_stats.append({"opponent": mp["opponent"], "home": mp["home"],
+                                "result": mp["result"], "ht_state": ht_state, **mp["fbd"]})
+        elif mp.get("fbd"):
+            match_stats.append({"opponent": mp["opponent"], "home": mp["home"],
+                                "result": mp["result"], "ht_state": None, **mp["fbd"]})
+
         hh = hist_by_date.get(mp["date"])
         if hh:
             mp.update({"xpts": hh["xpts"], "deep": hh["deep"], "deep_allowed": hh["deep_allowed"],
                        "ppda": hh["ppda"], "ppda_allowed": hh["ppda_allowed"]})
         mp["h2h"] = sorted(meetings.get(canon(mp["opponent"]), []),
                            key=lambda m: m["date"], reverse=True)[:5]
-    print(f"  match pages: {len(match_pages)} assembled")
-
-    # bookings & substitutions, from ESPN's play-by-play — matched onto each
-    # match page by kickoff date. Best-effort: an empty/unreachable schedule
-    # (e.g. before a season has any finished fixtures) just leaves each page
-    # without a bookings/subs section, same as every other optional source.
-    try:
-        espn_events_by_date = fetch_espn_schedule()
-    except Exception as e:
-        print(f"  bookings/subs: skipped ({e})")
-        espn_events_by_date = {}
-    if espn_events_by_date:
-        os.makedirs(PLAY_CACHE_DIR, exist_ok=True)
-        matched, fetched_plays = 0, 0
-        for mp in match_pages:
-            event_id = espn_events_by_date.get(mp["date"])
-            if not event_id:
-                continue
-            cache_file = os.path.join(PLAY_CACHE_DIR, f"{event_id}.json")
-            cards = subs = None
-            if os.path.exists(cache_file):
-                try:
-                    with open(cache_file) as fh:
-                        cards, subs = json.load(fh)
-                except (ValueError, OSError):
-                    cards = subs = None
-            if cards is None:
-                try:
-                    cards, subs = fetch_bookings_subs(event_id)
-                except requests.RequestException:
-                    continue
-                try:
-                    with open(cache_file, "w") as fh:
-                        json.dump([cards, subs], fh)
-                except OSError:
-                    pass
-                fetched_plays += 1
-            mp["cards"] = cards
-            mp["subs"] = subs
-            matched += 1
-        print(f"  bookings/subs: {matched} matches matched ({fetched_plays} freshly fetched, rest cached)")
+    print(f"  match pages: {len(match_pages)} assembled, {len(match_stats)} with shot/card stats "
+          f"({espn_matched} from ESPN, {espn_fetched} freshly fetched)")
 
     # link each result row to its match page
     mpid_by_key = {(canon(mp["opponent"]), mp["home"]): mp["id"] for mp in match_pages}
@@ -1444,21 +1486,21 @@ def main():
         "Understat matches": bool(understat["matches"]),
         "Understat players": bool(understat["players"]),
         "Match detail": bool(match_pages),
-        "football-data stats": bool(match_stats),
+        "Match stats": bool(match_stats),
         "Home/away tables": bool(home_table),
         "Elo (current)": bool(elos),
         "Elo history": bool(elo_history),
         "Survival model": survival is not None,
         "Badges": bool(badge_for(ipswich["short_name"])),
         "News": bool(news),
-        "Bookings/subs": bool(espn_events_by_date),
+        "ESPN match events": bool(espn_events_by_date),
         "Top scorers/assists": bool(top_scorers),
     }
     # Pre-season is expected to have no match-derived data; don't flag those.
     preseason = fpl["summary"]["played"] == 0
-    match_derived = {"Understat matches", "Match detail", "football-data stats",
+    match_derived = {"Understat matches", "Match detail", "Match stats",
                      "Home/away tables", "Understat players", "Survival model",
-                     "Bookings/subs", "Top scorers/assists"}
+                     "ESPN match events", "Top scorers/assists"}
     missing = [name for name, ok in checks.items()
                if not ok and not (preseason and name in match_derived)]
     health = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
