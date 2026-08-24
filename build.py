@@ -129,6 +129,85 @@ def fmt_updated(iso):
     return dt.strftime("%d %b %Y, %H:%M UTC")
 
 
+# Clubs whose Guardian URL slug diverges from a naive slugify() of the name
+# Understat/FPL give us (see guardian_report_url below) — e.g. "West Ham
+# United" slugifies to "west-ham-united" but the Guardian's own slug is just
+# "west-ham". Unlisted opponents (Sunderland, Liverpool, Arsenal, Chelsea,
+# Everton, Fulham, Brentford, Burnley, Bournemouth, ...) already match a
+# plain slugify() of their common name.
+_GUARDIAN_SLUGS = {
+    "man utd": "manchester-united", "man united": "manchester-united", "manchester united": "manchester-united",
+    "man city": "manchester-city", "manchester city": "manchester-city",
+    "spurs": "tottenham-hotspur", "tottenham": "tottenham-hotspur", "tottenham hotspur": "tottenham-hotspur",
+    "newcastle": "newcastle-united", "newcastle united": "newcastle-united",
+    "west ham": "west-ham", "west ham united": "west-ham",
+    "wolves": "wolverhampton-wanderers", "wolverhampton wanderers": "wolverhampton-wanderers",
+    "nott'm forest": "nottingham-forest", "nottingham forest": "nottingham-forest",
+    "leeds": "leeds-united", "leeds united": "leeds-united",
+    "brighton": "brighton-and-hove-albion", "brighton and hove albion": "brighton-and-hove-albion",
+    "leicester": "leicester-city", "leicester city": "leicester-city",
+    "sheffield utd": "sheffield-united", "sheffield united": "sheffield-united",
+    "west brom": "west-brom", "west bromwich albion": "west-brom",
+    "qpr": "queens-park-rangers", "queens park rangers": "queens-park-rangers",
+}
+
+
+def _slugify(name):
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
+    s = s.replace("&", "and")
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
+def guardian_report_url(mp):
+    """Best-effort link to the Guardian's own match report, built from its
+    predictable URL scheme (.../football/<year>/<mon>/<day>/<home>-<away>-
+    premier-league-match-report) since the Guardian has no public API to
+    look this up properly. Team slugs come from _GUARDIAN_SLUGS for the
+    clubs where that differs from a plain slugify(), and slugify() for
+    everything else. Unverified against the live site, so this can 404 for
+    a match the Guardian didn't cover (or a name this map doesn't catch) —
+    it's a predictable guess, not a confirmed link."""
+    try:
+        d = datetime.strptime((mp.get("date") or "")[:10], "%Y-%m-%d")
+    except ValueError:
+        return None
+    opp = (mp.get("opponent") or "").strip()
+    opp_slug = _GUARDIAN_SLUGS.get(opp.lower()) or _slugify(opp)
+    if not opp_slug:
+        return None
+    home_slug, away_slug = ("ipswich", opp_slug) if mp.get("home") else (opp_slug, "ipswich")
+    return (f"https://www.theguardian.com/football/{d.year}/{d.strftime('%b').lower()}/{d.day}/"
+            f"{home_slug}-{away_slug}-premier-league-match-report")
+
+
+def match_report_links(mp):
+    """External match-report links for one match, from outlets whose report
+    URL is genuinely derivable rather than an opaque numeric/hash ID — which
+    rules out most UK football sites (Sky Sports, the BBC's newer article
+    IDs, the Mirror, the Independent, football.london, WhoScored, FotMob,
+    Transfermarkt, ...) and is also why this list stays short by
+    construction, not by hand-picking: tabloids like the Sun and the Daily
+    Mail aren't included on principle either way.
+    - The Guardian: date + team-slug URL scheme (guardian_report_url above);
+      unverified against the live site, so it's a best-effort guess that can
+      404 for a match the Guardian didn't cover.
+    - ESPN: the exact report URL ESPN itself serves for the matching event
+      (espn_report_url, stamped in ingest.py from the same event id used for
+      cards/subs/lineups) — not a guess, just not always present.
+    - Understat: mp["id"] already *is* Understat's own match id (it's what
+      fetch_understat() used to pull this match's xG/shots in the first
+      place), so its match page is an exact link, not a guess."""
+    links = []
+    guardian = guardian_report_url(mp)
+    if guardian:
+        links.append({"name": "The Guardian", "url": guardian})
+    if mp.get("espn_report_url"):
+        links.append({"name": "ESPN", "url": mp["espn_report_url"]})
+    if mp.get("id"):
+        links.append({"name": "Understat", "url": f"https://understat.com/match/{mp['id']}"})
+    return links
+
+
 def season_summary(data):
     """A short, plain-language read on how the season is going, composed from the
     live numbers (projection, xPts, form, next fixture) so it updates every build."""
@@ -811,6 +890,8 @@ def render_site(template, match_template, player_template, data):
     (outdir / "data").mkdir(parents=True, exist_ok=True)
     if ASSETS.exists():
         shutil.copytree(ASSETS, outdir, dirs_exist_ok=True)   # style.css, fonts/, share.js per site root
+    for mp in data.get("match_pages") or []:
+        mp["reports"] = match_report_links(mp)
     player_pages = build_player_pages(data)     # stamps slug on each squad entry
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)

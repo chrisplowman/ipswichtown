@@ -56,6 +56,20 @@
     </div>
   </div>
 
+  <!-- MATCH REPORTS -->
+  {% if m.reports %}
+  <div class="block">
+    <div class="card">
+      <div class="cardhead"><h3>Match reports</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Links to this match's report on other sites, built from each outlet's own predictable report URL — not a search, so an occasional link may 404 for a match that outlet didn't cover.</span></button></div>
+      <ul class="plain">
+        {% for r in m.reports %}
+        <li><span class="eventtext">{{ r.name }}</span><a class="playerlink" href="{{ r.url }}" target="_blank" rel="noopener">Read report ↗</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- LINEUPS -->
   {% if m.lineups %}
   {% macro lineup_row(p) %}

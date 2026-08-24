@@ -1501,6 +1501,10 @@ def main():
         cards = subs = stats = None
         event_id = espn_events_by_date.get(mp["date"])
         if event_id:
+            # ESPN's own report page for this event — not a guess, the exact
+            # URL ESPN itself serves (confirmed against a real summary
+            # payload's links[rel=recap] entry).
+            mp["espn_report_url"] = f"https://www.espn.com/soccer/report/_/gameId/{event_id}"
             cache_file = os.path.join(PLAY_CACHE_DIR, f"{event_id}.json")
             if os.path.exists(cache_file):
                 try:
