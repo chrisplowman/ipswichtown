@@ -205,6 +205,50 @@ def test_fetch_espn_lineups_returns_none_when_unpublished(monkeypatch):
     assert ingest.fetch_espn_lineups("401879299") is None
 
 
+def test_fetch_espn_lineups_extracts_sub_card_and_goal_minutes(monkeypatch):
+    import ingest
+
+    def play(minute, **flags):
+        d = {"clock": {"displayValue": minute}, "substitution": False,
+             "yellowCard": False, "redCard": False}
+        d.update(flags)
+        return d
+
+    summary = {"rosters": [
+        {"team": {"id": ingest.IPSWICH_ESPN_TEAM_ID}, "formation": "4-2-3-1", "roster": [
+            # Starter: scores at 24', booked at 58', subbed off at 71'.
+            {"starter": True, "jersey": "10", "subbedOut": True, "subbedIn": False,
+             "athlete": {"displayName": "Enciso"}, "position": {"abbreviation": "AM"},
+             "plays": [play("24'", didScore=True), play("58'", yellowCard=True),
+                       play("71'", substitution=True)]},
+            # Bench player: comes on at 71', scores at 90'.
+            {"starter": False, "jersey": "47", "subbedOut": False, "subbedIn": True,
+             "athlete": {"displayName": "Clarke"}, "position": {"abbreviation": "F"},
+             "plays": [play("71'", substitution=True), play("90'", didScore=True)]},
+        ]},
+        {"team": {"id": "366"}, "formation": "4-3-3", "roster": [
+            {"starter": True, "jersey": "5", "subbedOut": False, "subbedIn": False,
+             "athlete": {"displayName": "Ballard"}, "position": {"abbreviation": "CD"},
+             "plays": [play("36'", redCard=True)]},
+        ]},
+    ]}
+
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: summary)
+    lineups = ingest.fetch_espn_lineups("401879299")
+
+    enciso = lineups["for"]["starters"][0]
+    assert enciso["goals"] == ["24'"]
+    assert enciso["cards"] == [{"kind": "yellow", "minute": "58'"}]
+    assert enciso["sub_off"] == "71'" and enciso["sub_on"] is None
+
+    clarke = lineups["for"]["subs"][0]
+    assert clarke["sub_on"] == "71'" and clarke["sub_off"] is None
+    assert clarke["goals"] == ["90'"]
+
+    ballard = lineups["against"]["starters"][0]
+    assert ballard["cards"] == [{"kind": "red", "minute": "36'"}]
+
+
 # ---- FDR fallback probabilities --------------------------------------------
 def test_fdr_win_probs_sum_to_100():
     from ingest import fdr_win_probs
