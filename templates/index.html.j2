@@ -1026,11 +1026,13 @@
         options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line},ticks:{precision:0}}}})}); }
       else showNote('timing','No goal-timing data yet.');
 
-      // Points by half-time state
-      var ms = DATA.match_stats||[];
-      if(ms.length){
+      // Points by half-time state — from match_pages (always populated once
+      // Understat has the match) rather than match_stats, so this doesn't
+      // depend on ESPN/football-data having shot-level detail for the match.
+      var mpg = DATA.match_pages||[];
+      if(mpg.length){
         var st={ahead:[0,0],level:[0,0],behind:[0,0]};  // [points, games]
-        ms.forEach(function(m){var s=m.ht_state; if(!st[s])return;
+        mpg.forEach(function(m){var s=m.ht_state; if(!st[s])return;
           st[s][0]+=(m.result==='W'?3:m.result==='D'?1:0); st[s][1]++;});
         var order=['ahead','level','behind'], lab={ahead:'Leading at HT',level:'Level at HT',behind:'Behind at HT'};
         new Chart(document.getElementById('c-gamestate'),{type:'bar',
