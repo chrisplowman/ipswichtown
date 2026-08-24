@@ -404,13 +404,20 @@ def fetch_espn_match_events(event_id, is_home):
     "shot-on-target", "shot-off-target", "shot-blocked", "shot-hit-woodwork",
     goal types prefixed "goal", "corner-awarded", "foul", "halftime" — the
     latter carrying global (not team-specific) homeScore/awayScore, mapped
-    onto Ipswich's for/against via `is_home`). Returns (None, None, None) when
-    the match has no play-by-play yet, so callers can fall back cleanly."""
-    url = (f"https://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.1/"
-           f"events/{event_id}/competitions/{event_id}/plays?limit=300")
-    items = get_json(url).get("items", [])
+    onto Ipswich's for/against via `is_home`). A single page only covers
+    ~20 minutes of a match (e.g. 1420 plays over 5 pages for a full 90+
+    minutes), so every page is fetched and concatenated — otherwise cards
+    and substitutions past the opening minutes are silently dropped.
+    Returns (None, None, None) when the match has no play-by-play yet, so
+    callers can fall back cleanly."""
+    base_url = (f"https://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.1/"
+                f"events/{event_id}/competitions/{event_id}/plays?limit=300")
+    first = get_json(base_url)
+    items = list(first.get("items", []))
     if not items:
         return None, None, None
+    for page in range(2, first.get("pageCount", 1) + 1):
+        items.extend(get_json(f"{base_url}&page={page}").get("items", []))
     cards, subs = [], []
     stats = {k: 0 for k in MATCH_STAT_KEYS}
     stats["ht_for"] = stats["ht_against"] = None

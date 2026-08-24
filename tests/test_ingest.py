@@ -127,6 +127,49 @@ def test_fetch_match_stats_extracts_result():
     assert "referee" not in m and "odds" not in m
 
 
+# ---- ESPN play-by-play pagination -------------------------------------------
+def test_fetch_espn_match_events_follows_pagination(monkeypatch):
+    import ingest
+
+    def team_ref(team_id):
+        return {"$ref": f"https://sports.core.api.espn.com/v2/sports/soccer/leagues/eng.1/teams/{team_id}"}
+
+    page1 = {
+        "pageCount": 2,
+        "items": [
+            {"type": {"type": "pass"}, "team": team_ref(ingest.IPSWICH_ESPN_TEAM_ID),
+             "clock": {"value": 300.0, "displayValue": "5:00"}, "text": "Early pass",
+             "substitution": False, "yellowCard": False, "redCard": False},
+        ],
+    }
+    # A card past minute ~20, only reachable via page 2 — this is exactly the
+    # real-world case that silently vanished before pagination was added.
+    page2 = {
+        "pageCount": 2,
+        "items": [
+            {"type": {"type": "foul"}, "team": team_ref(ingest.IPSWICH_ESPN_TEAM_ID),
+             "clock": {"value": 2700.0, "displayValue": "45:00"}, "text": "Booking for a foul",
+             "substitution": False, "yellowCard": True, "redCard": False},
+            {"type": {"type": "substitution-half"}, "team": team_ref(ingest.IPSWICH_ESPN_TEAM_ID),
+             "clock": {"value": 3600.0, "displayValue": "60:00"}, "text": "Sub on for sub off",
+             "substitution": True, "yellowCard": False, "redCard": False},
+        ],
+    }
+
+    calls = []
+
+    def fake_get_json(url, *a, **k):
+        calls.append(url)
+        return page2 if "&page=2" in url else page1
+
+    monkeypatch.setattr(ingest, "get_json", fake_get_json)
+    cards, subs, stats = ingest.fetch_espn_match_events("999999", True)
+
+    assert len(calls) == 2 and "&page=2" in calls[1]
+    assert len(cards) == 1 and cards[0]["kind"] == "yellow"
+    assert len(subs) == 1 and subs[0]["text"] == "Sub on for sub off"
+
+
 # ---- FDR fallback probabilities --------------------------------------------
 def test_fdr_win_probs_sum_to_100():
     from ingest import fdr_win_probs
