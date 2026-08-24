@@ -94,7 +94,7 @@
 :root[data-theme="teletext"] .formdots i.W,:root[data-theme="teletext"] .formdots i.D,
 :root[data-theme="teletext"] .h2h-dots i.W,:root[data-theme="teletext"] .h2h-dots i.D,
 :root[data-theme="teletext"] .res.W,:root[data-theme="teletext"] .res.D,
-:root[data-theme="teletext"] .page-match .pill.W,:root[data-theme="teletext"] .page-match .pill.D,
+:root[data-theme="teletext"] . .pill.W,:root[data-theme="teletext"] . .pill.D,
 :root[data-theme="teletext"] .wp-w,:root[data-theme="teletext"] .wp-d,
 :root[data-theme="teletext"] .fdr-1,:root[data-theme="teletext"] .fdr-2,
 :root[data-theme="teletext"] .fdr-3,:root[data-theme="teletext"] .fdr-4{color:#000}
@@ -118,10 +118,10 @@
 :root[data-theme="teletext"] .page-overview .eyebrow::before{content:"P100 "}
 :root[data-theme="teletext"] .page-table .eyebrow::before{content:"P101 "}
 :root[data-theme="teletext"] .page-charts .eyebrow::before{content:"P102 "}
-:root[data-theme="teletext"] .page-matches .eyebrow::before{content:"P103 "}
+:root[data-theme="teletext"] .es .eyebrow::before{content:"P103 "}
 :root[data-theme="teletext"] .page-squad .eyebrow::before{content:"P104 "}
 :root[data-theme="teletext"] .page-news .eyebrow::before{content:"P105 "}
-:root[data-theme="teletext"] .page-match .eyebrow::before{content:"P199 "}
+:root[data-theme="teletext"] . .eyebrow::before{content:"P199 "}
 :root[data-theme="teletext"] .page-player .eyebrow::before{content:"P198 "}
 
 /* theme switch: a 3-position light / dark / teletext segmented control.
@@ -223,17 +223,17 @@
 :root[data-theme="teletext"] .fg-tile-meta,
 :root[data-theme="teletext"] .fg-tile-rows div,
 :root[data-theme="teletext"] .fg-tile-link,
-:root[data-theme="teletext"] .page-match .back,
-:root[data-theme="teletext"] .page-match .masthead .season,
-:root[data-theme="teletext"] .page-match h3,
-:root[data-theme="teletext"] .page-match .score-row .side .nm,
-:root[data-theme="teletext"] .page-match .score-card .meta,
-:root[data-theme="teletext"] .page-match .statrow .top,
-:root[data-theme="teletext"] .page-match .statrow .top .v,
-:root[data-theme="teletext"] .page-match .legend,
-:root[data-theme="teletext"] .page-match thead th,
-:root[data-theme="teletext"] .page-match ul.plain li,
-:root[data-theme="teletext"] .page-match .assist,
+:root[data-theme="teletext"] . .back,
+:root[data-theme="teletext"] . .masthead .season,
+:root[data-theme="teletext"] . h3,
+:root[data-theme="teletext"] . .score-row .side .nm,
+:root[data-theme="teletext"] . .score-card .meta,
+:root[data-theme="teletext"] . .statrow .top,
+:root[data-theme="teletext"] . .statrow .top .v,
+:root[data-theme="teletext"] . .legend,
+:root[data-theme="teletext"] . thead th,
+:root[data-theme="teletext"] . ul.plain li,
+:root[data-theme="teletext"] . .assist,
 :root[data-theme="teletext"] .page-player .hero .pos,
 :root[data-theme="teletext"] .page-player .hero .fpl .k,
 :root[data-theme="teletext"] .page-player .tile .k{font-size:16px}
@@ -245,7 +245,7 @@ a{color:var(--link-blue);text-decoration:none}
 .wrap{max-width:1080px;margin:0 auto;padding:0 var(--space-lg)}
 img.badge{width:20px;height:20px;object-fit:contain;flex:none;vertical-align:middle}
 td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr,
-.surv-big,.wp-bar,.page-match .score-row .sc{font-variant-numeric:tabular-nums}
+.surv-big,.wp-bar,. .score-row .sc{font-variant-numeric:tabular-nums}
 .card,.board,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
 .innerboard{background:var(--canvas)}
 .masthead{background:var(--brand-navy);color:var(--on-dark)}
@@ -522,7 +522,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .chartcard.wide{grid-column:1 / -1}
 .chartcard .htitle{min-width:0}
 .chartcard p.sub{margin:8px 0 0;font-size:13px;color:var(--steel);text-wrap:pretty;line-height:1.5}
-.canvas-holder{position:relative;height:260px}
+.canvas-holder{position:relative;height:300px;padding:0px 16px}
 .chartcard .note{color:var(--steel);font-size:14px;padding:40px 0;text-align:center}
 .shotbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .shotbar select,.profile-controls select{font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--hairline-strong);border-radius:var(--radius-md);background:var(--canvas);color:var(--ink)}
@@ -641,7 +641,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .page-match .back{display:inline-flex;align-items:center;gap:8px;color:var(--on-dark);text-decoration:none;font-weight:500;font-size:14px}
 .page-match .back:hover{color:#fff;text-decoration:underline}
 .page-match .masthead .season{font-size:13px;color:var(--on-dark-muted)}
-.page-match main{padding:34px 0 60px}
+.page-match main{padding-top:34px}
 .page-match h3{margin:0 0 4px;font-size:15px;font-weight:600}
 @media(max-width:760px){
   .page-match .cols{grid-template-columns:1fr}
@@ -656,23 +656,23 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .page-match .pill.W{background:var(--win);color:#fff}
 .page-match .pill.D{background:var(--draw);color:#fff}
 .page-match .pill.L{background:var(--loss);color:#fff}
-.page-match .statrow{margin-bottom:12px}
+.page-match .statrow{margin-bottom:12px;padding:16px}
 .page-match .statrow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
 .page-match .statrow .top .v{font-weight:600;font-size:15px}
 .page-match .statrow .top .lab{color:var(--steel);align-self:center}
 .page-match .bar{display:flex;height:8px;border-radius:6px;overflow:hidden;background:var(--hairline)}
 .page-match .bar .f{background:var(--primary)}
 .page-match .bar .a{background:var(--loss)}
-.page-match .legend{display:flex;gap:16px;font-size:12px;color:var(--steel);margin-bottom:14px}
+.page-match .legend{display:flex;gap:16px;font-size:12px;color:var(--steel);margin-bottom:14px;padding:16px}
 .page-match .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.page-match .pitch-holder{width:100%;overflow:hidden}
+.page-match .pitch-holder{width:100%;overflow:hidden;padding:0px 16px 16px 16px}
 .page-match svg.pitch{width:100%;height:auto;display:block;background:var(--canvas)}
 .page-match th, .page-match td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--hairline-soft)}
 .page-match th:first-child, .page-match td:first-child{text-align:left}
 .page-match thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
 .page-match tbody tr:last-child td{border-bottom:0}
 .page-match ul.plain{list-style:none;margin:0;padding:0}
-.page-match ul.plain li{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--hairline-soft);font-size:14px}
+.page-match ul.plain li{display:flex;align-items:center;gap:10px;padding:16px 2px;border-bottom:1px solid var(--hairline-soft);font-size:14px}
 .page-match ul.plain li:last-child{border-bottom:0}
 .page-match .min{font-weight:600;color:var(--steel);min-width:38px}
 .page-match .dot{width:8px;height:8px;border-radius:50%}
