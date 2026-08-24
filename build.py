@@ -412,13 +412,20 @@ def sample_data(live=None):
         pag = [{"name": "Opponent " + p, "pos": q, "minutes": 90, "goals": 0, "assists": 0, "shots": 1,
                 "xg": 0.2, "xa": 0.1, "key_passes": 1, "yellow": 0, "red": 0}
                for p, q in [("striker", "F"), ("winger", "M"), ("midfielder", "M"), ("defender", "D")]]
+        def _starter(j, name, pos):
+            return {"name": name, "jersey": str(j + 1), "pos": pos,
+                    "sub_on": None, "sub_off": "72'" if j == 0 else None,
+                    "cards": [{"kind": "yellow", "minute": "58'"}] if j == 4 else [],
+                    "goals": ["20'"] if (j == 0 and gf > 0) else []}
         lineups = {
             "for": {"formation": "4-2-3-1",
-                    "starters": [{"name": sq_names[j % len(sq_names)], "jersey": str(j + 1), "pos": "F"} for j in range(11)],
-                    "subs": [{"name": sq_names[0], "jersey": "20", "pos": "M"}]},
+                    "starters": [_starter(j, sq_names[j % len(sq_names)], "F") for j in range(11)],
+                    "subs": [{"name": sq_names[0], "jersey": "20", "pos": "M", "sub_on": "72'",
+                              "sub_off": None, "cards": [], "goals": []}]},
             "against": {"formation": "4-3-3",
-                        "starters": [{"name": "Opponent " + str(j + 1), "jersey": str(j + 1), "pos": "D"} for j in range(11)],
-                        "subs": [{"name": "Opponent 20", "jersey": "20", "pos": "F"}]}}
+                        "starters": [_starter(j, "Opponent " + str(j + 1), "D") for j in range(11)],
+                        "subs": [{"name": "Opponent 20", "jersey": "20", "pos": "F", "sub_on": "80'",
+                                  "sub_off": None, "cards": [], "goals": []}]}}
         match_pages.append({
             "id": "demo" + str(i + 1), "opponent": r["opponent"], "opponent_short": r["opponent_short"],
             "opponent_badge": r["badge"], "team_badge": ips_badge, "home": r["home"], "date": "2026-10-04",

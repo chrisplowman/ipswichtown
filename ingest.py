@@ -471,10 +471,13 @@ def fetch_espn_lineups(event_id):
     site.api.espn.com). Verified against a real payload (event 401879299,
     Ipswich vs Sunderland): the top-level `rosters` array holds one entry per
     side with `formation` and a flat `roster` list of player dicts carrying
-    `starter`, `jersey`, `position.abbreviation`, `athlete.displayName` and
-    `subbedIn`/`subbedOut` booleans. Returns None if lineups aren't published
-    yet (e.g. the fixture hasn't kicked off), so callers can fall back
-    cleanly."""
+    `starter`, `jersey`, `position.abbreviation`, `athlete.displayName`,
+    `subbedIn`/`subbedOut` booleans and a per-player `plays` list — each play
+    there carries a `clock.displayValue` minute plus `substitution`,
+    `yellowCard`, `redCard` and (on a scoring play) `didScore` flags, which is
+    how a player's own sub on/off time, bookings and goals are pulled out.
+    Returns None if lineups aren't published yet (e.g. the fixture hasn't
+    kicked off), so callers can fall back cleanly."""
     url = (f"https://site.web.api.espn.com/apis/site/v2/sports/soccer/eng.1/"
            f"summary?event={event_id}")
     rosters = get_json(url).get("rosters", [])
@@ -487,9 +490,25 @@ def fetch_espn_lineups(event_id):
         starters, subs_used = [], []
         for p in r.get("roster", []):
             athlete = p.get("athlete") or {}
+            sub_on = sub_off = None
+            cards, goals = [], []
+            for play in p.get("plays") or []:
+                minute = (play.get("clock") or {}).get("displayValue", "")
+                if play.get("substitution"):
+                    if p.get("subbedOut"):
+                        sub_off = minute
+                    elif p.get("subbedIn"):
+                        sub_on = minute
+                if play.get("yellowCard"):
+                    cards.append({"kind": "yellow", "minute": minute})
+                if play.get("redCard"):
+                    cards.append({"kind": "red", "minute": minute})
+                if play.get("didScore"):
+                    goals.append(minute)
             entry = {"name": athlete.get("displayName", "?"),
                      "jersey": p.get("jersey", ""),
-                     "pos": (p.get("position") or {}).get("abbreviation", "")}
+                     "pos": (p.get("position") or {}).get("abbreviation", ""),
+                     "sub_on": sub_on, "sub_off": sub_off, "cards": cards, "goals": goals}
             if p.get("starter"):
                 starters.append(entry)
             elif p.get("subbedIn"):
@@ -1522,6 +1541,15 @@ def main():
                         lineups = json.load(fh)
                 except (ValueError, OSError):
                     lineups = None
+                else:
+                    # A cache entry written before per-player sub/card/goal
+                    # detail was added lacks those keys entirely — don't trust
+                    # it, re-fetch once so that detail isn't silently missing
+                    # forever (this cache is never otherwise invalidated).
+                    first_side = next(iter(lineups.values()), {}) if lineups else {}
+                    first_starter = next(iter(first_side.get("starters") or []), {})
+                    if first_starter and "cards" not in first_starter:
+                        lineups = None
             if lineups is None:
                 try:
                     lineups = fetch_espn_lineups(event_id)

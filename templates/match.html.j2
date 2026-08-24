@@ -58,24 +58,32 @@
 
   <!-- LINEUPS -->
   {% if m.lineups %}
+  {% macro lineup_row(p) %}
+    <li>
+      <span class="min">{{ p.jersey }}</span>
+      <span class="eventtext">{{ p.name }}
+        {% for c in p.cards|default([]) %}<span class="cardchip {{ c.kind }}" title="{{ c.minute }}"></span>{% endfor %}
+        {% if p.goals|default([]) %}<span class="assist">G {{ p.goals|join(', ') }}</span>{% endif %}
+        {% if p.sub_off %}<span class="assist">↓ {{ p.sub_off }}</span>{% endif %}
+        {% if p.sub_on %}<span class="assist">↑ {{ p.sub_on }}</span>{% endif %}
+      </span>
+      <span class="assist">{{ p.pos }}</span>
+    </li>
+  {% endmacro %}
   <div class="block">
     <p class="label">Lineups</p>
     <div class="cols">
       {% for group, lu in [('Ipswich', m.lineups['for']), (m.opponent, m.lineups['against'])] %}
       {% if lu %}
       <div class="card">
-        <div class="cardhead"><h3>{{ group }}{% if lu.formation %} ({{ lu.formation }}){% endif %}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Starting XI and used substitutes. Source: ESPN.</span></button></div>
+        <div class="cardhead"><h3>{{ group }}{% if lu.formation %} ({{ lu.formation }}){% endif %}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Starting XI and used substitutes, with goals, cards and substitution minutes. Source: ESPN.</span></button></div>
         <ul class="plain">
-          {% for p in lu.starters %}
-          <li><span class="min">{{ p.jersey }}</span><span class="eventtext">{{ p.name }}</span><span class="assist">{{ p.pos }}</span></li>
-          {% endfor %}
+          {% for p in lu.starters %}{{ lineup_row(p) }}{% endfor %}
         </ul>
         {% if lu.subs %}
         <p class="empty-note" style="padding-top:0">Substitutes used:</p>
         <ul class="plain">
-          {% for p in lu.subs %}
-          <li><span class="min">{{ p.jersey }}</span><span class="eventtext">{{ p.name }}</span><span class="assist">{{ p.pos }}</span></li>
-          {% endfor %}
+          {% for p in lu.subs %}{{ lineup_row(p) }}{% endfor %}
         </ul>
         {% endif %}
       </div>
