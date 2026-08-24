@@ -107,6 +107,39 @@ def test_rival_tracker_no_ipswich_returns_empty():
     assert rival_tracker({"table": [{"rank": 1, "team": "A", "is_ipswich": False}]}) == []
 
 
+def test_guardian_report_url_home_match():
+    from build import guardian_report_url
+    url = guardian_report_url({"date": "2026-08-22", "opponent": "Sunderland", "home": True})
+    assert url == "https://www.theguardian.com/football/2026/aug/22/ipswich-sunderland-premier-league-match-report"
+
+
+def test_guardian_report_url_away_match_uses_slug_map():
+    from build import guardian_report_url
+    url = guardian_report_url({"date": "2026-09-01", "opponent": "West Ham United", "home": False})
+    assert url == "https://www.theguardian.com/football/2026/sep/1/west-ham-ipswich-premier-league-match-report"
+
+
+def test_guardian_report_url_invalid_date_returns_none():
+    from build import guardian_report_url
+    assert guardian_report_url({"date": "", "opponent": "Arsenal", "home": True}) is None
+
+
+def test_match_report_links_includes_guardian_and_espn():
+    from build import match_report_links
+    links = match_report_links({"date": "2026-08-22", "opponent": "Sunderland", "home": True,
+                                "espn_report_url": "https://www.espn.com/soccer/report/_/gameId/401879299"})
+    names = [l["name"] for l in links]
+    assert names == ["The Guardian", "ESPN"]
+    assert "sun" not in " ".join(l["name"].lower() for l in links)
+    assert "mail" not in " ".join(l["name"].lower() for l in links)
+
+
+def test_match_report_links_empty_without_espn_event():
+    from build import match_report_links
+    links = match_report_links({"date": "", "opponent": "Arsenal", "home": True})
+    assert links == []
+
+
 def test_pslug_and_pnorm():
     from build import _pslug, _pnorm
     assert _pslug("Liam Delap") == "liam-delap"
