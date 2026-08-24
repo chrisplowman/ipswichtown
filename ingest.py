@@ -183,7 +183,11 @@ def fetch_fpl():
 
     squad = []
     for p in boot["elements"]:
-        if p["team"] != tid:
+        # FPL status 'u'/'n' means the player has left the club (transferred
+        # out, released, or sent permanently out of the Premier League) —
+        # FPL keeps them tagged to their old team for a few days, so exclude
+        # them explicitly rather than showing them as a current squad member.
+        if p["team"] != tid or p.get("status") in ("u", "n"):
             continue
         squad.append({"name": p["web_name"],
                       "full_name": f"{p['first_name']} {p['second_name']}".strip(),
@@ -205,13 +209,15 @@ def fetch_fpl():
             for k in ("form", "xg", "xa", "xgi"):
                 r[k] = 0.0
 
-    # team news — FPL flags injuries/suspensions/doubts via status + news
+    # team news — FPL flags injuries/suspensions/doubts via status + news.
+    # 'u'/'n' mean the player has left the club entirely (see squad filter
+    # above), not a fitness doubt, so they're excluded here too rather than
+    # surfaced as "news" about a current squad member.
     status_label = {"i": ("Injured", "out"), "s": ("Suspended", "out"),
-                    "u": ("Unavailable", "out"), "d": ("Doubtful", "doubt"),
-                    "n": ("Unavailable", "out")}
+                    "d": ("Doubtful", "doubt")}
     team_news = []
     for p in boot["elements"]:
-        if p["team"] != tid:
+        if p["team"] != tid or p.get("status") in ("u", "n"):
             continue
         status = p.get("status", "a")
         news = (p.get("news") or "").strip()
@@ -1430,20 +1436,27 @@ def main():
 
         if stats:
             mp["fbd"] = {k: stats[k] for k in MATCH_STAT_KEYS}
-            ht_for, ht_against = stats["ht_for"], stats["ht_against"]
         elif fb:
             mp["fbd"] = {k: fb[k] for k in MATCH_STAT_KEYS}
-            ht_for, ht_against = fb["ht_for"], fb["ht_against"]
-        else:
-            ht_for = ht_against = None
-        if ht_for is not None and ht_against is not None:
-            mp["ht_score"] = f"{ht_for}-{ht_against}"
-            ht_state = "ahead" if ht_for > ht_against else "behind" if ht_for < ht_against else "level"
+
+        # Half-time score: prefer ESPN's/football-data's explicit HT marker, but
+        # always fall back to counting first-half goals from Understat's own goal
+        # list (minute <= 45) — that's available for every finished match
+        # regardless of ESPN/football-data coverage, so the half-time-state chart
+        # can't go stale the way relying solely on those sources did.
+        ht_for = (stats or {}).get("ht_for")
+        ht_against = (stats or {}).get("ht_against")
+        if ht_for is None and fb:
+            ht_for, ht_against = fb.get("ht_for"), fb.get("ht_against")
+        if ht_for is None:
+            ht_for = sum(1 for g in mp["goals"] if g["side"] == "for" and g["minute"] <= 45)
+            ht_against = sum(1 for g in mp["goals"] if g["side"] == "against" and g["minute"] <= 45)
+        mp["ht_score"] = f"{ht_for}-{ht_against}"
+        mp["ht_state"] = "ahead" if ht_for > ht_against else "behind" if ht_for < ht_against else "level"
+
+        if mp.get("fbd"):
             match_stats.append({"opponent": mp["opponent"], "home": mp["home"],
-                                "result": mp["result"], "ht_state": ht_state, **mp["fbd"]})
-        elif mp.get("fbd"):
-            match_stats.append({"opponent": mp["opponent"], "home": mp["home"],
-                                "result": mp["result"], "ht_state": None, **mp["fbd"]})
+                                "result": mp["result"], "ht_state": mp["ht_state"], **mp["fbd"]})
 
         hh = hist_by_date.get(mp["date"])
         if hh:
