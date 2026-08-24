@@ -1446,6 +1446,14 @@ def main():
                         cards, subs, stats = json.load(fh)
                 except (ValueError, OSError):
                     cards = subs = stats = None
+                else:
+                    # A finished professional match essentially always has at
+                    # least one substitution, so both lists empty together is
+                    # a sign of a bad/incomplete cached fetch (e.g. from an
+                    # earlier, buggier version of this parser) rather than a
+                    # genuinely eventless match — don't trust it, re-fetch.
+                    if not cards and not subs:
+                        cards = subs = stats = None
             if cards is None:
                 try:
                     cards, subs, stats = fetch_espn_match_events(event_id, mp["home"])
