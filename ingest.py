@@ -161,9 +161,17 @@ def fetch_fpl():
     # has the season actually started? (no finished/current gameweek = pre-season)
     season_started = current is not None or any(e.get("finished") for e in boot["events"])
 
-    # per-gameweek series (points/goals from fixtures; xG from live feed)
+    # per-gameweek series (points/goals from fixtures; xG from live feed), and
+    # true per-player season totals accumulated from that same live feed.
+    # bootstrap-static's own per-player totals (minutes/goals/assists/points)
+    # only refresh once bonus points are officially confirmed — the same
+    # finished-vs-finished_provisional lag as fixtures above, just on a
+    # different endpoint — so summing the live gameweek-by-gameweek stats
+    # instead keeps squad/player-page totals in sync as soon as a match goes
+    # provisional, rather than sitting stale for hours after full-time.
     finished_meta.sort(key=lambda m: m["gw"])
     by_gameweek, cum = [], 0
+    player_totals = {}
     for m in finished_meta:
         cum += m["pts"]
         rec = {"gw": m["gw"], "gf": m["gf"], "ga": m["ga"], "pts": m["pts"],
@@ -172,10 +180,24 @@ def fetch_fpl():
             live = get_json(f"event/{m['gw']}/live/", FPL)
             xf = xa = 0.0
             for el in live.get("elements", []):
-                exg = to_float(el.get("stats", {}).get("expected_goals", 0))
                 t = player_team.get(el["id"])
+                s = el.get("stats", {})
+                exg = to_float(s.get("expected_goals", 0))
                 if t == tid: xf += exg
                 elif t == m["opp_id"]: xa += exg
+                if t == tid:
+                    pt = player_totals.setdefault(el["id"], {
+                        "points": 0, "minutes": 0, "starts": 0, "goals": 0, "assists": 0,
+                        "clean_sheets": 0, "xg": 0.0, "xa": 0.0, "xgi": 0.0})
+                    pt["points"] += s.get("total_points", 0)
+                    pt["minutes"] += s.get("minutes", 0)
+                    pt["starts"] += s.get("starts", 0)
+                    pt["goals"] += s.get("goals_scored", 0)
+                    pt["assists"] += s.get("assists", 0)
+                    pt["clean_sheets"] += s.get("clean_sheets", 0)
+                    pt["xg"] += to_float(s.get("expected_goals", 0))
+                    pt["xa"] += to_float(s.get("expected_assists", 0))
+                    pt["xgi"] += to_float(s.get("expected_goal_involvements", 0))
             rec["team_xg"] = round(xf, 2); rec["team_xga"] = round(xa, 2)
         except requests.RequestException:
             pass
@@ -189,15 +211,22 @@ def fetch_fpl():
         # them explicitly rather than showing them as a current squad member.
         if p["team"] != tid or p.get("status") in ("u", "n"):
             continue
+        pt = player_totals.get(p["id"])
         squad.append({"name": p["web_name"],
                       "full_name": f"{p['first_name']} {p['second_name']}".strip(),
                       "pos": positions.get(p["element_type"], "?"), "pos_id": p["element_type"],
-                      "price": round(p["now_cost"] / 10, 1), "points": p["total_points"],
-                      "form": to_float(p["form"]), "minutes": p["minutes"], "starts": p.get("starts", 0),
-                      "goals": p["goals_scored"], "assists": p["assists"],
-                      "xg": to_float(p["expected_goals"]), "xa": to_float(p["expected_assists"]),
-                      "xgi": to_float(p["expected_goal_involvements"]),
-                      "clean_sheets": p["clean_sheets"], "selected": to_float(p["selected_by_percent"])})
+                      "price": round(p["now_cost"] / 10, 1),
+                      "points": pt["points"] if pt else p["total_points"],
+                      "form": to_float(p["form"]),
+                      "minutes": pt["minutes"] if pt else p["minutes"],
+                      "starts": pt["starts"] if pt else p.get("starts", 0),
+                      "goals": pt["goals"] if pt else p["goals_scored"],
+                      "assists": pt["assists"] if pt else p["assists"],
+                      "xg": round(pt["xg"], 2) if pt else to_float(p["expected_goals"]),
+                      "xa": round(pt["xa"], 2) if pt else to_float(p["expected_assists"]),
+                      "xgi": round(pt["xgi"], 2) if pt else to_float(p["expected_goal_involvements"]),
+                      "clean_sheets": pt["clean_sheets"] if pt else p["clean_sheets"],
+                      "selected": to_float(p["selected_by_percent"])})
     squad.sort(key=lambda x: (-x["points"], -x["minutes"]))
 
     # Before the season starts FPL still serves last season's totals — show only
