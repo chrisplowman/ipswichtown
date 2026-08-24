@@ -54,8 +54,8 @@
    A pastiche of 1980s broadcast teletext (Ceefax/Oracle): pure black,
    the 8-colour CEEFAX palette, monospace, square corners, zero shadow.
    A handful of components hardcode white text on their coloured fill
-   (result badges, FDR chips, the preview banner) — those get explicit
-   black-text overrides below so eg. white-on-yellow never happens. ---- */
+   (result badges, FDR chips) — those get explicit black-text overrides
+   below so eg. white-on-yellow never happens. ---- */
 :root[data-theme="teletext"]{
   --canvas:#000000; --surface:#000000; --surface-soft:#001a1a;
   --hairline:#00ffff; --hairline-soft:#008080; --hairline-strong:#00ffff;
@@ -94,15 +94,11 @@
 :root[data-theme="teletext"] .formdots i.W,:root[data-theme="teletext"] .formdots i.D,
 :root[data-theme="teletext"] .h2h-dots i.W,:root[data-theme="teletext"] .h2h-dots i.D,
 :root[data-theme="teletext"] .res.W,:root[data-theme="teletext"] .res.D,
-:root[data-theme="teletext"] . .pill.W,:root[data-theme="teletext"] . .pill.D,
+:root[data-theme="teletext"] .page-match .pill.W,:root[data-theme="teletext"] .page-match .pill.D,
 :root[data-theme="teletext"] .wp-w,:root[data-theme="teletext"] .wp-d,
 :root[data-theme="teletext"] .fdr-1,:root[data-theme="teletext"] .fdr-2,
 :root[data-theme="teletext"] .fdr-3,:root[data-theme="teletext"] .fdr-4{color:#000}
-/* --brand-orange is a dark brick-red in this theme (not bright like --fdr-4), so
-   anything filled with it needs to stay white text, not join the group above */
-:root[data-theme="teletext"] .previewtoggle.on,:root[data-theme="teletext"] .previewbanner,
-:root[data-theme="teletext"] .previewbanner a{color:#fff}
-/* ...and as text-on-navy (not a fill) it needs a genuinely bright colour rather
+/* ...as text-on-navy (not a fill) --brand-orange needs a genuinely bright colour rather
    than its own dark tone; reuse the same yellow already used for the info icons
    on these same cards */
 :root[data-theme="teletext"] .snapshot-label{color:#ffff00}
@@ -118,10 +114,10 @@
 :root[data-theme="teletext"] .page-overview .eyebrow::before{content:"P100 "}
 :root[data-theme="teletext"] .page-table .eyebrow::before{content:"P101 "}
 :root[data-theme="teletext"] .page-charts .eyebrow::before{content:"P102 "}
-:root[data-theme="teletext"] .es .eyebrow::before{content:"P103 "}
+:root[data-theme="teletext"] .page-matches .eyebrow::before{content:"P103 "}
 :root[data-theme="teletext"] .page-squad .eyebrow::before{content:"P104 "}
 :root[data-theme="teletext"] .page-news .eyebrow::before{content:"P105 "}
-:root[data-theme="teletext"] . .eyebrow::before{content:"P199 "}
+:root[data-theme="teletext"] .page-match .eyebrow::before{content:"P199 "}
 :root[data-theme="teletext"] .page-player .eyebrow::before{content:"P198 "}
 
 /* theme switch: a 3-position light / dark / teletext segmented control.
@@ -145,8 +141,6 @@
 :root[data-theme="teletext"] .themeswitch .opt,
 :root[data-theme="teletext"] .eyebrow,
 :root[data-theme="teletext"] .updated,
-:root[data-theme="teletext"] .previewtoggle,
-:root[data-theme="teletext"] .previewbanner,
 :root[data-theme="teletext"] .tabs a,
 :root[data-theme="teletext"] .chartjump a,
 :root[data-theme="teletext"] .label,
@@ -223,17 +217,17 @@
 :root[data-theme="teletext"] .fg-tile-meta,
 :root[data-theme="teletext"] .fg-tile-rows div,
 :root[data-theme="teletext"] .fg-tile-link,
-:root[data-theme="teletext"] . .back,
-:root[data-theme="teletext"] . .masthead .season,
-:root[data-theme="teletext"] . h3,
-:root[data-theme="teletext"] . .score-row .side .nm,
-:root[data-theme="teletext"] . .score-card .meta,
-:root[data-theme="teletext"] . .statrow .top,
-:root[data-theme="teletext"] . .statrow .top .v,
-:root[data-theme="teletext"] . .legend,
-:root[data-theme="teletext"] . thead th,
-:root[data-theme="teletext"] . ul.plain li,
-:root[data-theme="teletext"] . .assist,
+:root[data-theme="teletext"] .page-match .back,
+:root[data-theme="teletext"] .page-match .masthead .season,
+:root[data-theme="teletext"] .page-match h3,
+:root[data-theme="teletext"] .page-match .score-row .side .nm,
+:root[data-theme="teletext"] .page-match .score-card .meta,
+:root[data-theme="teletext"] .page-match .statrow .top,
+:root[data-theme="teletext"] .page-match .statrow .top .v,
+:root[data-theme="teletext"] .page-match .legend,
+:root[data-theme="teletext"] .page-match thead th,
+:root[data-theme="teletext"] .page-match ul.plain li,
+:root[data-theme="teletext"] .page-match .assist,
 :root[data-theme="teletext"] .page-player .hero .pos,
 :root[data-theme="teletext"] .page-player .hero .fpl .k,
 :root[data-theme="teletext"] .page-player .tile .k{font-size:16px}
@@ -245,7 +239,7 @@ a{color:var(--link-blue);text-decoration:none}
 .wrap{max-width:1080px;margin:0 auto;padding:0 var(--space-lg)}
 img.badge{width:20px;height:20px;object-fit:contain;flex:none;vertical-align:middle}
 td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr,
-.surv-big,.wp-bar,. .score-row .sc{font-variant-numeric:tabular-nums}
+.surv-big,.wp-bar,.page-match .score-row .sc{font-variant-numeric:tabular-nums}
 .card,.board,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
 .innerboard{background:var(--canvas)}
 .masthead{background:var(--brand-navy);color:var(--on-dark)}
@@ -259,19 +253,17 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr,
 .updated{font-size:13px;color:var(--on-dark-muted);text-align:right}
 .updated b{color:var(--on-dark);font-weight:600;margin-left:8px}
 .headright{display:flex;flex-direction:row-reverse;align-items:center;gap:10px}
-.previewtoggle{font-size:12px;font-weight:600;color:var(--on-dark);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:var(--radius-full);padding:6px 13px;text-decoration:none;white-space:nowrap}
-.previewtoggle:hover{background:rgba(255,255,255,.2)}
-.previewtoggle.on{background:var(--brand-orange);border-color:var(--brand-orange)}
-.previewbanner{background:var(--brand-orange);color:#fff;text-align:center;font-size:13px;font-weight:500;padding:9px 16px}
-.previewbanner a{color:#fff;text-decoration:underline}
 .tabs{background:var(--canvas);border-bottom:1px solid var(--hairline);position:sticky;top:0;z-index:20}
 .tabs .wrap{display:flex;gap:8px;padding:12px var(--space-lg)}
 .tabs a{cursor:pointer;font-weight:500;font-size:14px;color:var(--steel);padding:8px 16px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
 .tabs a:hover{color:var(--ink);background:var(--surface)}
 .tabs a.active{background:var(--ink-deep);color:var(--canvas);border-color:var(--ink-deep)}
-.tabs a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .skiplink{position:absolute;left:-999px;top:0;z-index:100;background:var(--brand-navy);color:#fff;padding:10px 16px;border-radius:0 0 var(--radius-md) 0;text-decoration:none}
 .skiplink:focus{left:0}
+/* Default focus ring for every plain link/button/input on the site — covers
+   .tabs/.chartjump links, .infobtn/.sharebtn, and page-player controls too,
+   so none of those need their own :focus-visible rule unless the offset
+   actually differs (see .themeswitch .opt and the sortable-header buttons). */
 a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 section.panel{padding:28px 0}
 section.panel[hidden]{display:none}
@@ -293,7 +285,6 @@ section.panel[hidden]{display:none}
 .chartjump a{font-size:12px;font-weight:500;color:var(--steel);padding:8px 14px;border-radius:var(--radius-full);border:1px solid var(--hairline);line-height:1;text-decoration:none}
 .chartjump a:hover{color:var(--ink);background:var(--surface)}
 .chartjump a.active{background:var(--ink-deep);color:var(--canvas);border-color:var(--ink-deep)}
-.chartjump a:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .label::after{content:"";height:1px;background:var(--hairline);flex:1}
 .board{overflow:hidden;position:relative}
 .board::before{content:"NEXT";position:absolute;top:16px;left:18px;font-size:11px;letter-spacing:1px;font-weight:600;color:var(--steel)}
@@ -317,15 +308,9 @@ section.panel[hidden]{display:none}
 .metric .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--steel);margin-top:2px}
 .formdots{display:flex;gap:4px}
 .formdots i,.h2h-dots i{width:20px;height:20px;border-radius:var(--radius-sm);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.formdots i.W,.h2h-dots i.W{background:var(--win)}
-.formdots i.D,.h2h-dots i.D{background:var(--draw)}
-.formdots i.L,.h2h-dots i.L{background:var(--loss)}
 .winprob{flex-basis:100%;margin-top:6px}
 .wp-bar{display:flex;height:28px;border-radius:var(--radius-md);overflow:hidden;font-size:12px;font-weight:600;color:#fff}
 .wp-bar span{display:flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:0;overflow:hidden;white-space:nowrap;padding:0 2px}
-.wp-w{background:var(--win)}
-.wp-d{background:var(--draw)}
-.wp-l{background:var(--loss)}
 .wp-key{display:flex;justify-content:space-between;font-size:11px;color:var(--steel);margin-top:5px}
 .h2h{flex-basis:100%;display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;font-size:13px}
 .h2h-label{color:var(--steel);font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:600}
@@ -345,7 +330,7 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 .stat.accent .v{color:var(--primary)}
 .stat .v.pos{color:var(--win)}
 .stat .v.neg{color:var(--loss)}
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.cols,.cols2,.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .card h3,.chartcard h3{font-weight:600;font-size:16px;letter-spacing:-.2px;color:var(--charcoal);text-wrap:balance}
 /* Every card's title lives in its own header div (.cardhead), never bare in the
    card body, so an info icon can sit opposite it without touching the title markup. */
@@ -367,16 +352,21 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 .snapshot>.cardhead,.survival>.cardhead{margin:-20px -22px 16px;padding:14px 22px;
   background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.14);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0}
-/* the info icon: a small "i" badge that reveals a tooltip explaining the
-   calculation and data source on hover/focus */
-.infobtn{all:unset;cursor:help;flex:none;width:17px;height:17px;border-radius:50%;
-  border:1px solid var(--hairline-strong);color:var(--steel);font-size:11px;font-weight:700;
-  /* keep the visible glyph small but extend the actual tap target to 40x40 */
-  font-style:italic;font-family:Georgia,'Times New Roman',serif;line-height:1;
+/* the info + share icon buttons: identical circular chrome, expanded tap
+   target (40x40, via ::before) and hover/focus treatment, including the
+   on-navy-card contrast variant — only the glyph (font "i" vs svg) and
+   cursor differ, so those live in their own one-line follow-up rules. */
+.infobtn,.sharebtn{all:unset;flex:none;width:17px;height:17px;border-radius:50%;
+  border:1px solid var(--hairline-strong);color:var(--steel);
   display:inline-flex;align-items:center;justify-content:center;position:relative}
-.infobtn:hover,.infobtn:focus-visible{color:var(--on-primary);background:var(--primary);border-color:var(--primary)}
-.infobtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.infobtn::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px}
+.infobtn{cursor:help;font-size:11px;font-weight:700;
+  /* keep the visible glyph small but extend the actual tap target to 40x40 */
+  font-style:italic;font-family:Georgia,'Times New Roman',serif;line-height:1}
+.sharebtn{cursor:pointer}
+.sharebtn svg{width:10px;height:10px}
+.infobtn::before,.sharebtn::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px}
+.infobtn:hover,.infobtn:focus-visible,.sharebtn:hover,.sharebtn:focus-visible{color:var(--on-primary);background:var(--primary);border-color:var(--primary)}
+.sharebtn.busy{opacity:.5;pointer-events:none}
 .infobtn .tip{position:absolute;top:calc(100% + 8px);right:-6px;z-index:30;width:230px;
   background:var(--ink-deep);color:var(--canvas);font-size:12px;font-weight:400;font-style:normal;
   font-family:var(--font-sans);line-height:1.45;text-align:left;border-radius:var(--radius-md);
@@ -386,34 +376,22 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 :root[data-theme="dark"] .infobtn .tip{background:#050508;color:#ececef}
 @media(max-width:600px){.infobtn .tip{width:180px}}
 /* on the navy hero cards the default steel-on-white icon styling has no contrast */
-.snapshot .infobtn,.survival .infobtn{color:var(--on-dark-muted);border-color:rgba(255,255,255,.35)}
-.snapshot .infobtn:hover,.snapshot .infobtn:focus-visible,
-.survival .infobtn:hover,.survival .infobtn:focus-visible{color:var(--brand-navy);background:#fff;border-color:#fff}
+.snapshot .infobtn,.survival .infobtn,.snapshot .sharebtn,.survival .sharebtn{color:var(--on-dark-muted);border-color:rgba(255,255,255,.35)}
+.snapshot .infobtn:hover,.snapshot .infobtn:focus-visible,.survival .infobtn:hover,.survival .infobtn:focus-visible,
+.snapshot .sharebtn:hover,.snapshot .sharebtn:focus-visible,.survival .sharebtn:hover,.survival .sharebtn:focus-visible{color:var(--brand-navy);background:#fff;border-color:#fff}
 /* groups the share + info icons together at the header's trailing edge;
    injected by share.js so every card gets one without a per-card template edit */
 .cardactions{display:inline-flex;align-items:center;gap:8px;flex:none}
 .chartcard>.cardhead .cardactions{margin-top:1px}
-.sharebtn{all:unset;cursor:pointer;flex:none;width:17px;height:17px;border-radius:50%;
-  border:1px solid var(--hairline-strong);color:var(--steel);
-  display:inline-flex;align-items:center;justify-content:center;position:relative}
-.sharebtn svg{width:10px;height:10px}
-.sharebtn::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px}
-.sharebtn:hover,.sharebtn:focus-visible{color:var(--on-primary);background:var(--primary);border-color:var(--primary)}
-.sharebtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.sharebtn.busy{opacity:.5;pointer-events:none}
-.snapshot .sharebtn,.survival .sharebtn{color:var(--on-dark-muted);border-color:rgba(255,255,255,.35)}
-.snapshot .sharebtn:hover,.snapshot .sharebtn:focus-visible,
-.survival .sharebtn:hover,.survival .sharebtn:focus-visible{color:var(--brand-navy);background:#fff;border-color:#fff}
 /* When a component that is normally its own card sits inside a section card,
    flatten its chrome so we get one clean card with an h3 header bar on top. */
-.card .board,.card .tablewrap{border:0;box-shadow:none;border-radius:0;background:transparent}
+.card .board,.card .tablewrap,.card .stats .stat{border:0;box-shadow:none;border-radius:0;background:transparent}
 .card .board::before{display:none}
 .card .stats{padding:16px}
 .card>.toolbar{padding:12px 18px 0}
 .card>.lkey{padding:12px 18px}
 .card>.empty-note{padding:16px 18px}
 .card>.searchgrid,.card>.profilewrap{padding:16px 18px}
-.card .stats .stat{border:0;box-shadow:none;background:transparent;border-radius:0}
 .card>.pad{padding:16px 18px}
 .card>.tablewrap{overflow-x:auto}
 ul.list{list-style:none;margin:0;padding:4px 0}
@@ -442,49 +420,52 @@ ul.list li.has-link .opp{color:var(--primary)}
 .fdr-gw{font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--steel)}
 .fdr-opp{font-size:11px;font-weight:600;color:var(--ink);white-space:nowrap}
 .res{font-weight:700;font-size:12px;width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:#fff}
-.res.W{background:var(--win)}
-.res.D{background:var(--draw)}
-.res.L{background:var(--loss)}
+/* result colour (win/draw/loss), shared by every component that codes a
+   result this way: form/h2h dots, the win-probability bar, result badges,
+   fixture-list dots, and the match-report pill. */
+.formdots i.W,.h2h-dots i.W,.wp-w,.res.W,.fdot.W,.page-match .pill.W{background:var(--win)}
+.formdots i.D,.h2h-dots i.D,.wp-d,.res.D,.fdot.D,.page-match .pill.D{background:var(--draw)}
+.formdots i.L,.h2h-dots i.L,.wp-l,.res.L,.fdot.L,.page-match .pill.L{background:var(--loss)}
 .score{font-weight:600;font-size:14px}
 .empty-note{padding:22px 18px;color:var(--steel);font-size:14px;text-wrap:pretty}
-.snapshot{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
+.snapshot,.survival{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
 .playerlink{color:var(--primary);text-decoration:none;font-weight:500}
 .playerlink:hover{text-decoration:underline}
-.reftable{width:100%;border-collapse:collapse;font-size:13px}
-.reftable th,.reftable td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--hairline-soft)}
-.reftable th:first-child,.reftable td:first-child{text-align:left}
-.reftable thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
-.reftable tbody tr:last-child td{border-bottom:0}
+/* compact stat-table skeleton shared with .rivaltable and the match-report
+   tables below: right-aligned cells with a soft bottom border, an uppercase
+   muted header row, and no border on the final row. Padding and which
+   column stays left-aligned differ slightly per table, so those stay local. */
+.reftable,.rivaltable{width:100%;border-collapse:collapse;font-size:13px}
+.reftable th,.reftable td,.rivaltable th,.rivaltable td,
+.page-match th,.page-match td{text-align:right;border-bottom:1px solid var(--hairline-soft)}
+.reftable th,.reftable td{padding:8px 10px}
+.reftable th:first-child,.reftable td:first-child,
+.page-match th:first-child,.page-match td:first-child{text-align:left}
+.reftable thead th,.rivaltable thead th,.page-match thead th{
+  font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
+.reftable tbody tr:last-child td,.rivaltable tbody tr:last-child td,
+.page-match tbody tr:last-child td{border-bottom:0}
 .reftable td.v{font-weight:600;color:var(--ink)}
 .reftable td.v.accent{color:var(--primary)}
 .reftable td.v.pos{color:var(--win)}
 .reftable td.v.neg{color:var(--loss)}
 .fdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 1px;vertical-align:middle}
-.fdot.W{background:var(--win)}
-.fdot.D{background:var(--draw)}
-.fdot.L{background:var(--loss)}
 .formcol{white-space:nowrap}
-.cols2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-@media(max-width:760px){.cols2{grid-template-columns:1fr}}
 .subhead{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--ink)}
 .ltable.compact th,.ltable.compact td{padding:6px 8px}
 .snapshot-label{font-size:16px;font-weight:600;letter-spacing:.7px;color:var(--on-primary)}
-.survival{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
 .surv-big{font-size:52px;font-weight:700;line-height:1;letter-spacing:-1px}
 .surv-sub{font-size:14px;color:var(--on-dark-muted);margin:4px 0 14px}
 .surv-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;background:rgba(255,255,255,.15)}
 .surv-safe{background:var(--win)}
 .surv-rel{background:var(--loss)}
 .surv-meta{font-size:12.5px;color:var(--on-dark-muted);margin-top:12px;line-height:1.5}
-.rivaltable{width:100%;border-collapse:collapse;font-size:13px}
-.rivaltable th,.rivaltable td{padding:7px 8px;border-bottom:1px solid var(--hairline-soft);text-align:right}
+.rivaltable th,.rivaltable td,.page-match th,.page-match td{padding:7px 8px}
 .rivaltable th:nth-child(2),.rivaltable td.tm{text-align:left}
-.rivaltable thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
 .rivaltable td.tm{display:flex;align-items:center;gap:7px}
 .rivaltable td.tm .badge{width:17px;height:17px;object-fit:contain}
 .rivaltable tr.ips{background:var(--tint-sky)}
 .rivaltable tr.ips td:nth-child(2){font-weight:600;color:var(--primary)}
-.rivaltable tbody tr:last-child td{border-bottom:0}
 .snapshot p{margin:0;font-size:16px;line-height:1.55;color:#eef1f7;font-weight:400;text-wrap:pretty}
 @media(max-width:600px){.snapshot p{font-size:15px}}
 ul.newslist li{display:flex;align-items:flex-start;gap:16px;padding:16px 18px;border-bottom:1px solid var(--hairline-soft)}
@@ -517,7 +498,6 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .lkey{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--steel)}
 .lkey span{display:flex;align-items:center;gap:6px}
 .lkey i{width:10px;height:10px;border-radius:2px;display:inline-block}
-.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .chartcard{padding:18px 20px 20px;min-width:0}
 .chartcard.wide{grid-column:1 / -1}
 .chartcard .htitle{min-width:0}
@@ -585,7 +565,7 @@ footer{padding:32px 0 50px;color:var(--steel);font-size:12.5px;text-align:center
 footer code{background:var(--surface);border:1px solid var(--hairline);padding:1px 6px;border-radius:var(--radius-xs)}
 @media(max-width:760px){
   .stats{grid-template-columns:repeat(4,1fr)}
-  .cols,.chartgrid,.ranks{grid-template-columns:1fr}
+  .cols,.cols2,.chartgrid,.ranks{grid-template-columns:1fr}
   .tabs .wrap{overflow-x:auto}
 }
 /* Only the first page view of a session gets the rise-in; every tab click after
@@ -653,31 +633,23 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .page-match .score-row .side .nm{font-weight:600;font-size:15px}
 .page-match .score-row .sc{font-size:44px;font-weight:700;letter-spacing:-1px}
 .page-match .score-card .meta{margin-top:14px;font-size:13px;color:var(--steel)}
-.page-match .pill.W{background:var(--win);color:#fff}
-.page-match .pill.D{background:var(--draw);color:#fff}
-.page-match .pill.L{background:var(--loss);color:#fff}
+.page-match .pill.W,.page-match .pill.D,.page-match .pill.L{color:#fff}
 .page-match .statrow{margin-bottom:12px;padding:16px}
 .page-match .statrow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
 .page-match .statrow .top .v{font-weight:600;font-size:15px}
 .page-match .statrow .top .lab{color:var(--steel);align-self:center}
 .page-match .bar{display:flex;height:8px;border-radius:6px;overflow:hidden;background:var(--hairline)}
-.page-match .bar .f{background:var(--primary)}
-.page-match .bar .a{background:var(--loss)}
 .page-match .legend{display:flex;gap:16px;font-size:12px;color:var(--steel);margin-bottom:14px;padding:16px}
 .page-match .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .page-match .pitch-holder{width:100%;overflow:hidden;padding:0px 16px 16px 16px}
 .page-match svg.pitch{width:100%;height:auto;display:block;background:var(--canvas)}
-.page-match th, .page-match td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--hairline-soft)}
-.page-match th:first-child, .page-match td:first-child{text-align:left}
-.page-match thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
-.page-match tbody tr:last-child td{border-bottom:0}
 .page-match ul.plain{list-style:none;margin:0;padding:0}
 .page-match ul.plain li{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--hairline-soft);font-size:14px}
 .page-match ul.plain li:last-child{border-bottom:0}
 .page-match .min{font-weight:600;color:var(--steel);min-width:38px}
 .page-match .dot{width:8px;height:8px;border-radius:50%}
-.page-match .dot.f{background:var(--primary)}
-.page-match .dot.a{background:var(--loss)}
+.page-match .bar .f,.page-match .dot.f{background:var(--primary)}
+.page-match .bar .a,.page-match .dot.a{background:var(--loss)}
 .page-match .assist{color:var(--stone);font-size:12px}
 .page-match .cardchip{display:inline-block;width:9px;height:13px;border-radius:1px;flex:none}
 .page-match .cardchip.yellow{background:var(--card-yellow)}
@@ -701,4 +673,3 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .page-player td .oppcell img{width:18px;height:18px;object-fit:contain}
 .page-player .rowlink-a{color:var(--primary);text-decoration:none;font-weight:500}
 .page-player .rowlink-a:hover{text-decoration:underline}
-.page-player a:focus-visible, .page-player button:focus-visible, .page-player input:focus-visible{outline:2px solid var(--primary);outline-offset:2px}

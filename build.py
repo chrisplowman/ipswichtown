@@ -2,9 +2,7 @@
 Render data/itfc.json into a static, multi-page site in ./site.
 
 Each section (Overview, Table, Charts, Squad, News) is its own page with its own
-URL (index.html, table.html, charts.html, squad.html, news.html). A full dummy-data
-preview of every page is also built under ./site/preview so you can see how the site
-looks with data present. A toggle in the header switches between live and preview.
+URL (index.html, table.html, charts.html, squad.html, news.html).
 
 Run:  python build.py
 """
@@ -208,11 +206,11 @@ def season_summary(data):
 
 
 # --------------------------------------------------------------------------- #
-#  Dummy data for the preview — plausible mid-season values for every section  #
+#  Synthetic data for tests — plausible mid-season values for every section    #
 # --------------------------------------------------------------------------- #
 def sample_data(live=None):
-    """Dummy stats for the preview, but real teams/badges/squad/news from live data
-    so the preview reflects the actual club (and its badges actually load)."""
+    """Dummy stats for exercising every section end to end, but real teams/badges/
+    squad/news from live data where given so it reflects the actual club."""
     live = live or {}
     team = live.get("team") or {"name": "Ipswich", "short_name": "IPS", "badge": None}
     ips_short, ips_badge = team.get("short_name", "IPS"), team.get("badge")
@@ -342,7 +340,7 @@ def sample_data(live=None):
                         "per90": {k: round(v / 40, 2) for k, v in pcts[i].items()}, "pct": pcts[i],
                         "is_ipswich": True}
                        for i, s in enumerate(outfield[:3])]
-    # a few non-Ipswich league players so the "any PL player" search has content in preview
+    # a few non-Ipswich league players so the "any PL player" search has content
     league_demo = [
         ("Mo Salah", "Liverpool", "F", {"goals": 95, "assists": 78, "npxg": 90, "xa": 72, "shots": 92, "key_passes": 80, "xgchain": 88, "xgbuildup": 60}),
         ("Bruno Fernandes", "Manchester United", "M", {"goals": 70, "assists": 88, "npxg": 66, "xa": 90, "shots": 74, "key_passes": 93, "xgchain": 85, "xgbuildup": 70}),
@@ -459,7 +457,7 @@ def sample_data(live=None):
                   if r["rank"] >= 12 else 0.2 for r in table}
 
     # top scorers / assists — a handful of real-name dummy rows (rest of the league,
-    # plus one Ipswich player mid-table) so the preview has something to show.
+    # plus one Ipswich player mid-table) so this section has something to show.
     ips_leader = squad[0] if squad else {"full_name": "Ipswich Striker", "starts": 10,
                                          "minutes": 900, "goals": 6, "assists": 2, "xg": 5.4, "xa": 1.8}
     ips_leader_row = {"player": ips_leader["full_name"], "team": "Ipswich Town", "team_short": ips_short,
@@ -794,8 +792,8 @@ def sample_data_women():
     }
 
 
-def render_site(template, match_template, player_template, data, preview):
-    outdir = SITE / "preview" if preview else SITE
+def render_site(template, match_template, player_template, data):
+    outdir = SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
     if ASSETS.exists():
         shutil.copytree(ASSETS, outdir, dirs_exist_ok=True)   # style.css, fonts/, share.js per site root
@@ -812,23 +810,18 @@ def render_site(template, match_template, player_template, data, preview):
 
     _og_image(str(outdir / "og.png"), "Ipswich Town Stats",
               f"Premier League {season} · xG, form & survival odds")
-    og_default = ("preview/" if preview else "") + "og.png"
+    og_default = "og.png"
 
     for page_id, filename, _label in PAGES:
-        toggle_href = f"../{filename}" if preview else f"preview/{filename}"
         og_title, og_desc = OG.get(page_id, OG["overview"])
         html = template.render(data_json=data_json, page=page_id, current=page_id,
-                               pages=PAGES, preview=preview, toggle_href=toggle_href,
-                               nav_prefix="", css_href="style.css",
+                               pages=PAGES, nav_prefix="", css_href="style.css",
                                summary_text=summary_text, predicted=predicted, rivals=rivals,
                                form_guide=fguide,
                                og_title=og_title, og_description=og_desc, og_image=og_default,
                                canonical=f"{SITE_URL}/{filename}", **data)
         (outdir / filename).write_text(html)
     (outdir / "data" / "itfc.json").write_text(json.dumps(data))
-
-    # toggle target for sub-pages: jump to the other mode's overview
-    sub_toggle = "../../index.html" if preview else "../preview/index.html"
 
     # a full detail page per finished match (+ its own share card)
     matches = data.get("match_pages", [])
@@ -845,11 +838,9 @@ def render_site(template, match_template, player_template, data, preview):
                                      "shots_for": mp.get("shots_for", []),
                                      "shots_against": mp.get("shots_against", [])}).replace("<", "\\u003c")
             html = match_template.render(m=mp, season=season,
-                                         generated_at=generated_at,
-                                         preview=preview, match_json=match_json,
+                                         generated_at=generated_at, match_json=match_json,
                                          pages=PAGES, nav_prefix="../", current="matches",
                                          css_href="../style.css", team=team, position=position,
-                                         toggle_href=sub_toggle,
                                          og_title=score + " · Match report",
                                          og_description=f"Full report: xG, shots, player ratings and the story of Ipswich {mp['gf']}-{mp['ga']} {mp['opponent']}.",
                                          og_image="../" + og_img, canonical=f"{SITE_URL}/match/{mp['id']}.html")
@@ -861,11 +852,10 @@ def render_site(template, match_template, player_template, data, preview):
         for pp in player_pages:
             player_json = json.dumps({"shots": pp["shots"],
                                       "log": list(reversed(pp["log"]))}).replace("<", "\\u003c")
-            html = player_template.render(p=pp, season=season,
-                                          preview=preview, player_json=player_json,
+            html = player_template.render(p=pp, season=season, player_json=player_json,
                                           pages=PAGES, nav_prefix="../", current="squad",
                                           css_href="../style.css", team=team, position=position,
-                                          generated_at=generated_at, toggle_href=sub_toggle,
+                                          generated_at=generated_at,
                                           og_title=f"{pp['name']} · Ipswich Town",
                                           og_description=f"{pp['name']}'s Ipswich Town season: stats, percentile profile, match log and shot map.",
                                           og_image="../og.png", canonical=f"{SITE_URL}/player/{pp['slug']}.html")
@@ -882,11 +872,10 @@ def main():
     if SITE.exists():
         shutil.rmtree(SITE)
     SITE.mkdir(parents=True)
-    render_site(template, match_template, player_template, real, preview=False)
-    render_site(template, match_template, player_template, sample_data(real), preview=True)
+    render_site(template, match_template, player_template, real)
     (SITE / ".nojekyll").write_text("")
     n = len(real.get("match_pages", []))
-    print(f"Built {len(PAGES)} pages + {n} match pages + {len(real.get('squad', []))} player pages (+ preview).")
+    print(f"Built {len(PAGES)} pages + {n} match pages + {len(real.get('squad', []))} player pages.")
 
     # Women's team: free-sources-only trimmed site. No ingest_women.py output yet,
     # so this renders sample data until that lands — see WOMEN_PAGES's comment.

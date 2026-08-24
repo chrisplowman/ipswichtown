@@ -140,7 +140,6 @@ def test_site_builds_end_to_end(tmp_path, monkeypatch):
         assert (site / f).exists(), f"missing {f}"
     assert list((site / "match").glob("*.html")), "no match pages built"
     assert list((site / "player").glob("*.html")), "no player pages built"
-    assert (site / "preview" / "index.html").exists(), "preview not built"
     idx = (site / "index.html").read_text()
     assert "{{" not in idx and "{%" not in idx, "unrendered Jinja in output"
     assert "Ipswich Town" in idx
