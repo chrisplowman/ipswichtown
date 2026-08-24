@@ -184,21 +184,27 @@ def match_report_links(mp):
     """External match-report links for one match, from outlets whose report
     URL is genuinely derivable rather than an opaque numeric/hash ID — which
     rules out most UK football sites (Sky Sports, the BBC's newer article
-    IDs, the Mirror, the Independent, football.london, ...) and is also why
-    this list stays short by construction, not by hand-picking: tabloids
-    like the Sun and the Daily Mail aren't included on principle either way.
+    IDs, the Mirror, the Independent, football.london, WhoScored, FotMob,
+    Transfermarkt, ...) and is also why this list stays short by
+    construction, not by hand-picking: tabloids like the Sun and the Daily
+    Mail aren't included on principle either way.
     - The Guardian: date + team-slug URL scheme (guardian_report_url above);
       unverified against the live site, so it's a best-effort guess that can
       404 for a match the Guardian didn't cover.
     - ESPN: the exact report URL ESPN itself serves for the matching event
       (espn_report_url, stamped in ingest.py from the same event id used for
-      cards/subs/lineups) — not a guess, just not always present."""
+      cards/subs/lineups) — not a guess, just not always present.
+    - Understat: mp["id"] already *is* Understat's own match id (it's what
+      fetch_understat() used to pull this match's xG/shots in the first
+      place), so its match page is an exact link, not a guess."""
     links = []
     guardian = guardian_report_url(mp)
     if guardian:
         links.append({"name": "The Guardian", "url": guardian})
     if mp.get("espn_report_url"):
         links.append({"name": "ESPN", "url": mp["espn_report_url"]})
+    if mp.get("id"):
+        links.append({"name": "Understat", "url": f"https://understat.com/match/{mp['id']}"})
     return links
 
 

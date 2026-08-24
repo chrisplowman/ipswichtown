@@ -124,12 +124,13 @@ def test_guardian_report_url_invalid_date_returns_none():
     assert guardian_report_url({"date": "", "opponent": "Arsenal", "home": True}) is None
 
 
-def test_match_report_links_includes_guardian_and_espn():
+def test_match_report_links_includes_guardian_espn_and_understat():
     from build import match_report_links
-    links = match_report_links({"date": "2026-08-22", "opponent": "Sunderland", "home": True,
+    links = match_report_links({"id": "740604", "date": "2026-08-22", "opponent": "Sunderland", "home": True,
                                 "espn_report_url": "https://www.espn.com/soccer/report/_/gameId/401879299"})
     names = [l["name"] for l in links]
-    assert names == ["The Guardian", "ESPN"]
+    assert names == ["The Guardian", "ESPN", "Understat"]
+    assert [l["url"] for l in links if l["name"] == "Understat"] == ["https://understat.com/match/740604"]
     assert "sun" not in " ".join(l["name"].lower() for l in links)
     assert "mail" not in " ".join(l["name"].lower() for l in links)
 
