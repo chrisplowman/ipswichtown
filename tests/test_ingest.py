@@ -170,6 +170,41 @@ def test_fetch_espn_match_events_follows_pagination(monkeypatch):
     assert len(subs) == 1 and subs[0]["text"] == "Sub on for sub off"
 
 
+# ---- ESPN lineups -----------------------------------------------------------
+def test_fetch_espn_lineups_splits_starters_and_used_subs(monkeypatch):
+    import ingest
+
+    def player(name, jersey, pos, starter, subbed_in=False):
+        return {"starter": starter, "jersey": jersey, "subbedIn": subbed_in,
+                "athlete": {"displayName": name}, "position": {"abbreviation": pos}}
+
+    summary = {"rosters": [
+        {"team": {"id": ingest.IPSWICH_ESPN_TEAM_ID}, "formation": "4-2-3-1", "roster": [
+            player("Scherpen", "37", "G", True),
+            player("Clarke", "47", "F", False, subbed_in=True),
+            player("Walton", "28", "G", False, subbed_in=False),  # unused sub
+        ]},
+        {"team": {"id": "366"}, "formation": "4-3-3", "roster": [
+            player("Roefs", "22", "G", True),
+        ]},
+    ]}
+
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: summary)
+    lineups = ingest.fetch_espn_lineups("401879299")
+
+    assert lineups["for"]["formation"] == "4-2-3-1"
+    assert [p["name"] for p in lineups["for"]["starters"]] == ["Scherpen"]
+    assert [p["name"] for p in lineups["for"]["subs"]] == ["Clarke"]
+    assert lineups["against"]["formation"] == "4-3-3"
+    assert [p["name"] for p in lineups["against"]["starters"]] == ["Roefs"]
+
+
+def test_fetch_espn_lineups_returns_none_when_unpublished(monkeypatch):
+    import ingest
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: {"rosters": []})
+    assert ingest.fetch_espn_lineups("401879299") is None
+
+
 # ---- FDR fallback probabilities --------------------------------------------
 def test_fdr_win_probs_sum_to_100():
     from ingest import fdr_win_probs

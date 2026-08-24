@@ -60,6 +60,15 @@ jobs:
           restore-keys: |
             play-cache-
 
+      # Finished-match lineups (ESPN summary endpoint) never change either.
+      - name: Restore lineup cache
+        uses: actions/cache@v4
+        with:
+          path: lineup_cache
+          key: lineup-cache-${{ github.run_id }}
+          restore-keys: |
+            lineup-cache-
+
       - name: Fetch data
         run: python ingest.py
 
