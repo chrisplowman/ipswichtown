@@ -364,6 +364,7 @@ def fetch_table_from_fbd(fbd_rows):
 # --------------------------------------------------------------------------- #
 IPSWICH_ESPN_TEAM_ID = "373"
 PLAY_CACHE_DIR = "play_cache"
+LINEUP_CACHE_DIR = "lineup_cache"
 _TEAM_ID_RE = re.compile(r"/teams/(\d+)")
 
 
@@ -461,6 +462,40 @@ def fetch_espn_match_events(event_id, is_home):
     for e in cards + subs:
         del e["sort"]
     return cards, subs, stats
+
+
+def fetch_espn_lineups(event_id):
+    """Starting XI, formation and used substitutes for both sides of a match,
+    from ESPN's site API summary endpoint (site.web.api.espn.com — the same
+    host used elsewhere in this file to dodge the CI IP block that hits
+    site.api.espn.com). Verified against a real payload (event 401879299,
+    Ipswich vs Sunderland): the top-level `rosters` array holds one entry per
+    side with `formation` and a flat `roster` list of player dicts carrying
+    `starter`, `jersey`, `position.abbreviation`, `athlete.displayName` and
+    `subbedIn`/`subbedOut` booleans. Returns None if lineups aren't published
+    yet (e.g. the fixture hasn't kicked off), so callers can fall back
+    cleanly."""
+    url = (f"https://site.web.api.espn.com/apis/site/v2/sports/soccer/eng.1/"
+           f"summary?event={event_id}")
+    rosters = get_json(url).get("rosters", [])
+    if not rosters:
+        return None
+    out = {}
+    for r in rosters:
+        team_id = (r.get("team") or {}).get("id")
+        side = "for" if team_id == IPSWICH_ESPN_TEAM_ID else "against"
+        starters, subs_used = [], []
+        for p in r.get("roster", []):
+            athlete = p.get("athlete") or {}
+            entry = {"name": athlete.get("displayName", "?"),
+                     "jersey": p.get("jersey", ""),
+                     "pos": (p.get("position") or {}).get("abbreviation", "")}
+            if p.get("starter"):
+                starters.append(entry)
+            elif p.get("subbedIn"):
+                subs_used.append(entry)
+        out[side] = {"formation": r.get("formation", ""), "starters": starters, "subs": subs_used}
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -1433,6 +1468,7 @@ def main():
         espn_events_by_date = {}
     if espn_events_by_date:
         os.makedirs(PLAY_CACHE_DIR, exist_ok=True)
+        os.makedirs(LINEUP_CACHE_DIR, exist_ok=True)
 
     match_stats = []
     espn_matched, espn_fetched = 0, 0
@@ -1477,6 +1513,29 @@ def main():
                 mp["cards"] = cards
                 mp["subs"] = subs
                 espn_matched += 1
+
+            lu_cache_file = os.path.join(LINEUP_CACHE_DIR, f"{event_id}.json")
+            lineups = None
+            if os.path.exists(lu_cache_file):
+                try:
+                    with open(lu_cache_file) as fh:
+                        lineups = json.load(fh)
+                except (ValueError, OSError):
+                    lineups = None
+            if lineups is None:
+                try:
+                    lineups = fetch_espn_lineups(event_id)
+                except requests.RequestException:
+                    lineups = None
+                else:
+                    if lineups is not None:
+                        try:
+                            with open(lu_cache_file, "w") as fh:
+                                json.dump(lineups, fh)
+                        except OSError:
+                            pass
+            if lineups is not None:
+                mp["lineups"] = lineups
 
         if stats:
             mp["fbd"] = {k: stats[k] for k in MATCH_STAT_KEYS}

@@ -412,6 +412,13 @@ def sample_data(live=None):
         pag = [{"name": "Opponent " + p, "pos": q, "minutes": 90, "goals": 0, "assists": 0, "shots": 1,
                 "xg": 0.2, "xa": 0.1, "key_passes": 1, "yellow": 0, "red": 0}
                for p, q in [("striker", "F"), ("winger", "M"), ("midfielder", "M"), ("defender", "D")]]
+        lineups = {
+            "for": {"formation": "4-2-3-1",
+                    "starters": [{"name": sq_names[j % len(sq_names)], "jersey": str(j + 1), "pos": "F"} for j in range(11)],
+                    "subs": [{"name": sq_names[0], "jersey": "20", "pos": "M"}]},
+            "against": {"formation": "4-3-3",
+                        "starters": [{"name": "Opponent " + str(j + 1), "jersey": str(j + 1), "pos": "D"} for j in range(11)],
+                        "subs": [{"name": "Opponent 20", "jersey": "20", "pos": "F"}]}}
         match_pages.append({
             "id": "demo" + str(i + 1), "opponent": r["opponent"], "opponent_short": r["opponent_short"],
             "opponent_badge": r["badge"], "team_badge": ips_badge, "home": r["home"], "date": "2026-10-04",
@@ -425,7 +432,7 @@ def sample_data(live=None):
                     "corners_for": 7, "corners_against": 4, "fouls_for": 10, "fouls_against": 12,
                     "yellows_for": 1, "yellows_against": 2, "reds_for": 0, "reds_against": 0},
             "shots_for": sfor, "shots_against": sag, "players_for": pfor, "players_against": pag,
-            "goals": goals, "h2h": next_opponent["h2h"] if next_opponent else []})
+            "goals": goals, "lineups": lineups, "h2h": next_opponent["h2h"] if next_opponent else []})
     mpid = {(mp["opponent_short"], mp["home"]): mp["id"] for mp in match_pages}
     for r in results:
         r["match_id"] = mpid.get((r["opponent_short"], r["home"]))

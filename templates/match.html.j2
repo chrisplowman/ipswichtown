@@ -56,6 +56,35 @@
     </div>
   </div>
 
+  <!-- LINEUPS -->
+  {% if m.lineups %}
+  <div class="block">
+    <p class="label">Lineups</p>
+    <div class="cols">
+      {% for group, lu in [('Ipswich', m.lineups['for']), (m.opponent, m.lineups['against'])] %}
+      {% if lu %}
+      <div class="card">
+        <div class="cardhead"><h3>{{ group }}{% if lu.formation %} ({{ lu.formation }}){% endif %}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Starting XI and used substitutes. Source: ESPN.</span></button></div>
+        <ul class="plain">
+          {% for p in lu.starters %}
+          <li><span class="min">{{ p.jersey }}</span><span class="eventtext">{{ p.name }}</span><span class="assist">{{ p.pos }}</span></li>
+          {% endfor %}
+        </ul>
+        {% if lu.subs %}
+        <p class="empty-note" style="padding-top:0">Substitutes used:</p>
+        <ul class="plain">
+          {% for p in lu.subs %}
+          <li><span class="min">{{ p.jersey }}</span><span class="eventtext">{{ p.name }}</span><span class="assist">{{ p.pos }}</span></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- MATCH STATS -->
   <div class="block">
     <p class="label">Match stats</p>
