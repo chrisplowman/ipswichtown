@@ -672,7 +672,7 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .page-match thead th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--steel);font-weight:600}
 .page-match tbody tr:last-child td{border-bottom:0}
 .page-match ul.plain{list-style:none;margin:0;padding:0}
-.page-match ul.plain li{display:flex;align-items:center;gap:10px;padding:16px 2px;border-bottom:1px solid var(--hairline-soft);font-size:14px}
+.page-match ul.plain li{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--hairline-soft);font-size:14px}
 .page-match ul.plain li:last-child{border-bottom:0}
 .page-match .min{font-weight:600;color:var(--steel);min-width:38px}
 .page-match .dot{width:8px;height:8px;border-radius:50%}
