@@ -413,6 +413,10 @@
         <div class="canvas-holder"><canvas id="c-xgd"></canvas></div><div class="note" id="n-xgd" hidden></div>
       </div>
       <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>xG created vs conceded, per match</h3><p class="sub">Ipswich's xG against the opponent's, match by match, with each side's season average as a dashed line.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Expected goals created and conceded per match, with the season average for each. Source: Understat.</span></button></div>
+        <div class="canvas-holder"><canvas id="c-xgvs"></canvas></div><div class="note" id="n-xgvs" hidden></div>
+      </div>
+      <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Home &amp; away split</h3><p class="sub">Per-game points, goals and xG at home vs away: how differently the side performs by venue.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points, goals and xG per game, split by venue. Source: Understat match data.</span></button></div>
         <div class="canvas-holder"><canvas id="c-homeaway"></canvas></div><div class="note" id="n-homeaway" hidden></div>
       </div>
@@ -796,7 +800,7 @@
   }
 
   function buildCharts(){
-    if(!window.Chart){ ['points','xpts','goals','xg','xga','xgd','ppda','deep','homeaway','shots','situation','setpiece','finish','elo','timing','gamestate','discipline','strength'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
+    if(!window.Chart){ ['points','xpts','goals','xg','xga','xgd','xgvs','ppda','deep','homeaway','shots','situation','setpiece','finish','elo','timing','gamestate','discipline','strength'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
     else {
       Chart.defaults.font.family="Inter, system-ui, sans-serif"; Chart.defaults.color=C.muted;
       var gw = DATA.by_gameweek||[], labels = gw.map(function(d){return 'GW'+d.gw;});
@@ -876,6 +880,27 @@
             scales:{x:{grid:{display:false}},y:{grid:{color:C.line},
               title:{display:true,text:'xG diff / game (5-match avg)'}}}})});
       } else showNote('xgd','No match xG data yet.');
+
+      // xG for vs xG against, match by match, with each side's season average
+      // as a flat dashed reference line — a quick read on whether a given
+      // match was an outlier or close to the norm.
+      var xgFinished = um.filter(function(m){return m.xg_for!=null && m.xg_against!=null;});
+      if(xgFinished.length){
+        var avgXgFor = xgFinished.reduce(function(a,m){return a+m.xg_for;},0)/xgFinished.length;
+        var avgXgAgainst = xgFinished.reduce(function(a,m){return a+m.xg_against;},0)/xgFinished.length;
+        new Chart(document.getElementById('c-xgvs'),{type:'bar',
+          data:{labels:xgFinished.map(function(m,i){return 'M'+(i+1);}),datasets:[
+            {label:'xG for',data:xgFinished.map(function(m){return m.xg_for;}),backgroundColor:C.blue,order:1},
+            {label:'xG against',data:xgFinished.map(function(m){return m.xg_against;}),backgroundColor:C.red,order:1},
+            {type:'line',label:'Season avg for ('+avgXgFor.toFixed(2)+')',
+              data:xgFinished.map(function(){return avgXgFor;}),borderColor:C.blue,borderDash:[6,4],
+              pointRadius:0,fill:false,tension:0,order:0},
+            {type:'line',label:'Season avg against ('+avgXgAgainst.toFixed(2)+')',
+              data:xgFinished.map(function(){return avgXgAgainst;}),borderColor:C.red,borderDash:[6,4],
+              pointRadius:0,fill:false,tension:0,order:0}]},
+          options:baseOpts({scales:{x:{grid:{display:false}},
+            y:{beginAtZero:true,grid:{color:C.line},title:{display:true,text:'xG'}}}})});
+      } else showNote('xgvs','No match xG data yet.');
 
       // Home / away split — per-game points, goals and xG by venue (from Understat matches)
       var hm = DATA.understat_matches||[];
