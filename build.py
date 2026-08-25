@@ -556,21 +556,33 @@ def sample_data(live=None):
                      ("Center Midfielder", "CM"), ("Center Midfielder", "CM"), ("Center Midfielder", "CM"),
                      ("Right Winger", "RW"), ("Forward", "F"), ("Left Winger", "LW")]
 
+        # Plain surnames, not "Opponent N" — a name ending in a digit would
+        # make the pitch diagram's surname label (last word of the name)
+        # show the jersey number a second time instead of an actual name.
+        OPPONENT_SURNAMES = ["Smith", "Jones", "Brown", "Wilson", "Taylor", "Davies",
+                              "Evans", "Thomas", "Roberts", "Walker", "Wright"]
+
         def _starter(j, name, role):
             pos_full, pos = role
             return {"name": name, "jersey": str(j + 1), "pos": pos, "pos_full": pos_full,
                     "sub_on": None, "sub_off": "72'" if j == 0 else None,
                     "cards": [{"kind": "yellow", "minute": "58'"}] if j == 4 else [],
                     "goals": ["20'"] if (j == 0 and gf > 0) else []}
+        def _bench(name, jersey, pos, pos_full, sub_on=None):
+            return {"name": name, "jersey": jersey, "pos": pos, "pos_full": pos_full,
+                    "sub_on": sub_on, "sub_off": None, "cards": [], "goals": []}
         lineups = {
             "for": {"formation": "4-2-3-1",
                     "starters": [_starter(j, sq_names[j % len(sq_names)], ROLES_4231[j]) for j in range(11)],
-                    "subs": [{"name": sq_names[0], "jersey": "20", "pos": "M", "pos_full": "Midfielder",
-                              "sub_on": "72'", "sub_off": None, "cards": [], "goals": []}]},
+                    "subs": [_bench(sq_names[0], "20", "M", "Midfielder", sub_on="72'"),
+                             _bench("Reserve GK", "13", "G", "Goalkeeper"),
+                             _bench("Reserve Defender", "15", "D", "Center Left Defender"),
+                             _bench("Reserve Forward", "18", "F", "Forward")]},
             "against": {"formation": "4-3-3",
-                        "starters": [_starter(j, "Opponent " + str(j + 1), ROLES_433[j]) for j in range(11)],
-                        "subs": [{"name": "Opponent 20", "jersey": "20", "pos": "F", "pos_full": "Forward",
-                                  "sub_on": "80'", "sub_off": None, "cards": [], "goals": []}]}}
+                        "starters": [_starter(j, "Opponent " + OPPONENT_SURNAMES[j], ROLES_433[j]) for j in range(11)],
+                        "subs": [_bench("Opponent Sub", "20", "F", "Forward", sub_on="80'"),
+                                 _bench("Opponent Reserve GK", "13", "G", "Goalkeeper"),
+                                 _bench("Opponent Reserve Winger", "17", "W", "Left Winger")]}}
         match_pages.append({
             "id": "demo" + str(i + 1), "opponent": r["opponent"], "opponent_short": r["opponent_short"],
             "opponent_badge": r["badge"], "team_badge": ips_badge, "home": r["home"], "date": "2026-10-04",
