@@ -141,6 +141,34 @@ def test_match_report_links_empty_without_espn_event():
     assert links == []
 
 
+def test_assign_pitch_positions_bands_and_orders_by_side():
+    from build import assign_pitch_positions
+    starters = [
+        {"jersey": "1", "pos_full": "Goalkeeper"},
+        {"jersey": "2", "pos_full": "Right Back"},
+        {"jersey": "3", "pos_full": "Left Back"},
+        {"jersey": "5", "pos_full": "Center Right Defender"},
+        {"jersey": "6", "pos_full": "Center Left Defender"},
+        {"jersey": "9", "pos_full": "Forward"},
+    ]
+    out = assign_pitch_positions(starters, gk_y=96, fwd_y=54)
+    by_jersey = {p["jersey"]: p for p in out}
+
+    assert by_jersey["1"]["y"] == 96  # GK sits at its own goal line
+    assert by_jersey["9"]["y"] == 54  # lone forward sits at the halfway line
+    # within the back four, every left-sided player sits left of every right-sided one
+    left_x = [by_jersey[j]["x"] for j in ("3", "6")]     # Left Back, Center Left Defender
+    right_x = [by_jersey[j]["x"] for j in ("2", "5")]    # Right Back, Center Right Defender
+    assert max(left_x) < min(right_x)
+
+
+def test_assign_pitch_positions_single_player_centres_row():
+    from build import assign_pitch_positions
+    out = assign_pitch_positions([{"jersey": "9", "pos_full": "Forward"}], gk_y=4, fwd_y=46)
+    assert out[0]["x"] == 50.0
+    assert out[0]["y"] == 46
+
+
 def test_pslug_and_pnorm():
     from build import _pslug, _pnorm
     assert _pslug("Liam Delap") == "liam-delap"

@@ -464,23 +464,39 @@ def fetch_espn_match_events(event_id, is_home):
     return cards, subs, stats
 
 
+def _box_stat(stats_list, name):
+    for s in stats_list:
+        if s.get("name") == name:
+            return s.get("displayValue")
+    return None
+
+
 def fetch_espn_lineups(event_id):
-    """Starting XI, formation and used substitutes for both sides of a match,
-    from ESPN's site API summary endpoint (site.web.api.espn.com — the same
-    host used elsewhere in this file to dodge the CI IP block that hits
-    site.api.espn.com). Verified against a real payload (event 401879299,
-    Ipswich vs Sunderland): the top-level `rosters` array holds one entry per
-    side with `formation` and a flat `roster` list of player dicts carrying
-    `starter`, `jersey`, `position.abbreviation`, `athlete.displayName`,
-    `subbedIn`/`subbedOut` booleans and a per-player `plays` list — each play
-    there carries a `clock.displayValue` minute plus `substitution`,
-    `yellowCard`, `redCard` and (on a scoring play) `didScore` flags, which is
-    how a player's own sub on/off time, bookings and goals are pulled out.
+    """Starting XI, formation, used substitutes, attendance, referee and each
+    side's team-level boxscore stats for a match, from ESPN's site API
+    summary endpoint (site.web.api.espn.com — the same host used elsewhere
+    in this file to dodge the CI IP block that hits site.api.espn.com).
+    Verified against a real payload (event 401879299, Ipswich vs
+    Sunderland):
+    - the top-level `rosters` array holds one entry per side with
+      `formation` and a flat `roster` list of player dicts carrying
+      `starter`, `jersey`, `position.abbreviation`/`.name`,
+      `athlete.displayName`, `subbedIn`/`subbedOut` booleans and a
+      per-player `plays` list — each play there carries a
+      `clock.displayValue` minute plus `substitution`, `yellowCard`,
+      `redCard` and (on a scoring play) `didScore` flags, which is how a
+      player's own sub on/off time, bookings and goals are pulled out.
+    - `gameInfo.attendance` and `gameInfo.officials` (filtered to the
+      "Referee" role) give attendance and the referee's name.
+    - `boxscore.teams[].statistics` gives team-level possession, pass
+      completion, tackles and interceptions — read from `displayValue`
+      (a string) since that's all this list carries, no numeric `value`.
     Returns None if lineups aren't published yet (e.g. the fixture hasn't
     kicked off), so callers can fall back cleanly."""
     url = (f"https://site.web.api.espn.com/apis/site/v2/sports/soccer/eng.1/"
            f"summary?event={event_id}")
-    rosters = get_json(url).get("rosters", [])
+    data = get_json(url)
+    rosters = data.get("rosters", [])
     if not rosters:
         return None
     out = {}
@@ -490,6 +506,7 @@ def fetch_espn_lineups(event_id):
         starters, subs_used = [], []
         for p in r.get("roster", []):
             athlete = p.get("athlete") or {}
+            position = p.get("position") or {}
             sub_on = sub_off = None
             cards, goals = [], []
             for play in p.get("plays") or []:
@@ -507,13 +524,43 @@ def fetch_espn_lineups(event_id):
                     goals.append(minute)
             entry = {"name": athlete.get("displayName", "?"),
                      "jersey": p.get("jersey", ""),
-                     "pos": (p.get("position") or {}).get("abbreviation", ""),
+                     "pos": position.get("abbreviation", ""),
+                     "pos_full": position.get("name", ""),
                      "sub_on": sub_on, "sub_off": sub_off, "cards": cards, "goals": goals}
             if p.get("starter"):
                 starters.append(entry)
             elif p.get("subbedIn"):
                 subs_used.append(entry)
         out[side] = {"formation": r.get("formation", ""), "starters": starters, "subs": subs_used}
+
+    game_info = data.get("gameInfo") or {}
+    out["attendance"] = game_info.get("attendance")
+    out["referee"] = next((o.get("fullName") for o in game_info.get("officials", [])
+                           if (o.get("position") or {}).get("name") == "Referee"), None)
+
+    team_stats = {}
+    for t in (data.get("boxscore") or {}).get("teams", []):
+        team_id = (t.get("team") or {}).get("id")
+        side = "for" if team_id == IPSWICH_ESPN_TEAM_ID else "against"
+        stats_list = t.get("statistics", [])
+        possession = _box_stat(stats_list, "possessionPct")
+        if possession is not None:
+            team_stats[f"possession_{side}"] = to_float(possession)
+        acc_passes, tot_passes = _box_stat(stats_list, "accuratePasses"), _box_stat(stats_list, "totalPasses")
+        try:
+            if acc_passes and tot_passes and float(tot_passes) > 0:
+                team_stats[f"pass_pct_{side}"] = round(float(acc_passes) / float(tot_passes) * 100, 1)
+        except ValueError:
+            pass
+        tackles = _box_stat(stats_list, "effectiveTackles")
+        if tackles is not None:
+            team_stats[f"tackles_{side}"] = int(to_float(tackles))
+        interceptions = _box_stat(stats_list, "interceptions")
+        if interceptions is not None:
+            team_stats[f"interceptions_{side}"] = int(to_float(interceptions))
+    if team_stats:
+        out["team_stats"] = team_stats
+
     return out
 
 
@@ -1506,13 +1553,19 @@ def main():
             # payload's links[rel=recap] entry).
             mp["espn_report_url"] = f"https://www.espn.com/soccer/report/_/gameId/{event_id}"
             cache_file = os.path.join(PLAY_CACHE_DIR, f"{event_id}.json")
+            events_fetched_at = None
             if os.path.exists(cache_file):
                 try:
                     with open(cache_file) as fh:
-                        cards, subs, stats = json.load(fh)
+                        cached = json.load(fh)
                 except (ValueError, OSError):
-                    cards = subs = stats = None
-                else:
+                    cached = None
+                # Older cache files are a bare [cards, subs, stats] list with
+                # no fetch timestamp — treated the same as no cache, so they
+                # get a one-time re-fetch that also picks up the timestamp.
+                if isinstance(cached, dict) and "fetched_at" in cached:
+                    cards, subs, stats = cached["cards"], cached["subs"], cached["stats"]
+                    events_fetched_at = cached["fetched_at"]
                     # A finished professional match essentially always has at
                     # least one substitution, so both lists empty together is
                     # a sign of a bad/incomplete cached fetch (e.g. from an
@@ -1520,40 +1573,50 @@ def main():
                     # genuinely eventless match — don't trust it, re-fetch.
                     if not cards and not subs:
                         cards = subs = stats = None
+                        events_fetched_at = None
             if cards is None:
                 try:
                     cards, subs, stats = fetch_espn_match_events(event_id, mp["home"])
                 except requests.RequestException:
                     cards = subs = stats = None
                 else:
+                    events_fetched_at = datetime.now(timezone.utc).isoformat()
                     try:
                         with open(cache_file, "w") as fh:
-                            json.dump([cards, subs, stats], fh)
+                            json.dump({"fetched_at": events_fetched_at,
+                                       "cards": cards, "subs": subs, "stats": stats}, fh)
                     except OSError:
                         pass
                     espn_fetched += 1
             if cards is not None:
                 mp["cards"] = cards
                 mp["subs"] = subs
+                if events_fetched_at:
+                    mp["espn_events_fetched_at"] = events_fetched_at
                 espn_matched += 1
 
             lu_cache_file = os.path.join(LINEUP_CACHE_DIR, f"{event_id}.json")
             lineups = None
+            lineup_fetched_at = None
             if os.path.exists(lu_cache_file):
                 try:
                     with open(lu_cache_file) as fh:
-                        lineups = json.load(fh)
+                        cached_lu = json.load(fh)
                 except (ValueError, OSError):
-                    lineups = None
-                else:
-                    # A cache entry written before per-player sub/card/goal
-                    # detail was added lacks those keys entirely — don't trust
-                    # it, re-fetch once so that detail isn't silently missing
-                    # forever (this cache is never otherwise invalidated).
-                    first_side = next(iter(lineups.values()), {}) if lineups else {}
-                    first_starter = next(iter(first_side.get("starters") or []), {})
-                    if first_starter and "cards" not in first_starter:
+                    cached_lu = None
+                # Same deal: a cache entry written before this wrapper (or
+                # before per-player sub/card/goal/attendance detail) existed
+                # lacks these keys entirely — don't trust it, re-fetch once
+                # rather than let the gap sit silently (this cache is never
+                # otherwise invalidated).
+                if isinstance(cached_lu, dict) and "fetched_at" in cached_lu:
+                    lineups = cached_lu.get("lineups")
+                    lineup_fetched_at = cached_lu["fetched_at"]
+                    side_entry = (lineups or {}).get("for") or (lineups or {}).get("against") or {}
+                    first_starter = next(iter(side_entry.get("starters") or []), {})
+                    if (first_starter and "cards" not in first_starter) or "attendance" not in (lineups or {}):
                         lineups = None
+                        lineup_fetched_at = None
             if lineups is None:
                 try:
                     lineups = fetch_espn_lineups(event_id)
@@ -1561,13 +1624,26 @@ def main():
                     lineups = None
                 else:
                     if lineups is not None:
+                        lineup_fetched_at = datetime.now(timezone.utc).isoformat()
                         try:
                             with open(lu_cache_file, "w") as fh:
-                                json.dump(lineups, fh)
+                                json.dump({"fetched_at": lineup_fetched_at, "lineups": lineups}, fh)
                         except OSError:
                             pass
             if lineups is not None:
                 mp["lineups"] = lineups
+                if lineup_fetched_at:
+                    mp["espn_lineup_fetched_at"] = lineup_fetched_at
+                if lineups.get("attendance") is not None:
+                    mp["attendance"] = lineups["attendance"]
+                if lineups.get("referee"):
+                    mp["referee"] = lineups["referee"]
+                if lineups.get("team_stats"):
+                    mp["team_stats"] = lineups["team_stats"]
+
+            fetch_times = [t for t in (mp.get("espn_events_fetched_at"), mp.get("espn_lineup_fetched_at")) if t]
+            if fetch_times:
+                mp["espn_data_fetched_at"] = min(fetch_times)
 
         if stats:
             mp["fbd"] = {k: stats[k] for k in MATCH_STAT_KEYS}

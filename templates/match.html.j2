@@ -52,6 +52,8 @@
         &nbsp; {{ 'Home' if m.home else 'Away' }}
         {% if m.ht_score %} · HT {{ m.ht_score }}{% endif %}
         {% if m.date %} · {{ m.date }}{% endif %}
+        {% if m.attendance %} · Att. {{ '{:,}'.format(m.attendance) }}{% endif %}
+        {% if m.referee %} · Referee: {{ m.referee }}{% endif %}
       </div>
     </div>
   </div>
@@ -66,6 +68,7 @@
         <li><span class="eventtext">{{ r.name }}</span><a class="playerlink" href="{{ r.url }}" target="_blank" rel="noopener">Read report ↗</a></li>
         {% endfor %}
       </ul>
+      {% if m.espn_data_fetched_at %}<p class="empty-note">ESPN data (cards, subs, lineups, stats) last fetched {{ m.espn_data_fetched_at|updated }}.</p>{% endif %}
     </div>
   </div>
   {% endif %}
@@ -84,8 +87,33 @@
       <span class="assist">{{ p.pos }}</span>
     </li>
   {% endmacro %}
+  {% macro pitch_marker(p, color) %}
+    {% set cx = (p.x / 100 * 400)|round(1) %}{% set cy = (p.y / 100 * 600)|round(1) %}
+    <g>
+      <circle cx="{{ cx }}" cy="{{ cy }}" r="16" fill="{{ color }}" stroke="var(--canvas)" stroke-width="2"/>
+      <text x="{{ cx }}" y="{{ cy }}" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="700" fill="#fff">{{ p.jersey }}</text>
+      <title>{{ p.name }} ({{ p.pos }})</title>
+    </g>
+  {% endmacro %}
   <div class="block">
     <p class="label">Lineups</p>
+    {% if m.lineups['for'] and m.lineups['against'] %}
+    <div class="card">
+      <div class="cardhead"><h3>Starting XI</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Both starting elevens on one pitch, grouped by broad role (goalkeeper/defence/midfield/attack) rather than exact tactical position — {{ m.opponent }} attack downward, Ipswich attack upward. Hover a shirt for the player's name. Source: ESPN.</span></button></div>
+      <div class="legend"><span><i style="background:var(--primary)"></i>Ipswich{% if m.lineups['for'].formation %} ({{ m.lineups['for'].formation }}){% endif %}</span><span><i style="background:var(--loss)"></i>{{ m.opponent }}{% if m.lineups['against'].formation %} ({{ m.lineups['against'].formation }}){% endif %}</span></div>
+      <div class="pitch-holder">
+        <svg role="img" aria-label="Starting lineups on a pitch" class="pitch" viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="398" height="598" fill="var(--tint-mint)" stroke="var(--hairline-strong)"/>
+          <line x1="1" y1="300" x2="399" y2="300" stroke="var(--hairline-strong)"/>
+          <circle cx="200" cy="300" r="45" fill="none" stroke="var(--hairline-strong)"/>
+          <rect x="90" y="1" width="220" height="80" fill="none" stroke="var(--hairline-strong)"/>
+          <rect x="90" y="519" width="220" height="80" fill="none" stroke="var(--hairline-strong)"/>
+          {% for p in m.lineups['for'].starters %}{{ pitch_marker(p, 'var(--primary)') }}{% endfor %}
+          {% for p in m.lineups['against'].starters %}{{ pitch_marker(p, 'var(--loss)') }}{% endfor %}
+        </svg>
+      </div>
+    </div>
+    {% endif %}
     <div class="cols">
       {% for group, lu in [('Ipswich', m.lineups['for']), (m.opponent, m.lineups['against'])] %}
       {% if lu %}
@@ -111,7 +139,7 @@
   <div class="block">
     <p class="label">Match stats</p>
     <div class="card">
-      <div class="cardhead"><h3>Match statistics</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Shots, cards, corners, pressing (PPDA) and Understat's expected points for this match. Source: Understat and ESPN, with football-data.co.uk as a fallback.</span></button></div>
+      <div class="cardhead"><h3>Match statistics</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Shots, cards, corners, possession, passing, tackles, pressing (PPDA) and Understat's expected points for this match. Source: Understat and ESPN, with football-data.co.uk as a fallback.</span></button></div>
       <div class="legend"><span><i style="background:var(--primary)"></i>Ipswich</span><span><i style="background:var(--loss)"></i>{{ m.opponent }}</span></div>
       {% macro statrow(label, a, b, dp=0) %}
         {% set af = (a|float) %}{% set bf = (b|float) %}{% set tot = af + bf %}
@@ -127,6 +155,12 @@
         {{ statrow('Corners', m.fbd.corners_for, m.fbd.corners_against) }}
         {{ statrow('Fouls', m.fbd.fouls_for, m.fbd.fouls_against) }}
         {{ statrow('Yellow cards', m.fbd.yellows_for, m.fbd.yellows_against) }}
+      {% endif %}
+      {% if m.team_stats %}
+        {% if m.team_stats.possession_for is not none %}{{ statrow('Possession %', m.team_stats.possession_for, m.team_stats.possession_against, 1) }}{% endif %}
+        {% if m.team_stats.pass_pct_for is not none %}{{ statrow('Pass completion %', m.team_stats.pass_pct_for, m.team_stats.pass_pct_against, 1) }}{% endif %}
+        {% if m.team_stats.tackles_for is not none %}{{ statrow('Tackles won', m.team_stats.tackles_for, m.team_stats.tackles_against) }}{% endif %}
+        {% if m.team_stats.interceptions_for is not none %}{{ statrow('Interceptions', m.team_stats.interceptions_for, m.team_stats.interceptions_against) }}{% endif %}
       {% endif %}
       {% if m.deep is not none %}{{ statrow('Deep completions', m.deep, m.deep_allowed) }}{% endif %}
       {% if m.ppda is not none and m.ppda_allowed is not none %}
