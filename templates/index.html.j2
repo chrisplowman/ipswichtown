@@ -599,7 +599,7 @@
           {% for m in match_pages %}
           <tr>
             <td>{{ m.date }}</td>
-            <td class="tm">{% if m.opponent_badge %}<img class="badge" src="{{ m.opponent_badge }}" alt="">{% endif %}<a class="playerlink" href="match/{{ m.id }}.html">{{ m.opponent }}</a> <span class="ha">{{ '(H)' if m.home else '(A)' }}</span></td>
+            <td class="tm">{% if m.opponent_badge %}<img class="badge" src="{{ m.opponent_badge }}" alt="">{% endif %}<a class="playerlink" href="match/{{ m.slug }}.html">{{ m.opponent }}</a> <span class="ha">{{ '(H)' if m.home else '(A)' }}</span></td>
             <td><span class="res {{ m.result }}">{{ m.result }}</span></td>
             <td><b>{{ m.gf }}–{{ m.ga }}</b></td>
             <td>{% if m.xg_for is not none %}{{ '%.1f'|format(m.xg_for) }}-{{ '%.1f'|format(m.xg_against) }}{% else %}-{% endif %}</td>
@@ -973,7 +973,7 @@
         sit[k].shots++;
         if(s.result==='Goal') sit[k].goals++;
         chanceShots.push({player:s.player,xg:s.xg,minute:s.minute,result:s.result,
-          mid:m.id,opp:m.opponent,home:m.home});
+          mid:m.slug,opp:m.opponent,home:m.home});
       });});
       var sk=Object.keys(sit);
       var niceSit={OpenPlay:'Open play',FromCorner:'From corner',SetPiece:'Set piece',DirectFreekick:'Free kick',Penalty:'Penalty'};

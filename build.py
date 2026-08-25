@@ -761,7 +761,7 @@ def build_player_pages(data):
             if pl:
                 log.append({"opponent": m["opponent"], "opponent_badge": m.get("opponent_badge"),
                             "home": m["home"], "result": m["result"], "score": m["score"],
-                            "date": m["date"], "match_id": m["id"], "minutes": pl["minutes"],
+                            "date": m["date"], "match_id": m["slug"], "minutes": pl["minutes"],
                             "goals": pl["goals"], "assists": pl["assists"], "shots": pl["shots"],
                             "xg": pl["xg"], "xa": pl["xa"], "key_passes": pl.get("key_passes", 0)})
             for s in m.get("shots_for", []):
@@ -846,7 +846,7 @@ def form_guide(data, n=6):
 
     # per-match expectation breakdown, joined from the same match-report data
     # (match_pages) that already carries Understat xG/xPts per match
-    mp_by_id = {mp["id"]: mp for mp in (data.get("match_pages") or [])}
+    mp_by_id = {mp.get("slug"): mp for mp in (data.get("match_pages") or [])}
     matches = []
     for r in reversed(recent):          # oldest first (reads left→right)
         mp = mp_by_id.get(r.get("match_id")) or {}
@@ -997,6 +997,20 @@ def render_site(template, match_template, player_template, data):
     (outdir / "data").mkdir(parents=True, exist_ok=True)
     if ASSETS.exists():
         shutil.copytree(ASSETS, outdir, dirs_exist_ok=True)   # style.css, fonts/, share.js per site root
+
+    # readable match-page URLs (date + opponent + venue) instead of Understat's
+    # opaque numeric id — mp["id"] itself is left untouched since match_report_links()
+    # still needs it to build the real understat.com link.
+    used_slugs, slug_by_id = {}, {}
+    for mp in data.get("match_pages") or []:
+        base = f"{mp.get('date', '')}-{_slugify(mp.get('opponent', ''))}-{'h' if mp.get('home') else 'a'}"
+        used_slugs[base] = used_slugs.get(base, 0) + 1
+        mp["slug"] = base if used_slugs[base] == 1 else f"{base}-{used_slugs[base]}"
+        slug_by_id[mp.get("id")] = mp["slug"]
+    for r in data.get("results") or []:
+        if r.get("match_id") in slug_by_id:
+            r["match_id"] = slug_by_id[r["match_id"]]
+
     for mp in data.get("match_pages") or []:
         mp["reports"] = match_report_links(mp)
         lineups = mp.get("lineups") or {}
@@ -1038,10 +1052,10 @@ def render_site(template, match_template, player_template, data):
         (outdir / "match").mkdir(exist_ok=True)
         for mp in matches:
             score = f"Ipswich {mp['gf']}\u2013{mp['ga']} {mp['opponent']}"
-            og_img = f"match/{mp['id']}.png"
+            og_img = f"match/{mp['slug']}.png"
             xg = (f" \u00b7 xG {mp['xg_for']:.1f}\u2013{mp['xg_against']:.1f}"
                   if mp.get("xg_for") is not None else "")
-            _og_image(str(outdir / "match" / f"{mp['id']}.png"), score,
+            _og_image(str(outdir / "match" / f"{mp['slug']}.png"), score,
                       f"Premier League {season}{xg}")
             match_json = json.dumps({"opponent": mp.get("opponent", ""),
                                      "shots_for": mp.get("shots_for", []),
@@ -1052,8 +1066,8 @@ def render_site(template, match_template, player_template, data):
                                          css_href="../style.css", team=team, position=position,
                                          og_title=score + " · Match report",
                                          og_description=f"Full report: xG, shots, player ratings and the story of Ipswich {mp['gf']}-{mp['ga']} {mp['opponent']}.",
-                                         og_image="../" + og_img, canonical=f"{SITE_URL}/match/{mp['id']}.html")
-            (outdir / "match" / f"{mp['id']}.html").write_text(html)
+                                         og_image="../" + og_img, canonical=f"{SITE_URL}/match/{mp['slug']}.html")
+            (outdir / "match" / f"{mp['slug']}.html").write_text(html)
 
     # a page per squad player
     if player_pages:
