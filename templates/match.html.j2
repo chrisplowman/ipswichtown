@@ -68,7 +68,6 @@
         <li><span class="eventtext">{{ r.name }}</span><a class="playerlink" href="{{ r.url }}" target="_blank" rel="noopener">Read report ↗</a></li>
         {% endfor %}
       </ul>
-      {% if m.espn_data_fetched_at %}<p class="empty-note">ESPN data (cards, subs, lineups, stats) last fetched {{ m.espn_data_fetched_at|updated }}.</p>{% endif %}
     </div>
   </div>
   {% endif %}
@@ -88,10 +87,11 @@
     </li>
   {% endmacro %}
   {% macro pitch_marker(p, color) %}
-    {% set cx = (p.x / 100 * 400)|round(1) %}{% set cy = (p.y / 100 * 600)|round(1) %}
+    {% set cx = (600 - (p.y / 100 * 600))|round(1) %}{% set cy = (p.x / 100 * 400)|round(1) %}
     <g>
-      <circle cx="{{ cx }}" cy="{{ cy }}" r="16" fill="{{ color }}" stroke="var(--canvas)" stroke-width="2"/>
-      <text x="{{ cx }}" y="{{ cy }}" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="700" fill="#fff">{{ p.jersey }}</text>
+      <circle cx="{{ cx }}" cy="{{ cy }}" r="13" fill="{{ color }}" stroke="var(--canvas)" stroke-width="2"/>
+      <text x="{{ cx }}" y="{{ cy }}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" fill="#fff">{{ p.jersey }}</text>
+      <text x="{{ cx }}" y="{{ cy + 22 }}" text-anchor="middle" font-size="9" fill="var(--ink)">{{ p.name.split(' ')[-1] }}</text>
       <title>{{ p.name }} ({{ p.pos }})</title>
     </g>
   {% endmacro %}
@@ -99,15 +99,15 @@
     <p class="label">Lineups</p>
     {% if m.lineups['for'] and m.lineups['against'] %}
     <div class="card">
-      <div class="cardhead"><h3>Starting XI</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Both starting elevens on one pitch, grouped by broad role (goalkeeper/defence/midfield/attack) rather than exact tactical position — {{ m.opponent }} attack downward, Ipswich attack upward. Hover a shirt for the player's name. Source: ESPN.</span></button></div>
+      <div class="cardhead"><h3>Starting XI</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Both starting elevens on one pitch, grouped by broad role (goalkeeper/defence/midfield/attack) rather than exact tactical position — Ipswich attack rightward, {{ m.opponent }} attack leftward. Hover a shirt for the player's full name. Source: ESPN.</span></button></div>
       <div class="legend"><span><i style="background:var(--primary)"></i>Ipswich{% if m.lineups['for'].formation %} ({{ m.lineups['for'].formation }}){% endif %}</span><span><i style="background:var(--loss)"></i>{{ m.opponent }}{% if m.lineups['against'].formation %} ({{ m.lineups['against'].formation }}){% endif %}</span></div>
       <div class="pitch-holder">
-        <svg role="img" aria-label="Starting lineups on a pitch" class="pitch" viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="1" width="398" height="598" fill="var(--tint-mint)" stroke="var(--hairline-strong)"/>
-          <line x1="1" y1="300" x2="399" y2="300" stroke="var(--hairline-strong)"/>
-          <circle cx="200" cy="300" r="45" fill="none" stroke="var(--hairline-strong)"/>
-          <rect x="90" y="1" width="220" height="80" fill="none" stroke="var(--hairline-strong)"/>
-          <rect x="90" y="519" width="220" height="80" fill="none" stroke="var(--hairline-strong)"/>
+        <svg role="img" aria-label="Starting lineups on a pitch" class="pitch" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="598" height="398" fill="var(--tint-mint)" stroke="var(--hairline-strong)"/>
+          <line x1="300" y1="1" x2="300" y2="399" stroke="var(--hairline-strong)"/>
+          <circle cx="300" cy="200" r="40" fill="none" stroke="var(--hairline-strong)"/>
+          <rect x="1" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
+          <rect x="519" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
           {% for p in m.lineups['for'].starters %}{{ pitch_marker(p, 'var(--primary)') }}{% endfor %}
           {% for p in m.lineups['against'].starters %}{{ pitch_marker(p, 'var(--loss)') }}{% endfor %}
         </svg>
@@ -118,12 +118,12 @@
       {% for group, lu in [('Ipswich', m.lineups['for']), (m.opponent, m.lineups['against'])] %}
       {% if lu %}
       <div class="card">
-        <div class="cardhead"><h3>{{ group }}{% if lu.formation %} ({{ lu.formation }}){% endif %}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Starting XI and used substitutes, with goals, cards and substitution minutes. Source: ESPN.</span></button></div>
+        <div class="cardhead"><h3>{{ group }}{% if lu.formation %} ({{ lu.formation }}){% endif %}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Starting XI and full bench, with goals, cards and substitution minutes for those who came on. Source: ESPN.</span></button></div>
         <ul class="plain">
           {% for p in lu.starters %}{{ lineup_row(p) }}{% endfor %}
         </ul>
         {% if lu.subs %}
-        <p class="empty-note" style="padding-top:0">Substitutes used:</p>
+        <p class="empty-note" style="padding-top:0">Substitutes:</p>
         <ul class="plain">
           {% for p in lu.subs %}{{ lineup_row(p) }}{% endfor %}
         </ul>
@@ -261,6 +261,7 @@
   </div>
 </main>
 
+{% if m.espn_data_fetched_at %}<p style="text-align:center;color:var(--steel);font-size:12.5px;padding:0 16px">ESPN data (cards, subs, lineups, stats) last fetched {{ m.espn_data_fetched_at|updated }}.</p>{% endif %}
 <footer>Data from Understat (xG, shots, player lines), ESPN (shots, cards, subs) and the FPL API · a reference page, not affiliated with Ipswich Town FC.</footer>
 
 <script id="match-data" type="application/json">{{ match_json|safe }}</script>

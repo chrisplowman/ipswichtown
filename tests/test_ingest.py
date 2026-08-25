@@ -171,7 +171,7 @@ def test_fetch_espn_match_events_follows_pagination(monkeypatch):
 
 
 # ---- ESPN lineups -----------------------------------------------------------
-def test_fetch_espn_lineups_splits_starters_and_used_subs(monkeypatch):
+def test_fetch_espn_lineups_splits_starters_and_full_bench(monkeypatch):
     import ingest
 
     def player(name, jersey, pos, starter, subbed_in=False):
@@ -194,7 +194,8 @@ def test_fetch_espn_lineups_splits_starters_and_used_subs(monkeypatch):
 
     assert lineups["for"]["formation"] == "4-2-3-1"
     assert [p["name"] for p in lineups["for"]["starters"]] == ["Scherpen"]
-    assert [p["name"] for p in lineups["for"]["subs"]] == ["Clarke"]
+    # the full bench, not just the substitutes actually brought on
+    assert [p["name"] for p in lineups["for"]["subs"]] == ["Clarke", "Walton"]
     assert lineups["against"]["formation"] == "4-3-3"
     assert [p["name"] for p in lineups["against"]["starters"]] == ["Roefs"]
 

@@ -472,7 +472,7 @@ def _box_stat(stats_list, name):
 
 
 def fetch_espn_lineups(event_id):
-    """Starting XI, formation, used substitutes, attendance, referee and each
+    """Starting XI, formation, the full bench, attendance, referee and each
     side's team-level boxscore stats for a match, from ESPN's site API
     summary endpoint (site.web.api.espn.com — the same host used elsewhere
     in this file to dodge the CI IP block that hits site.api.espn.com).
@@ -503,7 +503,7 @@ def fetch_espn_lineups(event_id):
     for r in rosters:
         team_id = (r.get("team") or {}).get("id")
         side = "for" if team_id == IPSWICH_ESPN_TEAM_ID else "against"
-        starters, subs_used = [], []
+        starters, subs = [], []
         for p in r.get("roster", []):
             athlete = p.get("athlete") or {}
             position = p.get("position") or {}
@@ -529,9 +529,9 @@ def fetch_espn_lineups(event_id):
                      "sub_on": sub_on, "sub_off": sub_off, "cards": cards, "goals": goals}
             if p.get("starter"):
                 starters.append(entry)
-            elif p.get("subbedIn"):
-                subs_used.append(entry)
-        out[side] = {"formation": r.get("formation", ""), "starters": starters, "subs": subs_used}
+            else:
+                subs.append(entry)
+        out[side] = {"formation": r.get("formation", ""), "starters": starters, "subs": subs}
 
     game_info = data.get("gameInfo") or {}
     out["attendance"] = game_info.get("attendance")
