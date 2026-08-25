@@ -249,6 +249,49 @@ def test_fetch_espn_lineups_extracts_sub_card_and_goal_minutes(monkeypatch):
     assert ballard["cards"] == [{"kind": "red", "minute": "36'"}]
 
 
+def test_fetch_espn_lineups_extracts_attendance_referee_and_team_stats(monkeypatch):
+    import ingest
+
+    summary = {
+        "rosters": [
+            {"team": {"id": ingest.IPSWICH_ESPN_TEAM_ID}, "formation": "4-2-3-1", "roster": [
+                {"starter": True, "jersey": "1", "subbedOut": False, "subbedIn": False,
+                 "athlete": {"displayName": "Scherpen"}, "position": {"abbreviation": "G", "name": "Goalkeeper"}},
+            ]},
+            {"team": {"id": "366"}, "formation": "4-3-3", "roster": [
+                {"starter": True, "jersey": "22", "subbedOut": False, "subbedIn": False,
+                 "athlete": {"displayName": "Roefs"}, "position": {"abbreviation": "G", "name": "Goalkeeper"}},
+            ]},
+        ],
+        "gameInfo": {"attendance": 29669, "officials": [
+            {"fullName": "Farai Hallam", "position": {"name": "Referee"}, "order": 1}]},
+        "boxscore": {"teams": [
+            {"team": {"id": ingest.IPSWICH_ESPN_TEAM_ID}, "statistics": [
+                {"name": "possessionPct", "displayValue": "37.5"},
+                {"name": "accuratePasses", "displayValue": "258"},
+                {"name": "totalPasses", "displayValue": "325"},
+                {"name": "effectiveTackles", "displayValue": "15"},
+                {"name": "interceptions", "displayValue": "7"}]},
+            {"team": {"id": "366"}, "statistics": [
+                {"name": "possessionPct", "displayValue": "62.5"},
+                {"name": "accuratePasses", "displayValue": "484"},
+                {"name": "totalPasses", "displayValue": "549"},
+                {"name": "effectiveTackles", "displayValue": "8"},
+                {"name": "interceptions", "displayValue": "9"}]}]},
+    }
+
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: summary)
+    lineups = ingest.fetch_espn_lineups("401879299")
+
+    assert lineups["attendance"] == 29669
+    assert lineups["referee"] == "Farai Hallam"
+    assert lineups["team_stats"]["possession_for"] == 37.5
+    assert lineups["team_stats"]["possession_against"] == 62.5
+    assert lineups["team_stats"]["pass_pct_for"] == round(258 / 325 * 100, 1)
+    assert lineups["team_stats"]["tackles_for"] == 15
+    assert lineups["team_stats"]["interceptions_against"] == 9
+
+
 # ---- FDR fallback probabilities --------------------------------------------
 def test_fdr_win_probs_sum_to_100():
     from ingest import fdr_win_probs

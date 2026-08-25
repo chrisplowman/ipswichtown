@@ -208,6 +208,58 @@ def match_report_links(mp):
     return links
 
 
+def _pitch_band(pos_full):
+    """GK / defence / midfield / attack, from ESPN's own position name text
+    (e.g. "Center Left Defender", "Attacking Midfielder Left", "Forward") —
+    a formation string like "4-2-3-1" only gives row *sizes*, not which
+    specific players are in which row, and ESPN's numeric formationPlace
+    slot (1-11) isn't a reliably documented guide to that either without a
+    hand-verified table per formation shape. Band text is self-describing
+    and works for any formation, at the cost of collapsing a double
+    midfield line (e.g. 4-2-3-1's two banks) into one band."""
+    name = (pos_full or "").lower()
+    if "goalkeeper" in name:
+        return "gk"
+    if "back" in name or "defender" in name:
+        return "def"
+    if "forward" in name or "striker" in name or "winger" in name:
+        return "fwd"
+    return "mid"
+
+
+def _pitch_side(pos_full):
+    name = (pos_full or "").lower()
+    if "left" in name:
+        return -1
+    if "right" in name:
+        return 1
+    return 0
+
+
+def assign_pitch_positions(starters, gk_y, fwd_y):
+    """Places each starter on a schematic pitch as x/y percentages (x: 0
+    left touchline to 100 right; y: gk_y at this side's own goal to fwd_y
+    at the halfway line), banded by _pitch_band/_pitch_side above. Two
+    calls with mirrored gk_y/fwd_y ranges — one per side — lay both teams
+    out on a single shared pitch, facing off across the halfway line."""
+    bands = {"gk": [], "def": [], "mid": [], "fwd": []}
+    for p in starters:
+        bands[_pitch_band(p.get("pos_full"))].append(p)
+    step = (fwd_y - gk_y) / 3
+    band_y = {"gk": gk_y, "def": gk_y + step, "mid": gk_y + step * 2, "fwd": fwd_y}
+    out = []
+    for band in ("gk", "def", "mid", "fwd"):
+        players = bands[band]
+        if not players:
+            continue
+        ordered = sorted(players, key=lambda p: (_pitch_side(p.get("pos_full")), p.get("jersey") or ""))
+        n = len(ordered)
+        for i, p in enumerate(ordered):
+            x = 50.0 if n == 1 else 14 + i * (72 / (n - 1))
+            out.append({**p, "x": round(x, 1), "y": round(band_y[band], 1)})
+    return out
+
+
 def season_summary(data):
     """A short, plain-language read on how the season is going, composed from the
     live numbers (projection, xPts, form, next fixture) so it updates every build."""
@@ -491,20 +543,34 @@ def sample_data(live=None):
         pag = [{"name": "Opponent " + p, "pos": q, "minutes": 90, "goals": 0, "assists": 0, "shots": 1,
                 "xg": 0.2, "xa": 0.1, "key_passes": 1, "yellow": 0, "red": 0}
                for p, q in [("striker", "F"), ("winger", "M"), ("midfielder", "M"), ("defender", "D")]]
-        def _starter(j, name, pos):
-            return {"name": name, "jersey": str(j + 1), "pos": pos,
+        # Role name per slot, defence-to-attack, matching each dummy formation's
+        # shape (4-2-3-1 / 4-3-3) so the formation-pitch diagram (which bands
+        # players by this text, not by slot index) actually spreads them out.
+        ROLES_4231 = [("Goalkeeper", "G"), ("Right Back", "RB"), ("Center Right Defender", "CD-R"),
+                      ("Center Left Defender", "CD-L"), ("Left Back", "LB"),
+                      ("Defensive Midfielder", "DM"), ("Defensive Midfielder", "DM"),
+                      ("Attacking Midfielder Right", "AM-R"), ("Attacking Midfielder", "AM"),
+                      ("Attacking Midfielder Left", "AM-L"), ("Forward", "F")]
+        ROLES_433 = [("Goalkeeper", "G"), ("Right Back", "RB"), ("Center Right Defender", "CD-R"),
+                     ("Center Left Defender", "CD-L"), ("Left Back", "LB"),
+                     ("Center Midfielder", "CM"), ("Center Midfielder", "CM"), ("Center Midfielder", "CM"),
+                     ("Right Winger", "RW"), ("Forward", "F"), ("Left Winger", "LW")]
+
+        def _starter(j, name, role):
+            pos_full, pos = role
+            return {"name": name, "jersey": str(j + 1), "pos": pos, "pos_full": pos_full,
                     "sub_on": None, "sub_off": "72'" if j == 0 else None,
                     "cards": [{"kind": "yellow", "minute": "58'"}] if j == 4 else [],
                     "goals": ["20'"] if (j == 0 and gf > 0) else []}
         lineups = {
             "for": {"formation": "4-2-3-1",
-                    "starters": [_starter(j, sq_names[j % len(sq_names)], "F") for j in range(11)],
-                    "subs": [{"name": sq_names[0], "jersey": "20", "pos": "M", "sub_on": "72'",
-                              "sub_off": None, "cards": [], "goals": []}]},
+                    "starters": [_starter(j, sq_names[j % len(sq_names)], ROLES_4231[j]) for j in range(11)],
+                    "subs": [{"name": sq_names[0], "jersey": "20", "pos": "M", "pos_full": "Midfielder",
+                              "sub_on": "72'", "sub_off": None, "cards": [], "goals": []}]},
             "against": {"formation": "4-3-3",
-                        "starters": [_starter(j, "Opponent " + str(j + 1), "D") for j in range(11)],
-                        "subs": [{"name": "Opponent 20", "jersey": "20", "pos": "F", "sub_on": "80'",
-                                  "sub_off": None, "cards": [], "goals": []}]}}
+                        "starters": [_starter(j, "Opponent " + str(j + 1), ROLES_433[j]) for j in range(11)],
+                        "subs": [{"name": "Opponent 20", "jersey": "20", "pos": "F", "pos_full": "Forward",
+                                  "sub_on": "80'", "sub_off": None, "cards": [], "goals": []}]}}
         match_pages.append({
             "id": "demo" + str(i + 1), "opponent": r["opponent"], "opponent_short": r["opponent_short"],
             "opponent_badge": r["badge"], "team_badge": ips_badge, "home": r["home"], "date": "2026-10-04",
@@ -518,7 +584,13 @@ def sample_data(live=None):
                     "corners_for": 7, "corners_against": 4, "fouls_for": 10, "fouls_against": 12,
                     "yellows_for": 1, "yellows_against": 2, "reds_for": 0, "reds_against": 0},
             "shots_for": sfor, "shots_against": sag, "players_for": pfor, "players_against": pag,
-            "goals": goals, "lineups": lineups, "h2h": next_opponent["h2h"] if next_opponent else []})
+            "goals": goals, "lineups": lineups, "attendance": 28312 + i * 214, "referee": "Sample Referee",
+            "team_stats": {"possession_for": 46.5, "possession_against": 53.5,
+                           "pass_pct_for": 79.4, "pass_pct_against": 84.1,
+                           "tackles_for": 15, "tackles_against": 11,
+                           "interceptions_for": 7, "interceptions_against": 9},
+            "espn_data_fetched_at": "2026-10-04T18:03:00+00:00",
+            "h2h": next_opponent["h2h"] if next_opponent else []})
     mpid = {(mp["opponent_short"], mp["home"]): mp["id"] for mp in match_pages}
     for r in results:
         r["match_id"] = mpid.get((r["opponent_short"], r["home"]))
@@ -892,6 +964,13 @@ def render_site(template, match_template, player_template, data):
         shutil.copytree(ASSETS, outdir, dirs_exist_ok=True)   # style.css, fonts/, share.js per site root
     for mp in data.get("match_pages") or []:
         mp["reports"] = match_report_links(mp)
+        lineups = mp.get("lineups") or {}
+        for_starters = (lineups.get("for") or {}).get("starters")
+        if for_starters:
+            lineups["for"]["starters"] = assign_pitch_positions(for_starters, gk_y=96, fwd_y=54)
+        against_starters = (lineups.get("against") or {}).get("starters")
+        if against_starters:
+            lineups["against"]["starters"] = assign_pitch_positions(against_starters, gk_y=4, fwd_y=46)
     player_pages = build_player_pages(data)     # stamps slug on each squad entry
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)
