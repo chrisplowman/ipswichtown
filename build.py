@@ -268,8 +268,17 @@ def assign_pitch_positions(starters, gk_y, fwd_y):
         ordered = sorted(players, key=lambda p: (_pitch_side(p.get("pos_full")), p.get("jersey") or ""))
         n = len(ordered)
         y = round(band_y[band], 1)
+        # A row's width scales with its own player count rather than always
+        # spanning the full 14-86 touchline-to-touchline range: a back four
+        # (n=4, the reference width) reaches the same near-touchline spread
+        # it always did, but a two-man central midfield sits narrow and
+        # central rather than stretched out to the same width as the
+        # fullbacks either side of it — narrower rows are that way because
+        # they're genuinely more central players (a double pivot), not just
+        # because there happen to be fewer of them.
+        half_span = 36 * min(1.0, (n - 1) / 3) if n > 1 else 0
         for j, p in enumerate(ordered):
-            x = 50.0 if n == 1 else 14 + j * (72 / (n - 1))
+            x = 50.0 if n == 1 else 50 - half_span + j * (2 * half_span) / (n - 1)
             out.append({**p, "x": round(x, 1), "y": y})
     return out
 
