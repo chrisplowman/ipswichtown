@@ -169,6 +169,41 @@ def test_assign_pitch_positions_single_player_centres_row():
     assert out[0]["y"] == 46
 
 
+def test_assign_pitch_positions_4231_gets_five_distinct_rows():
+    # G, CD-L, LB, RB, CD-R, LM, AM-L, AM, RM, AM-R, F — a 4-2-3-1, not the
+    # 4-5-1 it would flatten to if attacking midfielders weren't split from
+    # the deeper two into their own, more advanced row.
+    from build import assign_pitch_positions
+    starters = [
+        {"jersey": "1", "pos_full": "Goalkeeper"},
+        {"jersey": "2", "pos_full": "Center Left Defender"},
+        {"jersey": "3", "pos_full": "Left Back"},
+        {"jersey": "4", "pos_full": "Right Back"},
+        {"jersey": "5", "pos_full": "Center Right Defender"},
+        {"jersey": "6", "pos_full": "Left Midfielder"},
+        {"jersey": "7", "pos_full": "Attacking Midfielder Left"},
+        {"jersey": "8", "pos_full": "Attacking Midfielder"},
+        {"jersey": "9", "pos_full": "Right Midfielder"},
+        {"jersey": "10", "pos_full": "Attacking Midfielder Right"},
+        {"jersey": "11", "pos_full": "Forward"},
+    ]
+    out = assign_pitch_positions(starters, gk_y=96, fwd_y=54)
+    by_jersey = {p["jersey"]: p for p in out}
+
+    rows = sorted({by_jersey[j]["y"] for j in [str(n) for n in range(1, 12)]})
+    assert len(rows) == 5, f"expected 5 distinct rows (GK/def/mid/AM/fwd), got {rows}"
+
+    def_y = by_jersey["2"]["y"]
+    mid_y = by_jersey["6"]["y"]
+    am_y = by_jersey["7"]["y"]
+    assert by_jersey["3"]["y"] == by_jersey["4"]["y"] == by_jersey["5"]["y"] == def_y
+    assert by_jersey["9"]["y"] == mid_y
+    assert by_jersey["8"]["y"] == by_jersey["10"]["y"] == am_y
+    # attacking midfielders sit ahead of the regular midfielders — both
+    # advancing from goal (96) toward the halfway line (54)
+    assert 96 > def_y > mid_y > am_y > 54
+
+
 def test_pslug_and_pnorm():
     from build import _pslug, _pnorm
     assert _pslug("Liam Delap") == "liam-delap"
