@@ -162,6 +162,31 @@ def test_assign_pitch_positions_bands_and_orders_by_side():
     assert max(left_x) < min(right_x)
 
 
+def test_assign_pitch_positions_narrow_row_stays_central():
+    # A back four reaches out toward both touchlines, but a two-man central
+    # midfield pairing should sit narrow and central rather than being
+    # stretched out to that same touchline-to-touchline width.
+    from build import assign_pitch_positions
+    starters = [
+        {"jersey": "1", "pos_full": "Goalkeeper"},
+        {"jersey": "2", "pos_full": "Right Back"},
+        {"jersey": "3", "pos_full": "Left Back"},
+        {"jersey": "5", "pos_full": "Center Right Defender"},
+        {"jersey": "6", "pos_full": "Center Left Defender"},
+        {"jersey": "8", "pos_full": "Left Midfielder"},
+        {"jersey": "10", "pos_full": "Right Midfielder"},
+        {"jersey": "9", "pos_full": "Forward"},
+    ]
+    out = assign_pitch_positions(starters, gk_y=96, fwd_y=54)
+    by_jersey = {p["jersey"]: p for p in out}
+
+    def_span = max(by_jersey[j]["x"] for j in ("2", "3", "5", "6")) - min(by_jersey[j]["x"] for j in ("2", "3", "5", "6"))
+    mid_span = abs(by_jersey["10"]["x"] - by_jersey["8"]["x"])
+    assert def_span > mid_span
+    # the narrow midfield pair still straddles the centre line evenly
+    assert (by_jersey["8"]["x"] + by_jersey["10"]["x"]) / 2 == 50.0
+
+
 def test_assign_pitch_positions_single_player_centres_row():
     from build import assign_pitch_positions
     out = assign_pitch_positions([{"jersey": "9", "pos_full": "Forward"}], gk_y=4, fwd_y=46)
