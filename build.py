@@ -209,14 +209,16 @@ def match_report_links(mp):
 
 
 def _pitch_band(pos_full):
-    """GK / defence / midfield / attack, from ESPN's own position name text
-    (e.g. "Center Left Defender", "Attacking Midfielder Left", "Forward") —
-    a formation string like "4-2-3-1" only gives row *sizes*, not which
-    specific players are in which row, and ESPN's numeric formationPlace
-    slot (1-11) isn't a reliably documented guide to that either without a
-    hand-verified table per formation shape. Band text is self-describing
-    and works for any formation, at the cost of collapsing a double
-    midfield line (e.g. 4-2-3-1's two banks) into one band."""
+    """GK / defence / (regular) midfield / attacking midfield / attack, from
+    ESPN's own position name text (e.g. "Center Left Defender", "Attacking
+    Midfielder Left", "Forward") — a formation string like "4-2-3-1" only
+    gives row *sizes*, not which specific players are in which row, and
+    ESPN's numeric formationPlace slot (1-11) isn't a reliably documented
+    guide to that either without a hand-verified table per formation shape.
+    Band text is self-describing and works for any formation: an explicit
+    "Attacking Midfielder" (left/right/centre) gets its own more advanced
+    band ahead of plain midfielders (e.g. 4-2-3-1's back two vs front
+    three), so a formation isn't flattened into one midfield row it isn't."""
     name = (pos_full or "").lower()
     if "goalkeeper" in name:
         return "gk"
@@ -224,6 +226,8 @@ def _pitch_band(pos_full):
         return "def"
     if "forward" in name or "striker" in name or "winger" in name:
         return "fwd"
+    if "attacking" in name:
+        return "am"
     return "mid"
 
 
@@ -241,22 +245,32 @@ def assign_pitch_positions(starters, gk_y, fwd_y):
     left touchline to 100 right; y: gk_y at this side's own goal to fwd_y
     at the halfway line), banded by _pitch_band/_pitch_side above. Two
     calls with mirrored gk_y/fwd_y ranges — one per side — lay both teams
-    out on a single shared pitch, facing off across the halfway line."""
-    bands = {"gk": [], "def": [], "mid": [], "fwd": []}
+    out on a single shared pitch, facing off across the halfway line.
+    gk_y/fwd_y are fixed endpoints; whichever of def/mid/am are actually
+    present (e.g. a back three with no "Attacking Midfielder"-labelled
+    player has no "am" row) are spaced evenly between them, so a plain
+    4-3-3 still gets the same even four-row spacing it always did, and a
+    4-2-3-1 gets a true fifth row for its attacking-midfield three instead
+    of it being folded into one flat five-wide midfield line."""
+    bands = {"gk": [], "def": [], "mid": [], "am": [], "fwd": []}
     for p in starters:
         bands[_pitch_band(p.get("pos_full"))].append(p)
-    step = (fwd_y - gk_y) / 3
-    band_y = {"gk": gk_y, "def": gk_y + step, "mid": gk_y + step * 2, "fwd": fwd_y}
+    interior = [b for b in ("def", "mid", "am") if bands[b]]
+    step = (fwd_y - gk_y) / (len(interior) + 1)
+    band_y = {"gk": gk_y, "fwd": fwd_y}
+    for i, b in enumerate(interior, start=1):
+        band_y[b] = gk_y + step * i
     out = []
-    for band in ("gk", "def", "mid", "fwd"):
+    for band in ("gk", "def", "mid", "am", "fwd"):
         players = bands[band]
         if not players:
             continue
         ordered = sorted(players, key=lambda p: (_pitch_side(p.get("pos_full")), p.get("jersey") or ""))
         n = len(ordered)
-        for i, p in enumerate(ordered):
-            x = 50.0 if n == 1 else 14 + i * (72 / (n - 1))
-            out.append({**p, "x": round(x, 1), "y": round(band_y[band], 1)})
+        y = round(band_y[band], 1)
+        for j, p in enumerate(ordered):
+            x = 50.0 if n == 1 else 14 + j * (72 / (n - 1))
+            out.append({**p, "x": round(x, 1), "y": y})
     return out
 
 

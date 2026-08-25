@@ -365,6 +365,13 @@ def fetch_table_from_fbd(fbd_rows):
 IPSWICH_ESPN_TEAM_ID = "373"
 PLAY_CACHE_DIR = "play_cache"
 LINEUP_CACHE_DIR = "lineup_cache"
+# Bumped whenever fetch_espn_lineups' return shape changes in a way older
+# cache entries can't be trusted to have (e.g. the full bench vs. only used
+# substitutes) — a mismatch forces a one-time re-fetch instead of an old
+# shape sitting silently in the cache forever. One counter for the whole
+# lineups payload beats a pile of ad-hoc "does this key exist" checks that
+# each only catch the one gap they were written for.
+LINEUP_CACHE_SCHEMA = 2
 _TEAM_ID_RE = re.compile(r"/teams/(\d+)")
 
 
@@ -1604,19 +1611,14 @@ def main():
                         cached_lu = json.load(fh)
                 except (ValueError, OSError):
                     cached_lu = None
-                # Same deal: a cache entry written before this wrapper (or
-                # before per-player sub/card/goal/attendance detail) existed
-                # lacks these keys entirely — don't trust it, re-fetch once
-                # rather than let the gap sit silently (this cache is never
-                # otherwise invalidated).
-                if isinstance(cached_lu, dict) and "fetched_at" in cached_lu:
+                # A cache entry from an older LINEUP_CACHE_SCHEMA was written
+                # by a version of fetch_espn_lineups whose return shape isn't
+                # trusted to match the current one — don't use it, re-fetch
+                # once rather than let the gap sit silently (this cache is
+                # never otherwise invalidated).
+                if isinstance(cached_lu, dict) and cached_lu.get("schema") == LINEUP_CACHE_SCHEMA:
                     lineups = cached_lu.get("lineups")
                     lineup_fetched_at = cached_lu["fetched_at"]
-                    side_entry = (lineups or {}).get("for") or (lineups or {}).get("against") or {}
-                    first_starter = next(iter(side_entry.get("starters") or []), {})
-                    if (first_starter and "cards" not in first_starter) or "attendance" not in (lineups or {}):
-                        lineups = None
-                        lineup_fetched_at = None
             if lineups is None:
                 try:
                     lineups = fetch_espn_lineups(event_id)
@@ -1627,7 +1629,8 @@ def main():
                         lineup_fetched_at = datetime.now(timezone.utc).isoformat()
                         try:
                             with open(lu_cache_file, "w") as fh:
-                                json.dump({"fetched_at": lineup_fetched_at, "lineups": lineups}, fh)
+                                json.dump({"schema": LINEUP_CACHE_SCHEMA,
+                                           "fetched_at": lineup_fetched_at, "lineups": lineups}, fh)
                         except OSError:
                             pass
             if lineups is not None:
