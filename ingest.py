@@ -845,6 +845,7 @@ def fetch_understat_league():
 #  - win probability modelled from ClubElo ratings                             #
 # --------------------------------------------------------------------------- #
 CANON = {  # collapse club-name variants (FPL / football-data / ClubElo) to one key
+    "ipswich": "ipswich", "ipswich town": "ipswich",
     "man city": "mancity", "manchester city": "mancity",
     "man united": "manutd", "man utd": "manutd", "manchester united": "manutd",
     "nott'm forest": "forest", "nottingham forest": "forest", "forest": "forest",
@@ -1046,6 +1047,16 @@ def fetch_clubelo_elos():
             except ValueError:
                 continue
     return elos
+
+
+def _teams_with_table_points(teams, table):
+    """fpl["teams"]'s own "points" field is fantasy-bootstrap metadata and isn't
+    kept in sync with real standings (it sits at 0 all season in practice) — return
+    teams with "points" overridden from the actual league table fetched separately,
+    joined by name the same way badges are matched onto that table elsewhere."""
+    pts_by_canon = {canon(row["team"]): row["points"] for row in (table or [])}
+    return {i: {**t, "points": pts_by_canon.get(canon(t["name"]), t.get("points", 0))}
+            for i, t in teams.items()}
 
 
 def monte_carlo(teams, all_fixtures, elos, ips_tid, n=10000):
@@ -1344,7 +1355,8 @@ def main():
     # Monte Carlo: simulate the rest of the season for survival odds + relegation odds
     survival, releg_odds = None, {}
     try:
-        survival, releg_odds = monte_carlo(teams, fpl["all_fixtures"], elos, tid)
+        teams_for_sim = _teams_with_table_points(teams, table)
+        survival, releg_odds = monte_carlo(teams_for_sim, fpl["all_fixtures"], elos, tid)
         if survival:
             print(f"  monte carlo: survival {survival['survive_pct']}% "
                   f"(avg {survival['avg_points']} pts, ~{survival['avg_position']}th, {survival['sims']} sims)")

@@ -27,6 +27,15 @@ def test_canon_known_aliases_collapse_to_same_key():
     assert canon("Spurs") == canon("Tottenham Hotspur") == "tottenham"
 
 
+def test_canon_ipswich_matches_short_and_full_name():
+    # ClubElo/football-data commonly list clubs by short name ("Ipswich"), FPL by
+    # the official one ("Ipswich Town") — without an alias these normalise to
+    # different keys ("ipswich" vs "ipswichtown"), silently dropping Ipswich's
+    # own Elo lookup to the generic 1500 default while every other club keeps
+    # its real rating, which skews the survival simulation badly.
+    assert canon("Ipswich") == canon("Ipswich Town") == "ipswich"
+
+
 def test_canon_unknown_name_falls_back_to_normalised():
     assert canon("Some New Club FC") == _norm("Some New Club FC")
 
@@ -93,6 +102,25 @@ def test_monte_carlo_survival_and_releg_sum():
     assert surv["pts_lo"] <= surv["avg_points"] <= surv["pts_hi"]
     assert surv["pos_lo"] <= surv["avg_position"] <= surv["pos_hi"]
     assert surv["sims"] == 2000
+
+
+def test_teams_with_table_points_overrides_stale_fpl_points():
+    from ingest import _teams_with_table_points
+    # fpl["teams"]'s own "points" (0 here, matching real-world FPL behaviour)
+    # must be replaced by the real standings from the league table, joined by name.
+    teams = {1: {"id": 1, "name": "Ipswich Town", "points": 0},
+             2: {"id": 2, "name": "Arsenal", "points": 0}}
+    table = [{"team": "Ipswich Town", "points": 8}, {"team": "Arsenal", "points": 20}]
+    out = _teams_with_table_points(teams, table)
+    assert out[1]["points"] == 8 and out[2]["points"] == 20
+    assert out[1]["name"] == "Ipswich Town"  # other fields untouched
+
+
+def test_teams_with_table_points_falls_back_when_table_missing():
+    from ingest import _teams_with_table_points
+    teams = {1: {"id": 1, "name": "Ipswich Town", "points": 5}}
+    assert _teams_with_table_points(teams, None)[1]["points"] == 5
+    assert _teams_with_table_points(teams, [])[1]["points"] == 5
 
 
 def test_monte_carlo_no_remaining_fixtures_returns_none():
