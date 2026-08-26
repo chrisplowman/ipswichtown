@@ -45,7 +45,7 @@ NEWS_FEEDS = [
     ("TWTD", "https://www.twtd.co.uk/rss/"),
     ("ITFC.CO.UK", "https://www.itfc.co.uk/rss.xml"),
     ("The Athletic", "https://www.nytimes.com/athletic/rss/football/ipswich/"),
-    ("EADT", "http://www.eadt.co.uk/sport/ipswich-town/rss/"),
+    ("EADT", "https://www.eadt.co.uk/sport/ipswich-town/rss/"),
 ]
 NEWS_LIMIT = 18                    # max articles to keep after merging feeds
 SHOT_MAP_MATCHES = 5               # how many recent matches to keep shot maps for

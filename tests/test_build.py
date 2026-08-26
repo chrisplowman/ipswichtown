@@ -258,7 +258,7 @@ def test_site_builds_end_to_end(tmp_path, monkeypatch):
     build.main()
     site = tmp_path / "site"
     for f in ["index.html", "table.html", "charts.html", "matches.html", "squad.html",
-              "news.html", "style.css"]:
+              "news.html", "style.css", "sitemap.xml", "robots.txt"]:
         assert (site / f).exists(), f"missing {f}"
     assert list((site / "match").glob("*.html")), "no match pages built"
     assert list((site / "player").glob("*.html")), "no player pages built"
@@ -267,3 +267,10 @@ def test_site_builds_end_to_end(tmp_path, monkeypatch):
     assert "Ipswich Town" in idx
     match_html = next((site / "match").glob("*.html")).read_text()
     assert 'class="masthead' in match_html and 'href="../style.css"' in match_html
+    sitemap = (site / "sitemap.xml").read_text()
+    match_slug = next((site / "match").glob("*.html")).stem
+    player_slug = next((site / "player").glob("*.html")).stem
+    assert f"match/{match_slug}.html" in sitemap
+    assert f"player/{player_slug}.html" in sitemap
+    assert "women/index.html" in sitemap
+    assert "sitemap.xml" in (site / "robots.txt").read_text()
