@@ -765,6 +765,16 @@ def simplify_pos(p):
     return "MID"
 
 
+def _profile_min_minutes(league_teams):
+    """Minutes bar for the league-wide player-comparison tool. A fixed 450-minute
+    bar (five full games) shuts every non-Ipswich player out early in the season,
+    since nobody's played that much yet — scale it with how far the league has
+    actually played (half the minutes available so far), capped at 450 once
+    there's been enough football for that to be a fair ask."""
+    games_so_far = round(sum(t["games"] for t in league_teams.values()) / len(league_teams)) if league_teams else 0
+    return min(450, max(45, games_so_far * 45))
+
+
 def fetch_understat_league():
     league_data = _understat_json(f"getLeagueData/EPL/{UNDERSTAT_SEASON}",
                                   f"https://understat.com/league/EPL/{UNDERSTAT_SEASON}")
@@ -1465,7 +1475,7 @@ def main():
             peers = [v[metric] for v in pool.get(pos, [])]
             return round(sum(1 for x in peers if x <= val) / len(peers) * 100) if peers else 0
         keys = ["goals", "assists", "npxg", "xa", "shots", "key_passes", "xgchain", "xgbuildup"]
-        PROFILE_MIN_MINUTES = 450   # league players need a decent sample to be comparable
+        PROFILE_MIN_MINUTES = _profile_min_minutes(league_teams)
         for r in rows:
             r["is_ipswich"] = TEAM_NAME_MATCH in r["team"].lower()
             if r["is_ipswich"] or r["minutes"] >= PROFILE_MIN_MINUTES:

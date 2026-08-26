@@ -15,6 +15,7 @@
 <meta name="twitter:title" content="{{ og_title }}">
 <meta name="twitter:description" content="{{ og_description }}">
 {% if og_image %}<meta name="twitter:image" content="{{ og_image }}">{% endif %}
+{% if ld_json %}<script type="application/ld+json">{{ ld_json|safe }}</script>{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ css_href }}">

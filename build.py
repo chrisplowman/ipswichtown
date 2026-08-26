@@ -1060,8 +1060,17 @@ def render_site(template, match_template, player_template, data):
             match_json = json.dumps({"opponent": mp.get("opponent", ""),
                                      "shots_for": mp.get("shots_for", []),
                                      "shots_against": mp.get("shots_against", [])}).replace("<", "\\u003c")
+            ips_name = team.get("name", "Ipswich Town")
+            home_team, away_team = (ips_name, mp["opponent"]) if mp.get("home") else (mp["opponent"], ips_name)
+            ld_json = json.dumps({
+                "@context": "https://schema.org", "@type": "SportsEvent",
+                "name": f"{home_team} vs {away_team}", "sport": "Football",
+                "startDate": mp.get("date"), "eventStatus": "https://schema.org/EventCompleted",
+                "homeTeam": {"@type": "SportsTeam", "name": home_team},
+                "awayTeam": {"@type": "SportsTeam", "name": away_team},
+                "url": f"{SITE_URL}/match/{mp['slug']}.html"}).replace("<", "\\u003c")
             html = match_template.render(m=mp, season=season,
-                                         generated_at=generated_at, match_json=match_json,
+                                         generated_at=generated_at, match_json=match_json, ld_json=ld_json,
                                          pages=PAGES, nav_prefix="../", current="matches",
                                          css_href="../style.css", team=team, position=position,
                                          og_title=score + " · Match report",
@@ -1083,6 +1092,28 @@ def render_site(template, match_template, player_template, data):
                                           og_description=f"{pp['name']}'s Ipswich Town season: stats, percentile profile, match log and shot map.",
                                           og_image="../og.png", canonical=f"{SITE_URL}/player/{pp['slug']}.html")
             (outdir / "player" / f"{pp['slug']}.html").write_text(html)
+
+
+def _write_sitemap(outdir, data, women_data):
+    """A plain sitemap.xml (+ matching robots.txt) so search engines can find every
+    page — most valuably the match and player pages, which now have readable URLs
+    but no other inbound links from outside the site itself."""
+    lastmod = (data.get("generated_at") or "")[:10]
+    urls = [(f"{SITE_URL}/{filename}", lastmod) for _, filename, _ in PAGES]
+    urls += [(f"{SITE_URL}/match/{mp['slug']}.html", lastmod)
+             for mp in data.get("match_pages") or [] if mp.get("slug")]
+    urls += [(f"{SITE_URL}/player/{sp['slug']}.html", lastmod)
+             for sp in data.get("squad") or [] if sp.get("slug")]
+    women_lastmod = (women_data.get("generated_at") or "")[:10] if women_data else lastmod
+    urls += [(f"{SITE_URL}/women/{filename}", women_lastmod) for _, filename, _ in WOMEN_PAGES]
+
+    entries = "\n".join(f"  <url><loc>{loc}</loc>{f'<lastmod>{lm}</lastmod>' if lm else ''}</url>"
+                        for loc, lm in urls)
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+          f"{entries}\n</urlset>\n")
+    (outdir / "sitemap.xml").write_text(xml)
+    (outdir / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
 
 
 def main():
@@ -1107,6 +1138,8 @@ def main():
     render_women_site(women_template, women_data, SITE / "women")
     print(f"Built {len(WOMEN_PAGES)} women's pages"
           f"{' (sample data — no live source yet)' if not DATA_WOMEN.exists() else ''}.")
+
+    _write_sitemap(SITE, real, women_data)
 
 
 if __name__ == "__main__":

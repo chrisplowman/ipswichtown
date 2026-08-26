@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from ingest import to_float, _norm, canon, simplify_pos, win_probs, _fbd_iso
+from ingest import to_float, _norm, canon, simplify_pos, win_probs, _fbd_iso, _profile_min_minutes
 
 
 def test_to_float_valid():
@@ -38,6 +38,15 @@ def test_simplify_pos():
     assert simplify_pos("S") == "FWD"
     assert simplify_pos("M") == "MID"
     assert simplify_pos("") == "MID"
+
+
+def test_profile_min_minutes_scales_with_season_progress():
+    # no games played yet: floor of 45 (half a match), not the full 450
+    assert _profile_min_minutes({}) == 45
+    # two games in: half the available minutes so far, still well under 450
+    assert _profile_min_minutes({"A": {"games": 2}, "B": {"games": 2}}) == 90
+    # deep into the season: caps at 450 rather than climbing forever
+    assert _profile_min_minutes({"A": {"games": 20}, "B": {"games": 20}}) == 450
 
 
 def test_win_probs_sums_to_100():
