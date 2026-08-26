@@ -1259,14 +1259,21 @@
     if(!window.Chart){ showNote('radar','Charts library did not load.'); return; }
     var M=[['goals','Goals'],['assists','Assists'],['npxg','npxG'],['xa','xA'],
            ['shots','Shots'],['key_passes','Key passes'],['xgchain','xGChain'],['xgbuildup','xGBuildup']];
-    // unique display key per player, plus datalist options (Ipswich list vs all-PL list)
-    function keyOf(p){return p.name + (p.team ? ' (' + p.team + ')' : '');}
+    // unique display key per player ("Surname, First"), plus datalist options
+    // (Ipswich list vs all-PL list) sorted the same way, surname first
+    function surnameFirst(name){
+      var parts=(name||'').trim().split(/\s+/);
+      if(parts.length<2) return name;
+      var last=parts.pop();
+      return last+', '+parts.join(' ');
+    }
+    function keyOf(p){return surnameFirst(p.name) + (p.team ? ' (' + p.team + ')' : '');}
     var byKey={};
     profs.forEach(function(p){ byKey[keyOf(p)]=p; });
     function opt(p){var o=document.createElement('option'); o.value=keyOf(p); o.label=p.pos; return o;}
-    profs.forEach(function(p){ if(p.is_ipswich) la.appendChild(opt(p)); });
-    profs.slice().sort(function(x,y){return x.name.localeCompare(y.name);})
-      .forEach(function(p){ lb.appendChild(opt(p)); });
+    var bySurname=profs.slice().sort(function(x,y){return keyOf(x).localeCompare(keyOf(y));});
+    bySurname.forEach(function(p){ if(p.is_ipswich) la.appendChild(opt(p)); });
+    bySurname.forEach(function(p){ lb.appendChild(opt(p)); });
 
     var chart, curA=null, curB=null;
     function ds(p,c){return {label:p.name,data:M.map(function(m){return p.pct[m[0]];}),
