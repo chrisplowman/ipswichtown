@@ -314,3 +314,62 @@ def test_strip_html_removes_tags():
     from ingest import _strip_html
     out = _strip_html("<p>Hello <b>world</b></p>")
     assert "Hello" in out and "world" in out and "<" not in out
+
+
+# ---- News feed item parsing -------------------------------------------------
+def _feed_item(xml):
+    import xml.etree.ElementTree as ET
+    return ET.fromstring(xml)
+
+
+def test_item_image_prefers_media_thumbnail():
+    from ingest import _item_image
+    e = _feed_item(
+        '<item xmlns:media="http://search.yahoo.com/mrss/">'
+        '<media:thumbnail url="https://example.com/thumb.jpg"/>'
+        '<enclosure url="https://example.com/other.jpg" type="image/jpeg"/>'
+        '</item>')
+    assert _item_image(e, "") == "https://example.com/thumb.jpg"
+
+
+def test_item_image_falls_back_to_enclosure():
+    from ingest import _item_image
+    e = _feed_item('<item><enclosure url="https://example.com/pic.jpg" type="image/jpeg"/></item>')
+    assert _item_image(e, "") == "https://example.com/pic.jpg"
+
+
+def test_item_image_falls_back_to_body_img():
+    from ingest import _item_image
+    e = _feed_item("<item></item>")
+    desc = '<p>Some text <img src="https://example.com/body.jpg" alt=""></p>'
+    assert _item_image(e, desc) == "https://example.com/body.jpg"
+
+
+def test_item_image_rejects_non_http_urls():
+    from ingest import _item_image
+    e = _feed_item('<item><enclosure url="javascript:alert(1)" type="image/jpeg"/></item>')
+    assert _item_image(e, "") is None
+
+
+def test_item_image_none_when_no_image_found():
+    from ingest import _item_image
+    e = _feed_item("<item></item>")
+    assert _item_image(e, "<p>No image here</p>") is None
+
+
+def test_parse_feed_date_rfc822():
+    from ingest import _parse_feed_date
+    dt = _parse_feed_date("Wed, 26 Aug 2026 11:21:00 GMT")
+    assert dt is not None and (dt.year, dt.month, dt.day) == (2026, 8, 26)
+
+
+def test_parse_feed_date_iso8601():
+    from ingest import _parse_feed_date
+    dt = _parse_feed_date("2026-08-26T11:21:00Z")
+    assert dt is not None and (dt.year, dt.month, dt.day) == (2026, 8, 26)
+
+
+def test_parse_feed_date_invalid_or_blank_returns_none():
+    from ingest import _parse_feed_date
+    assert _parse_feed_date("") is None
+    assert _parse_feed_date("not a date") is None

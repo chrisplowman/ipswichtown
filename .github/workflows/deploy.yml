@@ -1,9 +1,14 @@
 name: Build & deploy Ipswich stats
 
 on:
-  # Refresh a few times a day (UTC). Matchdays are covered by the 3-hourly cadence.
+  # Two-tier refresh (UTC): a dense sweep across the full range of Premier League
+  # kickoff-to-final-whistle windows (earliest KO ~11:30 UTC, latest full time
+  # ~22:00 UTC, across both GMT and BST) so a finished match's data lands within
+  # ~15 minutes, and an hourly cadence the rest of the day for non-matchday
+  # freshness (news, table, injury news).
   schedule:
-    - cron: "0 * * * *"
+    - cron: "*/15 11-22 * * *"
+    - cron: "0 0-10,23 * * *"
   push:
     branches: [main]
   workflow_dispatch:        # lets you trigger a rebuild by hand from the Actions tab
