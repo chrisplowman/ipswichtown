@@ -825,7 +825,15 @@
           {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
           {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}];
         if(safe && safe.played){
-          var sp = safe.points/safe.played, survFinal=Math.round(sp*TOTAL_GW);
+          // The 17th-placed side's current points-per-game, blended toward the
+          // classic ~38pt "great escape" survival benchmark early on — with only
+          // a couple of games played, that team's real pace is one bad or lucky
+          // result away from being wildly unrepresentative (even 0), so trust it
+          // more only as its own sample of games grows.
+          var BASELINE_PACE = 38/TOTAL_GW;
+          var trust = Math.min(1, safe.played/10);
+          var sp = trust*(safe.points/safe.played) + (1-trust)*BASELINE_PACE;
+          var survFinal=Math.round(sp*TOTAL_GW);
           dsets.push({label:'Survival pace (~'+survFinal+' pts)',
             data:seasonLabels.map(function(_,i){return +(sp*(i+1)).toFixed(1);}),
             borderColor:C.red,borderDash:[3,4],tension:0,pointRadius:0,fill:false});
