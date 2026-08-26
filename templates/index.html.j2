@@ -1264,7 +1264,9 @@
     var byKey={};
     profs.forEach(function(p){ byKey[keyOf(p)]=p; });
     function opt(p){var o=document.createElement('option'); o.value=keyOf(p); o.label=p.pos; return o;}
-    profs.forEach(function(p){ if(p.is_ipswich) la.appendChild(opt(p)); lb.appendChild(opt(p)); });
+    profs.forEach(function(p){ if(p.is_ipswich) la.appendChild(opt(p)); });
+    profs.slice().sort(function(x,y){return x.name.localeCompare(y.name);})
+      .forEach(function(p){ lb.appendChild(opt(p)); });
 
     var chart, curA=null, curB=null;
     function ds(p,c){return {label:p.name,data:M.map(function(m){return p.pct[m[0]];}),
@@ -1289,10 +1291,20 @@
       if(p){ if(isA) curA=p; else curB=p; draw(); }
       else if(input.value===''){ if(isA) curA=null; else curB=null; draw(); }
     }
-    a.addEventListener('change',function(){pick(a,true);});
-    a.addEventListener('input',function(){pick(a,true);});
-    b.addEventListener('change',function(){pick(b,false);});
-    b.addEventListener('input',function(){pick(b,false);});
+    // a filled <input list> won't offer the full dropdown again on the next click —
+    // most browsers only suggest options matching what's currently typed, and a
+    // completed name matches only itself — so clear it on focus (armed for a fresh
+    // pick) and restore the current player's name on blur if nothing new was chosen.
+    function armForReselect(input,isA){
+      input.addEventListener('focus',function(){ input.value=''; });
+      input.addEventListener('blur',function(){
+        if(!byKey[input.value]) input.value=(isA?curA:curB)?keyOf(isA?curA:curB):'';
+      });
+      input.addEventListener('change',function(){pick(input,isA);});
+      input.addEventListener('input',function(){pick(input,isA);});
+    }
+    armForReselect(a,true);
+    armForReselect(b,false);
     var firstIps=profs.filter(function(p){return p.is_ipswich;})[0];
     if(firstIps){ curA=firstIps; a.value=keyOf(firstIps); draw(); }
     else showNote('radar','No Ipswich player minutes yet.');
