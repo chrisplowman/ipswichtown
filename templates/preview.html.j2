@@ -73,6 +73,7 @@
             <span class="wp-l" style="width:{{ next_opponent.prob.opponent }}%">{{ next_opponent.prob.opponent }}%</span>
           </div>
           <div class="wp-key"><span>Ipswich win</span><span>Draw</span><span>{{ next_opponent.short }} win</span></div>
+          {% if next_opponent.elo %}<p class="empty-note" style="padding-top:8px">Elo: Ipswich {{ next_opponent.elo.ipswich }} vs {{ next_opponent.name }} {{ next_opponent.elo.opponent }} ({{ '%+d'|format(next_opponent.elo.ipswich - next_opponent.elo.opponent) }})</p>{% endif %}
         </div>
         {% endif %}
       </div>

@@ -206,7 +206,7 @@
         </div>
         {% endif %}
         <div class="card">
-          <div class="cardhead"><h3>Season record</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results and goals for the season so far, with Ipswich's league rank on each measure. Source: Fantasy Premier League API and the league table.</span></button></div>
+          <div class="cardhead"><h3>Season record</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results and goals for the season so far, with Ipswich's league rank on each measure. Source: Fantasy Premier League API, the league table and ClubElo.</span></button></div>
           <table class="reftable">
             <thead><tr><th>Record</th><th></th><th>Rank</th></tr></thead>
             <tbody>
@@ -218,6 +218,7 @@
               <tr><td>Goals for</td><td class="v">{{ summary.gf }}</td><td>{% if summary_ranks.gf %}{{ summary_ranks.gf|ordinal }}{% else %}–{% endif %}</td></tr>
               <tr><td>Goals against</td><td class="v">{{ summary.ga }}</td><td>{% if summary_ranks.ga %}{{ summary_ranks.ga|ordinal }}{% else %}–{% endif %}</td></tr>
               <tr><td>Goal diff</td><td class="v {{ 'pos' if summary.gd>0 else 'neg' if summary.gd<0 else '' }}">{{ '%+d'|format(summary.gd) if summary.gd else 0 }}</td><td>{% if summary_ranks.gd %}{{ summary_ranks.gd|ordinal }}{% else %}–{% endif %}</td></tr>
+              {% if elo_current is not none %}<tr><td>Elo rating</td><td class="v">{{ elo_current }}</td><td>{% if summary_ranks.elo %}{{ summary_ranks.elo|ordinal }}{% else %}–{% endif %}</td></tr>{% endif %}
             </tbody>
           </table>
         </div>
@@ -410,7 +411,7 @@
         <div class="canvas-holder"><canvas id="c-xpts"></canvas></div><div class="note" id="n-xpts" hidden></div>
       </div>
       <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Elo trend</h3><p class="sub">The club's ClubElo rating through the season: a single-number measure of strength. Rising = getting stronger relative to the field.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">The club's published Elo rating history. Source: ClubElo.</span></button></div>
+        <div class="cardhead"><div class="htitle"><h3>Elo trend</h3><p class="sub">The club's ClubElo rating through the season against nearby relegation-zone rivals: a single-number measure of strength. Rising = getting stronger relative to the field.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Ipswich's published Elo rating history, plus the same for clubs within 3 places of them in the table. Source: ClubElo.</span></button></div>
         <div class="canvas-holder"><canvas id="c-elo"></canvas></div><div class="note" id="n-elo" hidden></div>
       </div>
       <div class="chartcard wide">
@@ -533,7 +534,7 @@
         <div class="canvas-holder"><canvas id="c-strength"></canvas></div><div class="note" id="n-strength" hidden></div>
       </div>
       <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Fixture difficulty: rest of season</h3><p class="sub">FPL's difficulty rating (1 easy to 5 hard) for every remaining fixture: scan the whole run-in for a tough patch or a kind one.</p></div><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">FPL's fixture difficulty rating for every remaining match this season (1 easy to 5 hard). Source: Fantasy Premier League API.</span></button></div>
+        <div class="cardhead"><div class="htitle"><h3>Fixture difficulty: rest of season</h3><p class="sub">FPL's difficulty rating (1 easy to 5 hard) for every remaining fixture, plus an Elo-modelled win probability where available: scan the whole run-in for a tough patch or a kind one.</p></div><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">FPL's fixture difficulty rating (1 easy to 5 hard) and a win probability modelled from Elo ratings, for every remaining match this season. Source: Fantasy Premier League API and ClubElo.</span></button></div>
         {% if upcoming %}
         <div class="fdr-strip">
           {% for f in upcoming %}
@@ -541,6 +542,7 @@
             <span class="fdr-gw">GW{{ f.event }}</span>
             <span class="fdr fdr-{{ f.difficulty or 3 }}" title="Fixture difficulty {{ f.difficulty }}/5">{{ f.difficulty or '–' }}</span>
             <span class="fdr-opp">{{ f.opponent_short }}{{ ' (H)' if f.home else ' (A)' }}</span>
+            {% if f.elo_win_pct is not none %}<span class="fdr-elo" title="Elo-modelled win probability">{{ f.elo_win_pct }}% win</span>{% endif %}
           </div>
           {% endfor %}
         </div>
@@ -1039,14 +1041,42 @@
         showNote('chances','No shot-location data yet.');
       }
 
-      // Elo trend
+      // Elo trend: Ipswich's own trajectory, with nearby relegation-zone
+      // rivals overlaid as muted context lines (same rank window as the
+      // relegation-picture table) so the shape of the fight is visible, not
+      // just Ipswich in isolation.
       var eh = DATA.elo_history||[];
-      if(eh.length>1){ new Chart(document.getElementById('c-elo'),{type:'line',
-        data:{labels:eh.map(function(d){return d.date;}),datasets:[
-          {label:'Elo',data:eh.map(function(d){return d.elo;}),borderColor:C.blue,
-            backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:2}]},
-        options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},
-          y:{grid:{color:C.line},title:{display:true,text:'ClubElo rating'}}}})}); }
+      var eRivals = DATA.elo_history_rivals||[];
+      if(eh.length>1){
+        // union of every date any of these clubs has an Elo update on, sorted
+        var dateSet={};
+        eh.forEach(function(d){dateSet[d.date]=1;});
+        eRivals.forEach(function(r){(r.history||[]).forEach(function(d){dateSet[d.date]=1;});});
+        var dates=Object.keys(dateSet).sort();
+        // forward-fill: a club's Elo doesn't change between its own update
+        // points, so carry the last known rating forward rather than leaving
+        // gaps — but stay null (a real gap) before that club's first entry.
+        function series(hist){
+          var byDate={}; (hist||[]).forEach(function(d){byDate[d.date]=d.elo;});
+          var last=null;
+          return dates.map(function(dt){
+            if(byDate[dt]!=null) last=byDate[dt];
+            return last;
+          });
+        }
+        var dsets=[{label:'Ipswich',data:series(eh),borderColor:C.blue,
+          backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:2,borderWidth:2.5,order:0}];
+        eRivals.forEach(function(r){
+          dsets.push({label:r.short||r.team,data:series(r.history),borderColor:C.muted,
+            backgroundColor:'transparent',fill:false,tension:.25,pointRadius:0,borderWidth:1,
+            borderDash:[3,3],order:1});
+        });
+        new Chart(document.getElementById('c-elo'),{type:'line',
+          data:{labels:dates,datasets:dsets},
+          options:baseOpts({plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
+            scales:{x:{grid:{display:false}},
+              y:{grid:{color:C.line},title:{display:true,text:'ClubElo rating'}}}})});
+      }
       else showNote('elo','No Elo history yet.');
 
       // Goals by 15-minute phase (from match-page shots)

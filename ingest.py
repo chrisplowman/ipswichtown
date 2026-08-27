@@ -1003,12 +1003,14 @@ def fetch_league_tables(rows):
     return build("h"), build("a"), form
 
 
-def fetch_elo_history(cutoff="2026-07-01"):
-    """Ipswich's ClubElo rating trajectory across the current season."""
+def fetch_elo_history(club="Ipswich", cutoff="2026-07-01"):
+    """A club's ClubElo rating trajectory across the current season. `club` must
+    be ClubElo's own name for that club (see fetch_clubelo_elos's `names` return
+    value) — their per-club endpoint doesn't accept arbitrary aliases."""
     text = None
     for scheme in ("http", "https"):
         try:
-            text = get_text(f"{scheme}://api.clubelo.com/Ipswich")
+            text = get_text(f"{scheme}://api.clubelo.com/{club}")
             break
         except requests.RequestException:
             continue
@@ -1026,7 +1028,11 @@ def fetch_elo_history(cutoff="2026-07-01"):
 
 
 def fetch_clubelo_elos():
-    """Current Elo rating for every club, from ClubElo's dated CSV endpoint."""
+    """Current Elo rating for every club, from ClubElo's dated CSV endpoint.
+    Returns (elos, names): `elos` is keyed by canon() name for cross-source
+    matching; `names` maps that same canon key back to ClubElo's own literal
+    "Club" string, needed to build a per-club history URL for fetch_elo_history
+    (their per-club endpoint takes their own name, not an arbitrary alias)."""
     today = datetime.now(timezone.utc).date().isoformat()
     # api.clubelo.com's HTTPS cert is invalid, so try HTTP first, then HTTPS.
     text = None
@@ -1038,15 +1044,16 @@ def fetch_clubelo_elos():
             continue
     if text is None:
         raise requests.RequestException("ClubElo unreachable over http and https")
-    elos = {}
+    elos, names = {}, {}
     for r in csv.DictReader(io.StringIO(text)):
         club, elo = r.get("Club"), r.get("Elo")
         if club and elo:
             try:
                 elos[canon(club)] = float(elo)
+                names[canon(club)] = club
             except ValueError:
                 continue
-    return elos
+    return elos, names
 
 
 def _teams_with_table_points(teams, table):
@@ -1345,10 +1352,11 @@ def main():
         pct = round(sum(1 for x in vals if x <= v) / len(vals) * 100) if vals else 50
         team_strength.append({"label": label, "value": v, "pct": pct})
 
-    # current Elo for every club (reused for next-opponent probability and the sim)
-    elos = {}
+    # current Elo for every club (reused for next-opponent probability, the
+    # sim, and the league-wide Elo rank below)
+    elos, elo_names = {}, {}
     try:
-        elos = fetch_clubelo_elos()
+        elos, elo_names = fetch_clubelo_elos()
     except Exception as e:
         print(f"  clubelo: skipped ({e})")
 
@@ -1380,6 +1388,47 @@ def main():
         for nk, v in meta_by_norm.items():
             if len(k) > 3 and (k in nk or nk in k): return v
         return (title[:3].upper(), None)
+
+    # league-wide Elo rank, and a few nearby-table rivals' own Elo trajectories
+    # so the trend chart can show Ipswich's line against the pack it's actually
+    # fighting — the same +/-3 rank window rival_tracker() uses in build.py for
+    # the relegation-picture table.
+    elo_current, elo_rank = None, None
+    if elos:
+        elo_current = elos.get(canon("Ipswich"))
+        if elo_current is not None:
+            elo_rank = sum(1 for v in elos.values() if v > elo_current) + 1
+            summary_ranks["elo"] = elo_rank
+            print(f"  elo: {round(elo_current)} ({elo_rank} of {len(elos)})")
+
+    # Elo-based win probability for every remaining fixture — supplements FPL's
+    # static 1-5 difficulty tier on the "fixture difficulty" strip with an
+    # actual number, reusing the same win_probs() model as the next-opponent
+    # preview, just run across the whole run-in instead of one match.
+    if elo_current is not None:
+        for f in upcoming:
+            opp_elo = elos.get(canon(f["opponent"]))
+            f["elo_win_pct"] = win_probs(elo_current, opp_elo, f["home"])["ipswich"] if opp_elo is not None else None
+
+    elo_history_rivals = []
+    if table:
+        my_row = next((r for r in table if r.get("is_ipswich")), None)
+        if my_row:
+            lo, hi = my_row["rank"] - 3, my_row["rank"] + 3
+            for row in table:
+                if row.get("is_ipswich") or not (lo <= row["rank"] <= hi):
+                    continue
+                clubelo_name = elo_names.get(canon(row["team"]))
+                if not clubelo_name:
+                    continue
+                try:
+                    hist = fetch_elo_history(clubelo_name)
+                except Exception:
+                    hist = []
+                if hist:
+                    short, _ = team_meta(row["team"])
+                    elo_history_rivals.append({"team": row["team"], "short": short, "history": hist})
+            print(f"  elo history (rivals): {len(elo_history_rivals)} clubs")
 
     # top scorers / assists — every club, from the Understat league page's
     # per-player data (already fetched above for team_scatter; just unused
@@ -1540,6 +1589,7 @@ def main():
         ei, eo = elos.get(canon("Ipswich")), elos.get(canon(opp_name))
         if ei and eo:
             next_opponent["prob"] = win_probs(ei, eo, home)
+            next_opponent["elo"] = {"ipswich": round(ei), "opponent": round(eo)}
         # Fallback so the win-probability bar always renders: derive from FPL
         # fixture difficulty when ClubElo gave us nothing.
         if not next_opponent.get("prob") and next_fixture and next_fixture.get("difficulty"):
@@ -1781,6 +1831,8 @@ def main():
         "understat_history": ips_history,
         "match_stats": match_stats,
         "elo_history": elo_history,
+        "elo_history_rivals": elo_history_rivals,
+        "elo_current": round(elo_current) if elo_current is not None else None,
         "home_table": home_table, "away_table": away_table,
         "team_strength": team_strength,
         "survival": survival, "releg_odds": releg_odds,
