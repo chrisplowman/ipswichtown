@@ -261,6 +261,20 @@ def test_build_player_pages_slug_and_join():
     assert data["squad"][0]["slug"] == "liam-delap"
 
 
+def test_ga_snippet_appears_only_when_measurement_id_set(tmp_path, monkeypatch):
+    import build
+    import json as _json
+    data = build.sample_data(_live())
+    monkeypatch.setattr(build, "SITE", tmp_path / "site")
+    monkeypatch.setattr(build, "DATA", tmp_path / "itfc.json")
+    monkeypatch.setattr(build, "GA_MEASUREMENT_ID", "G-TEST123")
+    (tmp_path / "itfc.json").write_text(_json.dumps(data))
+    build.main()
+    idx = (tmp_path / "site" / "index.html").read_text()
+    assert "googletagmanager.com/gtag/js?id=G-TEST123" in idx
+    assert "gtag('config','G-TEST123')" in idx
+
+
 def test_site_builds_end_to_end(tmp_path, monkeypatch):
     import build
     import json as _json
@@ -278,6 +292,7 @@ def test_site_builds_end_to_end(tmp_path, monkeypatch):
     idx = (site / "index.html").read_text()
     assert "{{" not in idx and "{%" not in idx, "unrendered Jinja in output"
     assert "Ipswich Town" in idx
+    assert "googletagmanager" not in idx, "GA should be absent when GA_MEASUREMENT_ID isn't set"
     match_html = next((site / "match").glob("*.html")).read_text()
     assert 'class="masthead' in match_html and 'href="../style.css"' in match_html
     sitemap = (site / "sitemap.xml").read_text()

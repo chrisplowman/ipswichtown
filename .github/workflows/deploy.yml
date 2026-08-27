@@ -86,6 +86,8 @@ jobs:
         continue-on-error: true
 
       - name: Build site
+        env:
+          GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
         run: python build.py
 
       - uses: actions/upload-pages-artifact@v4
