@@ -424,6 +424,7 @@ ul.list li.has-link .opp{color:var(--primary)}
   background:var(--surface-soft)}
 .fdr-gw{font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--steel)}
 .fdr-opp{font-size:11px;font-weight:600;color:var(--ink);white-space:nowrap}
+.fdr-elo{font-size:10px;color:var(--steel);font-variant-numeric:tabular-nums}
 .res{font-weight:700;font-size:12px;width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:#fff}
 /* result colour (win/draw/loss), shared by every component that codes a
    result this way: form/h2h dots, the win-probability bar, result badges,

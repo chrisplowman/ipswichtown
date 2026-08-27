@@ -416,7 +416,7 @@ def sample_data(live=None):
         return next((i for i, r in enumerate(arr, 1) if r["is_ipswich"]), None)
     summary_ranks = {"total": len(table), "points": _rank_on("points"), "won": _rank_on("won"),
                      "lost": _rank_on("lost", low_good=True), "gf": _rank_on("gf"),
-                     "ga": _rank_on("ga", low_good=True), "gd": _rank_on("gd")}
+                     "ga": _rank_on("ga", low_good=True), "gd": _rank_on("gd"), "elo": 14}
 
     team_scatter = [{"team": r["team"], "short": r["short"], "badge": r["badge"],
                      "xg_pg": round(2.4 - r["rank"] * 0.07, 2), "xga_pg": round(0.7 + r["rank"] * 0.05, 2),
@@ -463,7 +463,7 @@ def sample_data(live=None):
         else:
             fx.update({"finished": False,
                        "kickoff": (base + timedelta(days=7 * (gw - 1))).isoformat().replace("+00:00", "Z"),
-                       "difficulty": (gw % 5) + 1})
+                       "difficulty": (gw % 5) + 1, "elo_win_pct": max(15, min(70, 45 - (gw % 5 - 3) * 12))})
         fixtures.append(fx)
     upcoming = [f for f in fixtures if not f["finished"]]
     results = list(reversed(results))
@@ -476,6 +476,7 @@ def sample_data(live=None):
                          "home": nxt["home"], "position": 9, "points": 18, "gd": 4, "xg_pg": 1.48,
                          "xga_pg": 1.12, "form": ["W", "D", "W", "L", "W"],
                          "prob": {"ipswich": 38, "draw": 27, "opponent": 35},
+                         "elo": {"ipswich": 1520, "opponent": 1580},
                          "h2h_record": {"w": 2, "d": 1, "l": 2},
                          "h2h": [{"date": "2025-12-21", "opponent": nxt["opponent"], "home": False, "score": "1-2", "result": "L"},
                                  {"date": "2025-08-17", "opponent": nxt["opponent"], "home": True, "score": "2-2", "result": "D"},
@@ -657,6 +658,12 @@ def sample_data(live=None):
     home_table, away_table = half_table(True), half_table(False)
     elo_history = [{"date": f"2026-{m:02d}-01", "elo": 1500 + (i - 3) * 8 + (i % 2) * 6}
                    for i, m in enumerate(range(8, 8 + len(by_gameweek) + 1))]
+    ips_rank = next((r["rank"] for r in table if r["is_ipswich"]), 10)
+    elo_history_rivals = [
+        {"team": r["team"], "short": r["short"],
+         "history": [{"date": f"2026-{m:02d}-01", "elo": 1500 + (i - 3) * 6 + r["rank"] * 2}
+                     for i, m in enumerate(range(8, 8 + len(by_gameweek) + 1))]}
+        for r in table if not r["is_ipswich"] and abs(r["rank"] - ips_rank) <= 3][:4]
     team_strength = [{"label": lab, "value": v, "pct": pc} for lab, v, pc in [
         ("Attack home", 1180, 35), ("Attack away", 1120, 30), ("Defence home", 1150, 40),
         ("Defence away", 1090, 25), ("Overall home", 1165, 38), ("Overall away", 1105, 28)]]
@@ -710,7 +717,8 @@ def sample_data(live=None):
         "by_gameweek": by_gameweek, "understat_matches": understat_matches, "shot_maps": shot_maps,
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
         "understat_history": understat_history, "match_stats": match_stats,
-        "elo_history": elo_history, "home_table": home_table, "away_table": away_table,
+        "elo_history": elo_history, "elo_history_rivals": elo_history_rivals, "elo_current": 1520,
+        "home_table": home_table, "away_table": away_table,
         "team_strength": team_strength, "survival": survival, "releg_odds": releg_odds,
         "results": results, "squad": squad, "news": live.get("news") or [],
         "match_pages": match_pages,
