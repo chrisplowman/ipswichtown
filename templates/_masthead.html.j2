@@ -1,6 +1,12 @@
 {# Shared header + nav for every page. nav_prefix is "" for top-level pages and
    "../" for match/player pages so links resolve correctly. #}
 <a class="skiplink" href="#main">Skip to content</a>
+{% if live_now and next_fixture %}
+<div class="live-banner" role="status">
+  <span class="live-dot" aria-hidden="true"></span>
+  Ipswich {{ 'host' if next_fixture.home else 'play at' }} {{ next_fixture.opponent }} right now — full match data lands here shortly after the final whistle.
+</div>
+{% endif %}
 <header class="masthead">
   <div class="wrap">
     <div class="crest">

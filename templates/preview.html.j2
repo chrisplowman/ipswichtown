@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next: Ipswich vs {{ next_fixture.opponent }} · Match preview</title>
+{% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
+<meta name="description" content="{{ og_description }}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ og_title }}">
+<meta property="og:description" content="{{ og_description }}">
+{% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
+{% if canonical %}<meta property="og:url" content="{{ canonical }}">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ og_title }}">
+<meta name="twitter:description" content="{{ og_description }}">
+{% if og_image %}<meta name="twitter:image" content="{{ og_image }}">{% endif %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ css_href }}">
+<script>
+(function(){var K='itfc-theme',d=document.documentElement;
+ // Only the first page view of a session gets the card rise-in animation;
+ // every tab click after that is a full navigation and shouldn't replay it.
+ try{if(sessionStorage.getItem('itfc-seen')){d.classList.add('seen');}else{sessionStorage.setItem('itfc-seen','1');}}catch(e){}
+ function set(t){d.setAttribute('data-theme',t);}
+ try{set(localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch(e){set('light');}
+ window.__setTheme=function(t){
+   set(t);try{localStorage.setItem(K,t);}catch(e){}
+   location.reload();
+ };
+})();
+</script>
+</head>
+<body class="page-preview">
+{% include '_masthead.html.j2' %}
+
+<main class="wrap" id="main" tabindex="-1">
+  <!-- MATCHUP + LEAGUE CONTEXT + WIN PROBABILITY -->
+  <div class="block card">
+    <div class="cardhead"><h3>Next fixture</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Kickoff details, opponent form and a win probability modelled from Elo ratings. Source: FPL fixtures, ClubElo and league table.</span></button></div>
+    <div class="board">
+      <div class="row">
+        <div class="side">{% if team.badge %}<img class="badge-lg" src="{{ team.badge }}" alt="">{% endif %}<div class="abbr">{{ team.short_name }}</div><div class="full">Ipswich Town</div></div>
+        <div class="vs">{{ "HOME" if next_fixture.home else "AWAY" }}</div>
+        <div class="side">{% if next_fixture.badge %}<img class="badge-lg" src="{{ next_fixture.badge }}" alt="">{% endif %}<div class="abbr">{{ next_fixture.opponent_short }}</div><div class="full">{{ next_fixture.opponent }}</div></div>
+      </div>
+      <div class="when">{{ next_fixture.kickoff|kickoff }} · <span class="venue">{{ "Portman Road" if next_fixture.home else "Away" }}</span>{% if next_fixture.event %} · GW{{ next_fixture.event }}{% endif %}</div>
+      {% if next_opponent %}
+      <div class="oppdetail">
+        <div class="opprow">
+          <div class="who">
+            <div class="nm">{{ next_opponent.name }}</div>
+            <div class="sub">{% if next_opponent.position %}{{ next_opponent.position|ordinal }}{% if next_opponent.points is not none %} · {{ next_opponent.points }} pts{% endif %}{% if next_opponent.gd is not none %} · {{ '%+d'|format(next_opponent.gd) }} GD{% endif %}{% endif %}</div>
+          </div>
+          {% if next_opponent.form %}
+          <div class="metric"><div class="formdots">{% for f in next_opponent.form %}<i class="{{ f }}">{{ f }}</i>{% endfor %}</div><div class="k">Last 5</div></div>
+          {% endif %}
+          <div class="metrics">
+            {% if next_opponent.xg_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xg_pg) }}</div><div class="k">xG / game</div></div>{% endif %}
+            {% if next_opponent.xga_pg is not none %}<div class="metric"><div class="v">{{ '%.2f'|format(next_opponent.xga_pg) }}</div><div class="k">xGA / game</div></div>{% endif %}
+          </div>
+        </div>
+        {% if next_opponent.prob %}
+        <div class="winprob">
+          <div class="wp-bar">
+            <span class="wp-w" style="width:{{ next_opponent.prob.ipswich }}%">{{ next_opponent.prob.ipswich }}%</span>
+            <span class="wp-d" style="width:{{ next_opponent.prob.draw }}%">{{ next_opponent.prob.draw }}%</span>
+            <span class="wp-l" style="width:{{ next_opponent.prob.opponent }}%">{{ next_opponent.prob.opponent }}%</span>
+          </div>
+          <div class="wp-key"><span>Ipswich win</span><span>Draw</span><span>{{ next_opponent.short }} win</span></div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- HEAD TO HEAD + LIKELY XI -->
+  <div class="block">
+    <div class="cols">
+      <div class="card">
+        {% if next_opponent and next_opponent.h2h %}
+        <div class="cardhead"><h3>Recent meetings</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results from previous meetings between these two clubs. Source: football-data.co.uk historical results.</span></button></div>
+        {% if next_opponent.h2h_record %}<p class="empty-note" style="padding-top:0">{{ next_opponent.h2h_record.w }}W {{ next_opponent.h2h_record.d }}D {{ next_opponent.h2h_record.l }}L in the last {{ next_opponent.h2h|length }} meetings.</p>{% endif %}
+        <ul class="plain">
+          {% for h in next_opponent.h2h %}
+          <li><span class="res {{ h.result }}">{{ h.result }}</span>{{ h.opponent }} <span class="assist">{{ '(H)' if h.home else '(A)' }} {{ h.score }} · {{ h.date }}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="cardhead"><h3>Recent meetings</h3></div>
+        <p class="empty-note">No recorded meetings between these two clubs.</p>
+        {% endif %}
+      </div>
+      <div class="card">
+        {% macro pitch_marker(p) %}
+          {% set cx = (600 - (p.y / 100 * 600))|round(1) %}{% set cy = (p.x / 100 * 400)|round(1) %}
+          <g>
+            <circle cx="{{ cx }}" cy="{{ cy }}" r="13" fill="var(--primary)" stroke="var(--canvas)" stroke-width="2"/>
+            <text x="{{ cx }}" y="{{ cy }}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" fill="#fff">{{ p.jersey }}</text>
+            <text x="{{ cx }}" y="{{ cy + 22 }}" text-anchor="middle" font-size="9" fill="var(--ink)">{{ p.name.split(' ')[-1] }}</text>
+            <title>{{ p.name }} ({{ p.pos }})</title>
+          </g>
+        {% endmacro %}
+        {% if likely_xi %}
+        <div class="cardhead"><h3>Likely XI{% if likely_xi.formation %} ({{ likely_xi.formation }}){% endif %}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Ipswich's starting eleven from the last match played{% if likely_xi.opponent %} (vs {{ likely_xi.opponent }}, {{ likely_xi.date }}){% endif %} — a starting point, not a prediction: team news, injuries and rotation can all change the actual XI. Source: ESPN.</span></button></div>
+        <div class="pitch-holder">
+          <svg role="img" aria-label="Ipswich's likely starting lineup on a pitch" class="pitch" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="1" width="598" height="398" fill="var(--tint-mint)" stroke="var(--hairline-strong)"/>
+            <line x1="300" y1="1" x2="300" y2="399" stroke="var(--hairline-strong)"/>
+            <circle cx="300" cy="200" r="40" fill="none" stroke="var(--hairline-strong)"/>
+            <rect x="1" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
+            <rect x="519" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
+            {% for p in likely_xi.starters %}{{ pitch_marker(p) }}{% endfor %}
+          </svg>
+        </div>
+        {% else %}
+        <div class="cardhead"><h3>Likely XI</h3></div>
+        <p class="empty-note">No lineup data yet to base a likely XI on.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="wrap">
+  Data from the FPL API, Understat, ESPN, football-data.co.uk and ClubElo · rebuilt automatically via GitHub Actions.<br>
+  <a class="playerlink" href="index.html">← Back to overview</a>
+</footer>
+
+</body>
+</html>
