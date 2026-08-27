@@ -8,6 +8,7 @@ Run:  python build.py
 """
 
 import json
+import os
 import re
 import shutil
 import unicodedata
@@ -70,6 +71,14 @@ except Exception:  # pragma: no cover
     _PIL = False
 
 SITE_URL = "https://chrisplowman.github.io/ipswichtown"
+
+# Google Analytics measurement ID (e.g. "G-XXXXXXX"), read from the environment
+# rather than hardcoded so it's never committed to the repo — CI injects it from
+# a GitHub Actions secret; a local `python build.py` run has no GA on the page
+# at all unless this is set in the shell. Analytics is still visible to anyone
+# inspecting the deployed page's source, same as on any site using client-side GA
+# — this only keeps the ID out of the git history, not off the live page.
+GA_MEASUREMENT_ID = os.environ.get("GA_MEASUREMENT_ID")
 
 
 def _font(size, bold=False):
@@ -1049,6 +1058,7 @@ def render_site(template, match_template, player_template, preview_template, dat
     generated_at = data.get("generated_at", "")
 
     data["live_now"] = _is_live_now(data.get("next_fixture"))
+    data["ga_id"] = GA_MEASUREMENT_ID
 
     _og_image(str(outdir / "og.png"), "Ipswich Town Stats",
               f"Premier League {season} · xG, form & survival odds")
@@ -1085,7 +1095,7 @@ def render_site(template, match_template, player_template, preview_template, dat
                             "opponent": last_match.get("opponent"), "date": last_match.get("date")}
         preview_html = preview_template.render(
             next_fixture=nf, next_opponent=no, likely_xi=likely_xi, live_now=data.get("live_now"),
-            season=season, team=team, position=position, generated_at=generated_at,
+            ga_id=GA_MEASUREMENT_ID, season=season, team=team, position=position, generated_at=generated_at,
             pages=PAGES, nav_prefix="", current="overview", css_href="style.css",
             og_title=f"Next: Ipswich vs {nf['opponent']} · Match preview",
             og_description=f"Ipswich's next Premier League match: {nf['opponent']} "
@@ -1116,7 +1126,7 @@ def render_site(template, match_template, player_template, preview_template, dat
                 "homeTeam": {"@type": "SportsTeam", "name": home_team},
                 "awayTeam": {"@type": "SportsTeam", "name": away_team},
                 "url": f"{SITE_URL}/match/{mp['slug']}.html"}).replace("<", "\\u003c")
-            html = match_template.render(m=mp, season=season,
+            html = match_template.render(m=mp, season=season, ga_id=GA_MEASUREMENT_ID,
                                          generated_at=generated_at, match_json=match_json, ld_json=ld_json,
                                          pages=PAGES, nav_prefix="../", current="matches",
                                          css_href="../style.css", team=team, position=position,
@@ -1131,7 +1141,7 @@ def render_site(template, match_template, player_template, preview_template, dat
         for pp in player_pages:
             player_json = json.dumps({"shots": pp["shots"],
                                       "log": list(reversed(pp["log"]))}).replace("<", "\\u003c")
-            html = player_template.render(p=pp, season=season, player_json=player_json,
+            html = player_template.render(p=pp, season=season, player_json=player_json, ga_id=GA_MEASUREMENT_ID,
                                           pages=PAGES, nav_prefix="../", current="squad",
                                           css_href="../style.css", team=team, position=position,
                                           generated_at=generated_at,
@@ -1185,6 +1195,7 @@ def main():
     # so this renders sample data until that lands — see WOMEN_PAGES's comment.
     women_template = env.get_template("women.html.j2")
     women_data = json.loads(DATA_WOMEN.read_text()) if DATA_WOMEN.exists() else sample_data_women()
+    women_data["ga_id"] = GA_MEASUREMENT_ID
     render_women_site(women_template, women_data, SITE / "women")
     print(f"Built {len(WOMEN_PAGES)} women's pages"
           f"{' (sample data — no live source yet)' if not DATA_WOMEN.exists() else ''}.")

@@ -61,6 +61,18 @@ workflow**.
 > Note: GitHub disables scheduled workflows after ~60 days of no repo activity.
 > Any push (or a manual run) re-arms the schedule.
 
+### Optional: Google Analytics
+
+To add GA without committing the measurement ID to the repo, add it as a repo
+secret instead: **Settings → Secrets and variables → Actions → New repository
+secret**, name `GA_MEASUREMENT_ID`, value your `G-XXXXXXX` ID. The next build
+picks it up automatically (`build.py` reads it from the environment) and every
+page gets the standard `gtag.js` snippet; leave the secret unset and no
+analytics code is added at all, including for a local `python build.py` run.
+Keeping it out of the repo only keeps it out of the git history — like any
+client-side analytics, the ID is still visible in the deployed page's source
+to anyone who looks.
+
 ## Run it locally
 
 ```bash
