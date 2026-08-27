@@ -260,6 +260,11 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr,
 .tabs a.active{background:var(--ink-deep);color:var(--canvas);border-color:var(--ink-deep)}
 .skiplink{position:absolute;left:-999px;top:0;z-index:100;background:var(--brand-navy);color:#fff;padding:10px 16px;border-radius:0 0 var(--radius-md) 0;text-decoration:none}
 .skiplink:focus{left:0}
+.live-banner{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--loss);color:#fff;
+  font-size:13px;font-weight:600;padding:8px var(--space-lg);text-align:center}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#fff;flex:none}
+@media(prefers-reduced-motion:no-preference){.live-dot{animation:live-pulse 1.6s ease-in-out infinite}}
+@keyframes live-pulse{0%,100%{opacity:1}50%{opacity:.35}}
 /* Default focus ring for every plain link/button/input on the site — covers
    .tabs/.chartjump links, .infobtn/.sharebtn, and page-player controls too,
    so none of those need their own :focus-visible rule unless the offset

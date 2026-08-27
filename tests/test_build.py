@@ -229,6 +229,19 @@ def test_assign_pitch_positions_4231_gets_five_distinct_rows():
     assert 96 > def_y > mid_y > am_y > 54
 
 
+def test_is_live_now():
+    from build import _is_live_now
+    from datetime import datetime, timezone
+    now = datetime(2026, 8, 27, 15, 0, tzinfo=timezone.utc)
+    assert _is_live_now(None, now) is False
+    assert _is_live_now({}, now) is False
+    assert _is_live_now({"kickoff": "2026-08-27T15:00:00Z"}, now) is True   # kicking off now
+    assert _is_live_now({"kickoff": "2026-08-27T13:30:00Z"}, now) is True  # 90 min in
+    assert _is_live_now({"kickoff": "2026-08-27T16:00:00Z"}, now) is False  # not kicked off yet
+    assert _is_live_now({"kickoff": "2026-08-27T12:00:00Z"}, now) is False  # long finished
+    assert _is_live_now({"kickoff": "not-a-date"}, now) is False
+
+
 def test_pslug_and_pnorm():
     from build import _pslug, _pnorm
     assert _pslug("Liam Delap") == "liam-delap"
@@ -274,3 +287,7 @@ def test_site_builds_end_to_end(tmp_path, monkeypatch):
     assert f"player/{player_slug}.html" in sitemap
     assert "women/index.html" in sitemap
     assert "sitemap.xml" in (site / "robots.txt").read_text()
+    assert (site / "preview.html").exists(), "no preview page built"
+    assert "preview.html" in sitemap
+    preview_html = (site / "preview.html").read_text()
+    assert "{{" not in preview_html and "{%" not in preview_html

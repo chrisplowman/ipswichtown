@@ -992,7 +992,24 @@ def sample_data_women():
     }
 
 
-def render_site(template, match_template, player_template, data):
+def _is_live_now(next_fixture, now=None):
+    """Whether Ipswich are plausibly playing right now, for the "live now" banner.
+    The site only ever shows data as of the last scheduled rebuild (as frequent as
+    every ~15 min on a matchday — see deploy.yml), so this can't show a live score,
+    just that a match is plausibly still on. next_fixture disappearing from
+    "upcoming" into a finished result is itself evidence a match has been ingested
+    as over, so a kickoff-time window is enough — no need to cross-check results."""
+    if not next_fixture or not next_fixture.get("kickoff"):
+        return False
+    try:
+        kickoff = datetime.fromisoformat(next_fixture["kickoff"].replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    now = now or datetime.now(timezone.utc)
+    return kickoff <= now < kickoff + timedelta(minutes=130)
+
+
+def render_site(template, match_template, player_template, preview_template, data):
     outdir = SITE
     (outdir / "data").mkdir(parents=True, exist_ok=True)
     if ASSETS.exists():
@@ -1031,6 +1048,8 @@ def render_site(template, match_template, player_template, data):
     position = data.get("position")
     generated_at = data.get("generated_at", "")
 
+    data["live_now"] = _is_live_now(data.get("next_fixture"))
+
     _og_image(str(outdir / "og.png"), "Ipswich Town Stats",
               f"Premier League {season} · xG, form & survival odds")
     og_default = "og.png"
@@ -1045,6 +1064,34 @@ def render_site(template, match_template, player_template, data):
                                canonical=f"{SITE_URL}/{filename}", **data)
         (outdir / filename).write_text(html)
     (outdir / "data" / "itfc.json").write_text(json.dumps(data))
+
+    # a standalone preview page for the next fixture: league context, win
+    # probability, head-to-head and a "likely XI" from the last match played —
+    # reachable from the Next fixture card, same way match reports are only
+    # reachable from a results row rather than living in the main nav.
+    nf, no = data.get("next_fixture"), data.get("next_opponent")
+    if nf and no:
+        likely_xi = None
+        finished = data.get("match_pages") or []
+        if finished:
+            last_match = max(finished, key=lambda mp: mp.get("date", ""))
+            for_lineup = (last_match.get("lineups") or {}).get("for") or {}
+            if for_lineup.get("starters"):
+                # positioned fresh across the *whole* pitch depth (own goal to
+                # the opposite end), not the shared-pitch half-range match
+                # reports use, since this preview shows one team on its own.
+                likely_xi = {"formation": for_lineup.get("formation"),
+                            "starters": assign_pitch_positions(for_lineup["starters"], gk_y=96, fwd_y=4),
+                            "opponent": last_match.get("opponent"), "date": last_match.get("date")}
+        preview_html = preview_template.render(
+            next_fixture=nf, next_opponent=no, likely_xi=likely_xi, live_now=data.get("live_now"),
+            season=season, team=team, position=position, generated_at=generated_at,
+            pages=PAGES, nav_prefix="", current="overview", css_href="style.css",
+            og_title=f"Next: Ipswich vs {nf['opponent']} · Match preview",
+            og_description=f"Ipswich's next Premier League match: {nf['opponent']} "
+                           f"({'H' if nf['home'] else 'A'}). Form, xG, win probability and head-to-head.",
+            og_image=og_default, canonical=f"{SITE_URL}/preview.html")
+        (outdir / "preview.html").write_text(preview_html)
 
     # a full detail page per finished match (+ its own share card)
     matches = data.get("match_pages", [])
@@ -1100,6 +1147,8 @@ def _write_sitemap(outdir, data, women_data):
     but no other inbound links from outside the site itself."""
     lastmod = (data.get("generated_at") or "")[:10]
     urls = [(f"{SITE_URL}/{filename}", lastmod) for _, filename, _ in PAGES]
+    if data.get("next_fixture") and data.get("next_opponent"):
+        urls.append((f"{SITE_URL}/preview.html", lastmod))
     urls += [(f"{SITE_URL}/match/{mp['slug']}.html", lastmod)
              for mp in data.get("match_pages") or [] if mp.get("slug")]
     urls += [(f"{SITE_URL}/player/{sp['slug']}.html", lastmod)
@@ -1122,11 +1171,12 @@ def main():
     template = env.get_template("index.html.j2")
     match_template = env.get_template("match.html.j2")
     player_template = env.get_template("player.html.j2")
+    preview_template = env.get_template("preview.html.j2")
 
     if SITE.exists():
         shutil.rmtree(SITE)
     SITE.mkdir(parents=True)
-    render_site(template, match_template, player_template, real)
+    render_site(template, match_template, player_template, preview_template, real)
     (SITE / ".nojekyll").write_text("")
     n = len(real.get("match_pages", []))
     print(f"Built {len(PAGES)} pages + {n} match pages + {len(real.get('squad', []))} player pages.")
