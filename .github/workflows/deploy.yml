@@ -89,10 +89,10 @@ jobs:
       - name: Fetch data
         run: python ingest.py
 
-      # Best-effort: TheSportsDB's women's-football coverage is thin and this
-      # hasn't had a real run yet, so a failure here shouldn't fail the whole
-      # deploy — data/ isn't persisted between runs, so if this fails or is
-      # skipped, build.py falls back to sample_data_women() for that build.
+      # Best-effort: FotMob's API is unofficial/undocumented and could break
+      # without notice, so a failure here shouldn't fail the whole deploy —
+      # data/ isn't persisted between runs, so if this fails or is skipped,
+      # build.py falls back to sample_data_women() for that build.
       - name: Fetch women's team data
         run: python ingest_women.py || echo "ingest_women.py failed — women's site will build from sample data this run"
         continue-on-error: true
