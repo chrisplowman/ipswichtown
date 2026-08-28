@@ -941,9 +941,20 @@ def render_women_site(template, data, outdir):
     (outdir / "data.json").write_text(json.dumps(data))
 
 
+def _women_data_is_meaningful(data):
+    """Whether a real ingest_women.py output has enough content to show instead
+    of the sample placeholder below. ingest_women.py always writes its output
+    file, even when every fetch came back empty (e.g. TheSportsDB not
+    carrying the competition at all) — so the file existing isn't a reliable
+    signal there's anything worth showing; a page with an empty table, no
+    fixtures and no squad reads as broken, not as "coming soon"."""
+    return bool(data.get("table") or data.get("results") or data.get("upcoming")
+               or data.get("squad"))
+
+
 def sample_data_women():
-    """Realistic fake data for the women's-team site — no live ingest source
-    exists yet (see ingest_women.py), so this is what's rendered for now."""
+    """Realistic fake data for the women's-team site — used whenever
+    ingest_women.py (see that file) hasn't produced anything meaningful yet."""
     opponents = ["Charlton Athletic", "Southampton", "Birmingham City", "Sunderland",
                  "Sheffield United", "Blackburn Rovers", "Newcastle United", "Watford",
                  "Reading", "London City Lionesses", "Bristol City"]
@@ -1199,14 +1210,17 @@ def main():
     n = len(real.get("match_pages", []))
     print(f"Built {len(PAGES)} pages + {n} match pages + {len(real.get('squad', []))} player pages.")
 
-    # Women's team: free-sources-only trimmed site. No ingest_women.py output yet,
-    # so this renders sample data until that lands — see WOMEN_PAGES's comment.
+    # Women's team: free-sources-only trimmed site. Falls back to sample data
+    # whenever ingest_women.py hasn't produced anything meaningful, not just
+    # when its output file is missing — see _women_data_is_meaningful's docstring.
     women_template = env.get_template("women.html.j2")
-    women_data = json.loads(DATA_WOMEN.read_text()) if DATA_WOMEN.exists() else sample_data_women()
+    real_women_data = json.loads(DATA_WOMEN.read_text()) if DATA_WOMEN.exists() else {}
+    using_sample = not _women_data_is_meaningful(real_women_data)
+    women_data = sample_data_women() if using_sample else real_women_data
     women_data["ga_id"] = GA_MEASUREMENT_ID
     render_women_site(women_template, women_data, SITE / "women")
     print(f"Built {len(WOMEN_PAGES)} women's pages"
-          f"{' (sample data — no live source yet)' if not DATA_WOMEN.exists() else ''}.")
+          f"{' (sample data — no live source yet)' if using_sample else ''}.")
 
     _write_sitemap(SITE, real, women_data)
 

@@ -229,6 +229,18 @@ def test_assign_pitch_positions_4231_gets_five_distinct_rows():
     assert 96 > def_y > mid_y > am_y > 54
 
 
+def test_women_data_is_meaningful():
+    from build import _women_data_is_meaningful
+    # a real ingest_women.py run where every fetch came back empty (its own
+    # output file always gets written regardless) shouldn't count as usable
+    assert _women_data_is_meaningful({"table": [], "results": [], "upcoming": [],
+                                      "squad": [], "news": [{"title": "x"}]}) is False
+    assert _women_data_is_meaningful({}) is False
+    assert _women_data_is_meaningful({"table": [{"team": "Ipswich"}]}) is True
+    assert _women_data_is_meaningful({"squad": [{"name": "Player"}]}) is True
+    assert _women_data_is_meaningful({"upcoming": [{"opponent": "X"}]}) is True
+
+
 def test_is_live_now():
     from build import _is_live_now
     from datetime import datetime, timezone
