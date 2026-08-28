@@ -74,6 +74,18 @@ jobs:
           restore-keys: |
             lineup-cache-
 
+      # ClubElo's current-day snapshot changes daily, unlike the other caches above
+      # (which key on permanently-finished matches) — this isn't a "never expires"
+      # cache, it's a fallback for a transient fetch failure, so ingest.py always
+      # tries a fresh fetch first and only reads this if that fails.
+      - name: Restore ClubElo cache
+        uses: actions/cache@v4
+        with:
+          path: clubelo_cache
+          key: clubelo-cache-${{ github.run_id }}
+          restore-keys: |
+            clubelo-cache-
+
       - name: Fetch data
         run: python ingest.py
 

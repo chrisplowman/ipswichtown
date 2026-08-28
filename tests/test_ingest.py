@@ -49,6 +49,28 @@ def test_simplify_pos():
     assert simplify_pos("") == "MID"
 
 
+def test_clubelo_cache_round_trip(tmp_path, monkeypatch):
+    import ingest
+    monkeypatch.setattr(ingest, "CLUBELO_CACHE_DIR", str(tmp_path / "clubelo_cache"))
+    monkeypatch.setattr(ingest, "CLUBELO_CACHE_FILE", str(tmp_path / "clubelo_cache" / "elos.json"))
+    # nothing cached yet
+    assert ingest._load_clubelo_cache() == ({}, {}, None)
+    ingest._save_clubelo_cache({"ipswich": 1520.0}, {"ipswich": "Ipswich"})
+    elos, names, fetched_at = ingest._load_clubelo_cache()
+    assert elos == {"ipswich": 1520.0}
+    assert names == {"ipswich": "Ipswich"}
+    assert fetched_at is not None
+
+
+def test_clubelo_cache_survives_corrupt_file(tmp_path, monkeypatch):
+    import ingest
+    cache_file = tmp_path / "clubelo_cache" / "elos.json"
+    cache_file.parent.mkdir()
+    cache_file.write_text("not valid json")
+    monkeypatch.setattr(ingest, "CLUBELO_CACHE_FILE", str(cache_file))
+    assert ingest._load_clubelo_cache() == ({}, {}, None)
+
+
 def test_profile_min_minutes_scales_with_season_progress():
     # no games played yet: floor of 45 (half a match), not the full 450
     assert _profile_min_minutes({}) == 45

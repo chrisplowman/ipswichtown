@@ -1003,6 +1003,33 @@ def fetch_league_tables(rows):
     return build("h"), build("a"), form
 
 
+CLUBELO_CACHE_DIR = "clubelo_cache"
+CLUBELO_CACHE_FILE = "clubelo_cache/elos.json"
+
+
+def _save_clubelo_cache(elos, names):
+    os.makedirs(CLUBELO_CACHE_DIR, exist_ok=True)
+    try:
+        with open(CLUBELO_CACHE_FILE, "w") as fh:
+            json.dump({"elos": elos, "names": names,
+                      "fetched_at": datetime.now(timezone.utc).isoformat()}, fh)
+    except OSError:
+        pass
+
+
+def _load_clubelo_cache():
+    """The last successfully-fetched ClubElo snapshot, or ({}, {}, None) if
+    there isn't one yet or it's unreadable."""
+    if not os.path.exists(CLUBELO_CACHE_FILE):
+        return {}, {}, None
+    try:
+        with open(CLUBELO_CACHE_FILE) as fh:
+            cached = json.load(fh)
+    except (ValueError, OSError):
+        return {}, {}, None
+    return cached.get("elos", {}), cached.get("names", {}), cached.get("fetched_at")
+
+
 def fetch_elo_history(club="Ipswich", cutoff="2026-07-01"):
     """A club's ClubElo rating trajectory across the current season. `club` must
     be ClubElo's own name for that club (see fetch_clubelo_elos's `names` return
@@ -1353,12 +1380,23 @@ def main():
         team_strength.append({"label": label, "value": v, "pct": pct})
 
     # current Elo for every club (reused for next-opponent probability, the
-    # sim, and the league-wide Elo rank below)
+    # sim, and the league-wide Elo rank below). ClubElo has no fallback source
+    # (unlike the league table), so a single transient failure used to zero
+    # every club's rating out to a neutral default for the whole build — most
+    # visibly, wiping out the Elo-weighted survival simulation in favour of a
+    # much rosier points-only one. Cache the last successful snapshot (persisted
+    # between CI runs the same way match/lineup/play caches are) and fall back
+    # to it on failure instead, since a few-hours-stale snapshot is far more
+    # accurate than no Elo data at all.
     elos, elo_names = {}, {}
     try:
         elos, elo_names = fetch_clubelo_elos()
+        _save_clubelo_cache(elos, elo_names)
     except Exception as e:
         print(f"  clubelo: skipped ({e})")
+        elos, elo_names, fetched_at = _load_clubelo_cache()
+        if elos:
+            print(f"  clubelo: using cached snapshot from {fetched_at or '?'}")
 
     # Monte Carlo: simulate the rest of the season for survival odds + relegation odds
     survival, releg_odds = None, {}
