@@ -56,7 +56,8 @@ FOTMOB_BASE = "https://www.fotmob.com/api/data"
 FOTMOB_LEAGUE_ID = 9294
 FOTMOB_TEAM_ID = 1134184
 
-POS_MAP = {"goalkeeper": "GKP", "defender": "DEF", "midfielder": "MID",
+POS_BY_GROUP = {"keepers": "GKP", "defenders": "DEF", "midfielders": "MID", "attackers": "FWD"}
+POS_MAP = {"keeper": "GKP", "defender": "DEF", "midfielder": "MID",
            "attacker": "FWD", "forward": "FWD", "winger": "FWD"}
 
 
@@ -158,26 +159,62 @@ def parse_fixtures(league_json):
     return results, upcoming
 
 
-def parse_squad(team_json):
-    groups = team_json.get("squad")
-    members = []
-    if isinstance(groups, list):
-        for g in groups:
-            if isinstance(g, dict) and isinstance(g.get("members"), list):
-                members.extend(g["members"])
-    if not members:
-        members = _find_list(team_json, lambda x: "shirtNumber" in x and "name" in x) or []
-    squad = []
-    for p in members:
+def _pos_from_code(desc):
+    """FotMob's positionIdsDesc is a comma list like "CM,CDM,CAM" (multiple
+    positions a player covers) — take the first and bucket it the same
+    coarse way as POS_BY_GROUP."""
+    code = (desc or "").split(",")[0].strip().upper()
+    if code == "GK":
+        return "GKP"
+    if code.endswith("B"):
+        return "DEF"
+    if code in ("ST", "CF") or code.endswith("W"):
+        return "FWD"
+    return "MID" if code else None
+
+
+def _map_player(p, pos):
+    if pos is None:
         role = p.get("role") or {}
         role_text = f"{role.get('key') or ''} {role.get('fallback') or ''}".lower()
-        pos = next((v for k, v in POS_MAP.items() if k in role_text), "MID")
-        full_name = p.get("name") or ""
-        squad.append({
-            "name": full_name.split()[-1] if full_name else "", "full_name": full_name, "pos": pos,
-            "apps": p.get("matchesPlayed"), "goals": p.get("goals"), "assists": p.get("assists"),
-        })
-    return squad
+        pos = _pos_from_code(p.get("positionIdsDesc")) or \
+            next((v for k, v in POS_MAP.items() if k in role_text), "MID")
+    full_name = p.get("name") or ""
+    return {"name": full_name.split()[-1] if full_name else "", "full_name": full_name, "pos": pos,
+            "apps": p.get("matchesPlayed"), "goals": p.get("goals"), "assists": p.get("assists")}
+
+
+def parse_squad(team_json):
+    """FotMob nests the real squad list two levels down: team_json["squad"]
+    is itself a dict ({"squad": [...], "isNationalTeam": ...}), and each
+    entry in that inner list is a position group ({"title": "keepers",
+    "members": [...]}) — including a non-playing "coach" group, which is
+    dropped here rather than shown as a player."""
+    squad_field = team_json.get("squad")
+    if isinstance(squad_field, dict):
+        groups = squad_field.get("squad") or []
+    elif isinstance(squad_field, list):
+        groups = squad_field
+    else:
+        groups = []
+
+    squad = []
+    for g in groups:
+        if not isinstance(g, dict):
+            continue
+        title = (g.get("title") or "").lower()
+        if title == "coach":
+            continue
+        pos = POS_BY_GROUP.get(title)
+        for p in g.get("members") or []:
+            squad.append(_map_player(p, pos))
+    if squad:
+        return squad
+
+    # FotMob reshuffled the nesting — fall back to a generic search for a
+    # flat list of player-shaped dicts anywhere in the response.
+    members = _find_list(team_json, lambda x: "shirtNumber" in x and "name" in x) or []
+    return [_map_player(p, None) for p in members if (p.get("role") or {}).get("key") != "coach"]
 
 
 def fetch_women_news():

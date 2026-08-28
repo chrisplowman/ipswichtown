@@ -88,37 +88,47 @@ def test_parse_fixtures_skips_cancelled_matches():
 
 
 # ---- parse_squad ------------------------------------------------------------
-def test_parse_squad_flattens_position_groups():
-    team_json = {"squad": [
-        {"title": "Goalkeepers", "members": [
-            {"name": "Freya Scherpen", "shirtNumber": 1,
-             "role": {"key": "goalkeeper", "fallback": "Goalkeeper"},
-             "matchesPlayed": 2, "goals": 0, "assists": 0}]},
-        {"title": "Forwards", "members": [
-            {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker", "fallback": "Attacker"},
-             "matchesPlayed": 2, "goals": 3, "assists": 1}]},
-    ]}
+# FotMob nests the real list two levels down: team_json["squad"] is a dict
+# ({"squad": [...], "isNationalTeam": ...}), and each entry in that inner
+# list is a position group with a lowercase "title" ("keepers", "defenders",
+# "midfielders", "attackers") plus a non-playing "coach" group.
+def test_parse_squad_flattens_position_groups_and_drops_coach():
+    team_json = {"squad": {"squad": [
+        {"title": "coach", "members": [{"name": "David Wright", "role": {"key": "coach"}}]},
+        {"title": "keepers", "members": [
+            {"name": "Freya Scherpen", "shirtNumber": 1, "role": {"key": "keeper_long"},
+             "positionIdsDesc": "GK", "goals": 0, "assists": 0}]},
+        {"title": "attackers", "members": [
+            {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker_long"},
+             "positionIdsDesc": "ST", "goals": 3, "assists": 1}]},
+    ]}}
     squad = iw.parse_squad(team_json)
     assert [p["name"] for p in squad] == ["Scherpen", "Smith"]
     assert [p["pos"] for p in squad] == ["GKP", "FWD"]
     assert squad[1]["goals"] == 3 and squad[1]["assists"] == 1
 
 
-def test_parse_squad_falls_back_to_generic_search_when_no_groups_key():
+def test_parse_squad_falls_back_to_generic_search_when_shape_unrecognised():
     team_json = {"players": [{"name": "Jane Smith", "shirtNumber": 9,
-                              "role": {"key": "midfielder"}, "goals": None, "assists": None}]}
+                              "role": {"key": "midfielder_long"}, "goals": None, "assists": None}]}
     squad = iw.parse_squad(team_json)
     assert squad == [{"name": "Smith", "full_name": "Jane Smith", "pos": "MID",
                       "apps": None, "goals": None, "assists": None}]
 
 
 def test_parse_squad_defaults_unknown_role_to_mid():
-    team_json = {"squad": [{"members": [{"name": "A B", "shirtNumber": 2, "role": {}}]}]}
+    team_json = {"squad": {"squad": [{"title": "reserves", "members": [
+        {"name": "A B", "shirtNumber": 2, "role": {}}]}]}}
     assert iw.parse_squad(team_json)[0]["pos"] == "MID"
 
 
 def test_parse_squad_empty_when_no_squad_shape_found():
     assert iw.parse_squad({"details": {}}) == []
+
+
+def test_parse_squad_uses_position_ids_desc_in_fallback_path():
+    team_json = {"players": [{"name": "A Defender", "shirtNumber": 4, "positionIdsDesc": "CB,RB"}]}
+    assert iw.parse_squad(team_json)[0]["pos"] == "DEF"
 
 
 # ---- _team_badge -------------------------------------------------------------
