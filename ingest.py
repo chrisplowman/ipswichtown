@@ -587,6 +587,34 @@ ALIASES = {  # bridge FPL/ESPN naming to TheSportsDB where a plain match fails
     "westhamunited": "westham", "leedsunited": "leeds",
 }
 
+
+def _build_meta_by_norm(teams, badges):
+    """FPL's own team "name" is the short colloquial form ("Man Utd", "Man
+    City") while Understat's team_title is the full official name
+    ("Manchester United", "Manchester City") — index under both norms via
+    ALIASES so an exact match is found for either. Without this, both
+    collapse to the same substring-search fallback in _team_meta ("Manchester
+    City"/"Manchester United" both truncate to "MAN") and silently lose
+    their badge."""
+    meta_by_norm = {}
+    for t in teams.values():
+        nk = _norm(t["name"])
+        v = (t["short_name"], badges.get(t["short_name"]))
+        meta_by_norm[nk] = v
+        if nk in ALIASES:
+            meta_by_norm[ALIASES[nk]] = v
+    return meta_by_norm
+
+
+def _team_meta(title, meta_by_norm):
+    k = _norm(title)
+    if k in meta_by_norm:
+        return meta_by_norm[k]
+    for nk, v in meta_by_norm.items():
+        if len(k) > 3 and (k in nk or nk in k):
+            return v
+    return (title[:3].upper(), None)
+
 def fetch_badges(fpl_teams):
     """TheSportsDB's bulk lookup_all_teams.php?id=<league> serves stale/wrong
     data for the Premier League specifically (confirmed: it returns League
@@ -1093,6 +1121,21 @@ def _teams_with_table_points(teams, table):
             for i, t in teams.items()}
 
 
+def _leaderboard(sorted_players, limit, row_fn):
+    """Top `limit` entries via row_fn(player, rank). If none of those are
+    Ipswich, append the club's own highest-ranked player (their real rank
+    kept, not `limit`+1) so the board always shows where Ipswich stand even
+    when no player cracks the top `limit`."""
+    rows = [row_fn(p, i) for i, p in enumerate(sorted_players[:limit], 1)]
+    if not any(r["is_ipswich"] for r in rows):
+        for i, p in enumerate(sorted_players, 1):
+            row = row_fn(p, i)
+            if row["is_ipswich"]:
+                rows.append(row)
+                break
+    return rows
+
+
 def monte_carlo(teams, all_fixtures, elos, ips_tid, n=10000):
     """Simulate the rest of the season n times from current standings + Elo, returning
     Ipswich's survival odds and every club's relegation probability."""
@@ -1417,15 +1460,8 @@ def main():
         print(f"  football-data H2H: skipped ({e})")
 
     # short-name + badge lookup for Understat team titles
-    meta_by_norm = {_norm(t["name"]): (t["short_name"], badges.get(t["short_name"]))
-                    for t in teams.values()}
-    def team_meta(title):
-        k = _norm(title)
-        if k in meta_by_norm: return meta_by_norm[k]
-        if k in ALIASES and ALIASES[k] in meta_by_norm: return meta_by_norm[ALIASES[k]]
-        for nk, v in meta_by_norm.items():
-            if len(k) > 3 and (k in nk or nk in k): return v
-        return (title[:3].upper(), None)
+    meta_by_norm = _build_meta_by_norm(teams, badges)
+    def team_meta(title): return _team_meta(title, meta_by_norm)
 
     # league-wide Elo rank, and a few nearby-table rivals' own Elo trajectories
     # so the trend chart can show Ipswich's line against the pack it's actually
@@ -1488,8 +1524,8 @@ def main():
                           key=lambda p: (-int(p.get("goals", 0) or 0), -to_float(p.get("xG", 0))))
         by_assists = sorted(league_players,
                             key=lambda p: (-int(p.get("assists", 0) or 0), -to_float(p.get("xA", 0))))
-        top_scorers = [leader_row(p, i) for i, p in enumerate(by_goals[:LEADERS_LIMIT], 1)]
-        top_assists = [leader_row(p, i) for i, p in enumerate(by_assists[:LEADERS_LIMIT], 1)]
+        top_scorers = _leaderboard(by_goals, LEADERS_LIMIT, leader_row)
+        top_assists = _leaderboard(by_assists, LEADERS_LIMIT, leader_row)
         print(f"  leaders: top {len(top_scorers)} scorers, top {len(top_assists)} assists")
 
     # team scatter: xG vs xGA per game, all clubs

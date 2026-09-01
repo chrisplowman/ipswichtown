@@ -145,6 +145,62 @@ def test_teams_with_table_points_falls_back_when_table_missing():
     assert _teams_with_table_points(teams, [])[1]["points"] == 5
 
 
+# ---- Understat team-name matching (badges/short codes) ---------------------
+def test_team_meta_resolves_man_utd_and_man_city_without_colliding():
+    # FPL's own team "name" is the short colloquial form ("Man Utd", "Man
+    # City"); Understat's team_title is the full official name. Without
+    # indexing meta_by_norm under both forms, both truncate to the same
+    # "MAN" fallback and lose their badge — this is the regression case.
+    from ingest import _build_meta_by_norm, _team_meta
+    teams = {1: {"name": "Man Utd", "short_name": "MUN"},
+             2: {"name": "Man City", "short_name": "MCI"}}
+    badges = {"MUN": "https://example.com/mun.svg", "MCI": "https://example.com/mci.svg"}
+    meta_by_norm = _build_meta_by_norm(teams, badges)
+    assert _team_meta("Manchester United", meta_by_norm) == ("MUN", badges["MUN"])
+    assert _team_meta("Manchester City", meta_by_norm) == ("MCI", badges["MCI"])
+
+
+def test_team_meta_falls_back_to_substring_match():
+    from ingest import _build_meta_by_norm, _team_meta
+    teams = {1: {"name": "Fulham", "short_name": "FUL"}}
+    meta_by_norm = _build_meta_by_norm(teams, {})
+    assert _team_meta("Fulham FC", meta_by_norm) == ("FUL", None)
+
+
+def test_team_meta_unknown_club_uses_first_three_letters():
+    from ingest import _team_meta
+    assert _team_meta("Somewhere United", {}) == ("SOM", None)
+
+
+# ---- Top scorers/assists leaderboard ----------------------------------------
+def test_leaderboard_appends_ipswich_when_outside_top_limit():
+    from ingest import _leaderboard
+    players = [{"name": chr(65 + i), "is_ipswich": False} for i in range(10)]
+    players.append({"name": "Z", "is_ipswich": True})   # rank 11, outside limit 10
+    row_fn = lambda p, rank: {"rank": rank, "name": p["name"], "is_ipswich": p["is_ipswich"]}
+    rows = _leaderboard(players, 10, row_fn)
+    assert len(rows) == 11
+    assert rows[-1] == {"rank": 11, "name": "Z", "is_ipswich": True}
+
+
+def test_leaderboard_no_duplicate_when_ipswich_already_in_top_limit():
+    from ingest import _leaderboard
+    players = [{"name": "Z", "is_ipswich": True}] + \
+        [{"name": chr(65 + i), "is_ipswich": False} for i in range(9)]
+    row_fn = lambda p, rank: {"rank": rank, "name": p["name"], "is_ipswich": p["is_ipswich"]}
+    rows = _leaderboard(players, 10, row_fn)
+    assert len(rows) == 10
+    assert sum(r["is_ipswich"] for r in rows) == 1
+
+
+def test_leaderboard_no_ipswich_player_at_all():
+    from ingest import _leaderboard
+    players = [{"name": chr(65 + i), "is_ipswich": False} for i in range(15)]
+    row_fn = lambda p, rank: {"rank": rank, "name": p["name"], "is_ipswich": p["is_ipswich"]}
+    rows = _leaderboard(players, 10, row_fn)
+    assert len(rows) == 10
+
+
 def test_monte_carlo_no_remaining_fixtures_returns_none():
     from ingest import monte_carlo
     teams = {1: {"id": 1, "name": "Ipswich", "points": 10}}
