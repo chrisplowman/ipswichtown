@@ -51,7 +51,7 @@ def _live():
                       "finished": False, "kickoff": "2026-08-22T14:00:00Z", "difficulty": 3, "badge": None}
                      for i, (o, s) in enumerate([("Arsenal", "ARS"), ("Everton", "EVE"),
                                                  ("Chelsea", "CHE"), ("Fulham", "FUL")], 1)],
-        "squad": [{"name": n, "full_name": n, "pos": p, "pos_id": 2, "price": 6.0, "points": 40,
+        "squad": [{"name": n, "full_name": n, "pos": p, "pos_id": 2, "age": 22, "price": 6.0, "points": 40,
                    "form": 4.2, "minutes": 900, "starts": 10, "goals": 2, "assists": 1, "xg": 1.5,
                    "xa": 1.0, "xgi": 2.5, "clean_sheets": 2, "selected": 8.5}
                   for n, p in [("Delap", "FWD"), ("Hutchinson", "MID")]],

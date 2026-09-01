@@ -631,6 +631,7 @@
         <thead><tr>
           <th class="player" aria-sort="none"><button>Player</button></th>
           <th class="pos" aria-sort="none"><button>Pos</button></th>
+          <th aria-sort="none"><button>Age</button></th>
           <th aria-sort="none"><button>Mins</button></th>
           <th aria-sort="none"><button>G</button></th>
           <th aria-sort="none"><button>A</button></th>
@@ -643,6 +644,7 @@
           <tr data-min="{{ p.minutes }}">
             <td class="player" title="{{ p.full_name }}">{% if p.slug %}<a class="playerlink" href="player/{{ p.slug }}.html">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</td>
             <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
+            <td>{{ p.age if p.age is not none else '-' }}</td>
             <td>{{ p.minutes }}</td>
             <td class="per90" data-raw="{{ p.goals }}" data-dec="0">{{ p.goals }}</td>
             <td class="per90" data-raw="{{ p.assists }}" data-dec="0">{{ p.assists }}</td>

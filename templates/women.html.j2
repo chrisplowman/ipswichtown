@@ -242,6 +242,7 @@
         <thead><tr>
           <th class="player" aria-sort="none"><button>Player</button></th>
           <th class="pos" aria-sort="none"><button>Pos</button></th>
+          <th aria-sort="none"><button>Age</button></th>
           <th aria-sort="none"><button>Apps</button></th>
           <th aria-sort="none"><button>G</button></th>
           <th aria-sort="none"><button>A</button></th>
@@ -251,6 +252,7 @@
           <tr>
             <td class="player" title="{{ p.full_name }}">{{ p.name }}</td>
             <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
+            <td>{{ p.age if p.age is not none else '-' }}</td>
             <td>{{ p.apps if p.apps is not none else '-' }}</td>
             <td>{{ p.goals if p.goals is not none else '-' }}</td>
             <td>{{ p.assists if p.assists is not none else '-' }}</td>
