@@ -508,7 +508,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .chartcard.wide{grid-column:1 / -1}
 .chartcard .htitle{min-width:0}
 .chartcard p.sub{margin:8px 0 0;font-size:13px;color:var(--steel);text-wrap:pretty;line-height:1.5}
-.canvas-holder{position:relative;height:300px;padding:0px 16px}
+.canvas-holder{position:relative;height:300px;padding:0px}
 .chartcard .note{color:var(--steel);font-size:14px;padding:40px 0;text-align:center}
 .shotbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .shotbar select,.profile-controls select{font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--hairline-strong);border-radius:var(--radius-md);background:var(--canvas);color:var(--ink)}
