@@ -1,6 +1,7 @@
 {# Shared header + nav for every page. nav_prefix is "" for top-level pages and
    "../" for match/player pages so links resolve correctly. #}
 <a class="skiplink" href="#main">Skip to content</a>
+{% include '_toggle.html.j2' %}
 {% if live_now and next_fixture %}
 <div class="live-banner" role="status">
   <span class="live-dot" aria-hidden="true"></span>

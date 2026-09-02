@@ -1,0 +1,10 @@
+{# Men's/Women's section switcher, included at the very top of every page.
+   root_prefix is the relative path back to the site root ("../" for
+   top-level pages, "../../" for match/player pages one level deeper) and
+   site_section is "men" or "women", for the active-state highlight. #}
+<div class="section-toggle">
+  <div class="wrap">
+    <a href="{{ root_prefix }}men/index.html"{% if site_section == 'men' %} class="active" aria-current="page"{% endif %}>Men's</a>
+    <a href="{{ root_prefix }}women/index.html"{% if site_section == 'women' %} class="active" aria-current="page"{% endif %}>Women's</a>
+  </div>
+</div>
