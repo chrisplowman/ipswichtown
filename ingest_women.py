@@ -181,7 +181,8 @@ def _map_player(p, pos):
             next((v for k, v in POS_MAP.items() if k in role_text), "MID")
     full_name = p.get("name") or ""
     return {"name": full_name.split()[-1] if full_name else "", "full_name": full_name, "pos": pos,
-            "apps": p.get("matchesPlayed"), "goals": p.get("goals"), "assists": p.get("assists")}
+            "age": p.get("age"), "apps": p.get("matchesPlayed"), "goals": p.get("goals"),
+            "assists": p.get("assists")}
 
 
 def parse_squad(team_json):

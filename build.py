@@ -976,7 +976,7 @@ def sample_data_women():
                    ("Chloe Wardle", "DEF"), ("Isla Barnes", "MID"), ("Millie Radford", "MID"),
                    ("Grace Oduya", "MID"), ("Poppy Fenn", "FWD"), ("Ruby Halston", "FWD"),
                    ("Neve Colbeck", "DEF"), ("Tilly Vance", "MID")]
-    squad = [{"name": n.split()[-1], "full_name": n, "pos": p,
+    squad = [{"name": n.split()[-1], "full_name": n, "pos": p, "age": 19 + (i * 3) % 14,
               "apps": 8 - i % 3, "goals": max(0, 5 - i) if p == "FWD" else max(0, 2 - i % 3),
               "assists": max(0, 3 - i % 4)} for i, (n, p) in enumerate(squad_names)]
     table = []

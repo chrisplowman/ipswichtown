@@ -97,14 +97,15 @@ def test_parse_squad_flattens_position_groups_and_drops_coach():
         {"title": "coach", "members": [{"name": "David Wright", "role": {"key": "coach"}}]},
         {"title": "keepers", "members": [
             {"name": "Freya Scherpen", "shirtNumber": 1, "role": {"key": "keeper_long"},
-             "positionIdsDesc": "GK", "goals": 0, "assists": 0}]},
+             "positionIdsDesc": "GK", "age": 24, "goals": 0, "assists": 0}]},
         {"title": "attackers", "members": [
             {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker_long"},
-             "positionIdsDesc": "ST", "goals": 3, "assists": 1}]},
+             "positionIdsDesc": "ST", "age": 27, "goals": 3, "assists": 1}]},
     ]}}
     squad = iw.parse_squad(team_json)
     assert [p["name"] for p in squad] == ["Scherpen", "Smith"]
     assert [p["pos"] for p in squad] == ["GKP", "FWD"]
+    assert [p["age"] for p in squad] == [24, 27]
     assert squad[1]["goals"] == 3 and squad[1]["assists"] == 1
 
 
@@ -112,7 +113,7 @@ def test_parse_squad_falls_back_to_generic_search_when_shape_unrecognised():
     team_json = {"players": [{"name": "Jane Smith", "shirtNumber": 9,
                               "role": {"key": "midfielder_long"}, "goals": None, "assists": None}]}
     squad = iw.parse_squad(team_json)
-    assert squad == [{"name": "Smith", "full_name": "Jane Smith", "pos": "MID",
+    assert squad == [{"name": "Smith", "full_name": "Jane Smith", "pos": "MID", "age": None,
                       "apps": None, "goals": None, "assists": None}]
 
 

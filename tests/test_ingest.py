@@ -22,6 +22,14 @@ def test_norm_strips_club_suffixes_and_punctuation():
     assert _norm("Brighton & Hove Albion") == "brightonhovealbion"
 
 
+def test_norm_strips_accents():
+    # ESPN's real roster spells these with diacritics; FPL/other sources
+    # often don't — without folding to plain ASCII these silently fail to
+    # match even though they're the same player/club.
+    assert _norm("Marcelino Núñez") == _norm("Marcelino Nunez")
+    assert _norm("Saša Lukić") == _norm("Sasa Lukic")
+
+
 def test_canon_known_aliases_collapse_to_same_key():
     assert canon("Man City") == canon("Manchester City") == "mancity"
     assert canon("Spurs") == canon("Tottenham Hotspur") == "tottenham"
@@ -199,6 +207,80 @@ def test_leaderboard_no_ipswich_player_at_all():
     row_fn = lambda p, rank: {"rank": rank, "name": p["name"], "is_ipswich": p["is_ipswich"]}
     rows = _leaderboard(players, 10, row_fn)
     assert len(rows) == 10
+
+
+# ---- ESPN roster ages --------------------------------------------------------
+# Real shape (verified against a live response for team 373): "athletes" is a
+# flat list, each entry carrying "position" (an object) and "fullName" — but
+# not every entry carries "age" (a real roster had an academy player with no
+# birth date on file at all), which is exactly the regression case below.
+def test_find_player_list_handles_flat_shape():
+    from ingest import _find_player_list
+    data = {"team": {"id": "373"}, "athletes": [
+        {"fullName": "Sam Szmodics", "position": {"name": "Forward"}, "age": 29},
+        {"fullName": "Kalvin Phillips", "position": {"name": "Midfielder"}, "age": 29}]}
+    found = _find_player_list(data)
+    assert found == data["athletes"]
+
+
+def test_find_player_list_matches_even_when_one_entry_has_no_age():
+    # this is the exact shape that broke fetch_espn_roster on a real run: one
+    # academy player entirely missing "age" made an all()-must-have-"age"
+    # check reject the whole list, zeroing out every player's age, not just
+    # that one player's.
+    from ingest import _find_player_list
+    data = {"athletes": [
+        {"fullName": "Sam Szmodics", "position": {"name": "Forward"}, "age": 29},
+        {"fullName": "Matthew Charles Compton", "position": {"name": "Midfielder"}}]}
+    found = _find_player_list(data)
+    assert found == data["athletes"]
+
+
+def test_find_player_list_returns_none_when_nothing_matches():
+    from ingest import _find_player_list
+    assert _find_player_list({"team": {"id": "373"}, "athletes": []}) is None
+
+
+def test_fetch_espn_roster_keys_ages_by_normalised_name_and_skips_missing_age(monkeypatch):
+    import ingest
+    fake_response = {"athletes": [
+        {"fullName": "Sam Szmodics", "position": {"name": "Forward"}, "age": 29},
+        {"fullName": "Matthew Charles Compton", "position": {"name": "Midfielder"}}]}
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: fake_response)
+    ages = ingest.fetch_espn_roster()
+    assert ages == {ingest._norm("Sam Szmodics"): 29}
+
+
+def test_attach_ages_merges_by_normalised_full_name():
+    from ingest import _attach_ages, _norm
+    squad = [{"full_name": "Sam Szmodics", "name": "Szmodics"},
+             {"full_name": "Unknown Player", "name": "Player"}]
+    ages = {_norm("Sam Szmodics"): 29}
+    out = _attach_ages(squad, ages)
+    assert out[0]["age"] == 29
+    assert out[1]["age"] is None
+    # original fields untouched
+    assert out[0]["name"] == "Szmodics"
+
+
+def test_attach_ages_falls_back_to_substring_for_compound_surnames():
+    # FPL sometimes carries a player's full legal surname where ESPN uses
+    # their shorter public one (or vice versa) — an exact-name match misses
+    # this, so a substring match bridges it the same way _team_meta does
+    # for club names.
+    from ingest import _attach_ages, _norm
+    squad = [{"full_name": "Jaden Philogene-Bidace", "name": "Philogene-Bidace"}]
+    ages = {_norm("Jaden Philogene"): 24}
+    out = _attach_ages(squad, ages)
+    assert out[0]["age"] == 24
+
+
+def test_attach_ages_ignores_too_short_names_in_substring_fallback():
+    from ingest import _attach_ages
+    squad = [{"full_name": "Bo", "name": "Bo"}]
+    ages = {"bob": 22, "robert": 30}
+    out = _attach_ages(squad, ages)
+    assert out[0]["age"] is None
 
 
 def test_monte_carlo_no_remaining_fixtures_returns_none():

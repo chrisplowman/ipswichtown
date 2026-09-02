@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -394,6 +395,69 @@ def fetch_espn_schedule(team_id=IPSWICH_ESPN_TEAM_ID):
     return by_date
 
 
+def _find_player_list(node):
+    """Depth-first search for the first list whose dict entries all carry a
+    "position" alongside a name field — used instead of a hard-coded path
+    into ESPN's roster response (which groups players by position under
+    "items" on some sports/endpoints and returns a flat list on others) so a
+    shape difference degrades to no ages found instead of a crash. Deliberately
+    doesn't require "age" itself here — a real roster had one academy player
+    with no birth date on file at all, which made an all-entries-must-have-
+    "age" check reject the whole list and silently zero out every player's
+    age, not just that one player's."""
+    if isinstance(node, list):
+        if node and all(isinstance(x, dict) and "position" in x and
+                        ("displayName" in x or "fullName" in x) for x in node):
+            return node
+        for item in node:
+            found = _find_player_list(item)
+            if found:
+                return found
+    elif isinstance(node, dict):
+        for v in node.values():
+            found = _find_player_list(v)
+            if found:
+                return found
+    return None
+
+
+def fetch_espn_roster(team_id=IPSWICH_ESPN_TEAM_ID):
+    """Ipswich's full squad from ESPN's site API, fetched purely to backfill
+    player age — FPL's own bootstrap-static player data (the base of the
+    `squad` list in fetch_fpl()) has no birth-date/age field at all. Same
+    site.web.api.espn.com host as fetch_table()/fetch_espn_schedule() to
+    dodge the CI IP block that hits site.api.espn.com. Returns ages keyed by
+    _norm(full name) so they can be matched onto FPL's own player names."""
+    url = (f"https://site.web.api.espn.com/apis/site/v2/sports/soccer/eng.1/"
+           f"teams/{team_id}/roster")
+    data = get_json(url)
+    ages = {}
+    for a in _find_player_list(data) or []:
+        name = a.get("fullName") or a.get("displayName") or ""
+        age = a.get("age")
+        if name and age:
+            ages[_norm(name)] = age
+    return ages
+
+
+def _attach_ages(squad, ages_by_name):
+    """Merge ESPN roster ages onto FPL's squad list by normalised full name,
+    falling back to a substring match (the same technique _team_meta uses to
+    bridge club-name variants) for cases like FPL's "Jaden Philogene-Bidace"
+    vs ESPN's "Jaden Philogene" — one full legal name, one shorter public one."""
+    out = []
+    for p in squad:
+        k = _norm(p["full_name"])
+        age = ages_by_name.get(k)
+        if age is None:
+            for nk, v in ages_by_name.items():
+                if len(k) > 3 and (k in nk or nk in k):
+                    age = v
+                    break
+        out.append({**p, "age": age})
+    return out
+
+
 MATCH_STAT_KEYS = ("shots_for", "shots_against", "sot_for", "sot_against",
                     "corners_for", "corners_against", "fouls_for", "fouls_against",
                     "yellows_for", "yellows_against", "reds_for", "reds_against")
@@ -575,7 +639,11 @@ def fetch_espn_lineups(event_id):
 #  TheSportsDB — club badges (public test key "3")                            #
 # --------------------------------------------------------------------------- #
 def _norm(name):
-    n = name.lower()
+    # Strip accents first (e.g. ESPN's "Marcelino Núñez" / "Saša Lukić" vs a
+    # plain-ASCII spelling elsewhere) so those variants land on the same key.
+    n = unicodedata.normalize("NFKD", name or "")
+    n = "".join(c for c in n if not unicodedata.combining(c))
+    n = n.lower()
     for junk in [" fc", " afc", "afc ", "'", ".", "&", "-"]:
         n = n.replace(junk, "")
     return re.sub(r"\s+", "", n)
@@ -1309,6 +1377,15 @@ def fetch_news():
 def main():
     fpl = fetch_fpl()
     tid, teams, ipswich = fpl["tid"], fpl["teams"], fpl["ipswich"]
+
+    fpl["squad"] = _attach_ages(fpl["squad"], {})
+    try:
+        ages_by_name = fetch_espn_roster()
+        fpl["squad"] = _attach_ages(fpl["squad"], ages_by_name)
+        matched = sum(1 for p in fpl["squad"] if p["age"] is not None)
+        print(f"  ESPN roster: matched {matched}/{len(fpl['squad'])} player ages")
+    except Exception as e:
+        print(f"  ESPN roster: skipped ({e})")
 
     badges = {}
     try:
