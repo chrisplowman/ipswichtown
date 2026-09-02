@@ -282,7 +282,7 @@ def test_ga_snippet_appears_only_when_measurement_id_set(tmp_path, monkeypatch):
     monkeypatch.setattr(build, "GA_MEASUREMENT_ID", "G-TEST123")
     (tmp_path / "itfc.json").write_text(_json.dumps(data))
     build.main()
-    idx = (tmp_path / "site" / "index.html").read_text()
+    idx = (tmp_path / "site" / "men" / "index.html").read_text()
     assert "googletagmanager.com/gtag/js?id=G-TEST123" in idx
     assert "gtag('config','G-TEST123')" in idx
 
@@ -296,25 +296,31 @@ def test_site_builds_end_to_end(tmp_path, monkeypatch):
     (tmp_path / "itfc.json").write_text(_json.dumps(data))
     build.main()
     site = tmp_path / "site"
+    assert (site / "index.html").exists(), "no root redirect page built"
+    root_html = (site / "index.html").read_text()
+    assert 'url=men/index.html' in root_html
+    men = site / "men"
     for f in ["index.html", "table.html", "charts.html", "matches.html", "squad.html",
-              "news.html", "style.css", "sitemap.xml", "robots.txt"]:
-        assert (site / f).exists(), f"missing {f}"
-    assert list((site / "match").glob("*.html")), "no match pages built"
-    assert list((site / "player").glob("*.html")), "no player pages built"
-    idx = (site / "index.html").read_text()
+              "news.html", "sitemap.xml", "robots.txt"]:
+        assert (site / f if f in ("sitemap.xml", "robots.txt") else men / f).exists(), f"missing {f}"
+    assert (site / "style.css").exists(), "shared style.css missing from site root"
+    assert list((men / "match").glob("*.html")), "no match pages built"
+    assert list((men / "player").glob("*.html")), "no player pages built"
+    idx = (men / "index.html").read_text()
     assert "{{" not in idx and "{%" not in idx, "unrendered Jinja in output"
     assert "Ipswich Town" in idx
     assert "googletagmanager" not in idx, "GA should be absent when GA_MEASUREMENT_ID isn't set"
-    match_html = next((site / "match").glob("*.html")).read_text()
-    assert 'class="masthead' in match_html and 'href="../style.css"' in match_html
+    assert 'href="../style.css"' in idx, "men's top-level pages should reference the shared root style.css"
+    match_html = next((men / "match").glob("*.html")).read_text()
+    assert 'class="masthead' in match_html and 'href="../../style.css"' in match_html
     sitemap = (site / "sitemap.xml").read_text()
-    match_slug = next((site / "match").glob("*.html")).stem
-    player_slug = next((site / "player").glob("*.html")).stem
-    assert f"match/{match_slug}.html" in sitemap
-    assert f"player/{player_slug}.html" in sitemap
+    match_slug = next((men / "match").glob("*.html")).stem
+    player_slug = next((men / "player").glob("*.html")).stem
+    assert f"men/match/{match_slug}.html" in sitemap
+    assert f"men/player/{player_slug}.html" in sitemap
     assert "women/index.html" in sitemap
     assert "sitemap.xml" in (site / "robots.txt").read_text()
-    assert (site / "preview.html").exists(), "no preview page built"
-    assert "preview.html" in sitemap
-    preview_html = (site / "preview.html").read_text()
+    assert (men / "preview.html").exists(), "no preview page built"
+    assert "men/preview.html" in sitemap
+    preview_html = (men / "preview.html").read_text()
     assert "{{" not in preview_html and "{%" not in preview_html

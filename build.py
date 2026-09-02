@@ -923,17 +923,16 @@ def form_guide_women(data, n=6):
 
 def render_women_site(template, data, outdir):
     """Renders into outdir (e.g. site/women/), sharing style.css/fonts/share.js
-    from outdir's parent rather than duplicating them — main() copies those
-    into SITE before calling this."""
+    from outdir's parent (the site root, alongside site/men/) — main() copies
+    those into SITE before calling this."""
     outdir.mkdir(parents=True, exist_ok=True)
-    if ASSETS.exists() and not (outdir.parent / "style.css").exists():
-        shutil.copytree(ASSETS, outdir.parent, dirs_exist_ok=True)
     league_name = data.get("league_name", "Women's Super League 2")
     fguide = form_guide_women(data)
 
     for page_id, filename, _label in WOMEN_PAGES:
         html = template.render(page=page_id, current=page_id, pages=WOMEN_PAGES,
-                               css_href="../style.css", form_guide=fguide,
+                               css_href="../style.css", root_prefix="../", site_section="women",
+                               form_guide=fguide,
                                og_title=f"Ipswich Town Women · {filename.replace('.html', '').title()}",
                                og_description=f"Ipswich Town Women {league_name} stats.",
                                canonical=f"{SITE_URL}/women/{filename}", **data)
@@ -1038,10 +1037,11 @@ def _is_live_now(next_fixture, now=None):
 
 
 def render_site(template, match_template, player_template, preview_template, data):
-    outdir = SITE
+    # site/men/ — shared assets (style.css, fonts/, share.js) live one level up
+    # at the site root, alongside site/women/, so both sections reference the
+    # same copy instead of duplicating it; main() copies ASSETS there once.
+    outdir = SITE / "men"
     (outdir / "data").mkdir(parents=True, exist_ok=True)
-    if ASSETS.exists():
-        shutil.copytree(ASSETS, outdir, dirs_exist_ok=True)   # style.css, fonts/, share.js per site root
 
     # readable match-page URLs (date + opponent + venue) instead of Understat's
     # opaque numeric id — mp["id"] itself is left untouched since match_report_links()
@@ -1086,11 +1086,12 @@ def render_site(template, match_template, player_template, preview_template, dat
     for page_id, filename, _label in PAGES:
         og_title, og_desc = OG.get(page_id, OG["overview"])
         html = template.render(data_json=data_json, page=page_id, current=page_id,
-                               pages=PAGES, nav_prefix="", css_href="style.css",
+                               pages=PAGES, nav_prefix="", css_href="../style.css",
+                               root_prefix="../", site_section="men",
                                summary_text=summary_text, predicted=predicted, rivals=rivals,
                                form_guide=fguide,
                                og_title=og_title, og_description=og_desc, og_image=og_default,
-                               canonical=f"{SITE_URL}/{filename}", **data)
+                               canonical=f"{SITE_URL}/men/{filename}", **data)
         (outdir / filename).write_text(html)
     (outdir / "data" / "itfc.json").write_text(json.dumps(data))
 
@@ -1115,11 +1116,12 @@ def render_site(template, match_template, player_template, preview_template, dat
         preview_html = preview_template.render(
             next_fixture=nf, next_opponent=no, likely_xi=likely_xi, live_now=data.get("live_now"),
             ga_id=GA_MEASUREMENT_ID, season=season, team=team, position=position, generated_at=generated_at,
-            pages=PAGES, nav_prefix="", current="overview", css_href="style.css",
+            pages=PAGES, nav_prefix="", current="overview", css_href="../style.css",
+            root_prefix="../", site_section="men",
             og_title=f"Next: Ipswich vs {nf['opponent']} · Match preview",
             og_description=f"Ipswich's next Premier League match: {nf['opponent']} "
                            f"({'H' if nf['home'] else 'A'}). Form, xG, win probability and head-to-head.",
-            og_image=og_default, canonical=f"{SITE_URL}/preview.html")
+            og_image=og_default, canonical=f"{SITE_URL}/men/preview.html")
         (outdir / "preview.html").write_text(preview_html)
 
     # a full detail page per finished match (+ its own share card)
@@ -1144,14 +1146,15 @@ def render_site(template, match_template, player_template, preview_template, dat
                 "startDate": mp.get("date"), "eventStatus": "https://schema.org/EventCompleted",
                 "homeTeam": {"@type": "SportsTeam", "name": home_team},
                 "awayTeam": {"@type": "SportsTeam", "name": away_team},
-                "url": f"{SITE_URL}/match/{mp['slug']}.html"}).replace("<", "\\u003c")
+                "url": f"{SITE_URL}/men/match/{mp['slug']}.html"}).replace("<", "\\u003c")
             html = match_template.render(m=mp, season=season, ga_id=GA_MEASUREMENT_ID,
                                          generated_at=generated_at, match_json=match_json, ld_json=ld_json,
                                          pages=PAGES, nav_prefix="../", current="matches",
-                                         css_href="../style.css", team=team, position=position,
+                                         css_href="../../style.css", root_prefix="../../", site_section="men",
+                                         team=team, position=position,
                                          og_title=score + " · Match report",
                                          og_description=f"Full report: xG, shots, player ratings and the story of Ipswich {mp['gf']}-{mp['ga']} {mp['opponent']}.",
-                                         og_image="../" + og_img, canonical=f"{SITE_URL}/match/{mp['slug']}.html")
+                                         og_image="../" + og_img, canonical=f"{SITE_URL}/men/match/{mp['slug']}.html")
             (outdir / "match" / f"{mp['slug']}.html").write_text(html)
 
     # a page per squad player
@@ -1162,11 +1165,12 @@ def render_site(template, match_template, player_template, preview_template, dat
                                       "log": list(reversed(pp["log"]))}).replace("<", "\\u003c")
             html = player_template.render(p=pp, season=season, player_json=player_json, ga_id=GA_MEASUREMENT_ID,
                                           pages=PAGES, nav_prefix="../", current="squad",
-                                          css_href="../style.css", team=team, position=position,
+                                          css_href="../../style.css", root_prefix="../../", site_section="men",
+                                          team=team, position=position,
                                           generated_at=generated_at,
                                           og_title=f"{pp['name']} · Ipswich Town",
                                           og_description=f"{pp['name']}'s Ipswich Town season: stats, percentile profile, match log and shot map.",
-                                          og_image="../og.png", canonical=f"{SITE_URL}/player/{pp['slug']}.html")
+                                          og_image="../og.png", canonical=f"{SITE_URL}/men/player/{pp['slug']}.html")
             (outdir / "player" / f"{pp['slug']}.html").write_text(html)
 
 
@@ -1175,12 +1179,12 @@ def _write_sitemap(outdir, data, women_data):
     page — most valuably the match and player pages, which now have readable URLs
     but no other inbound links from outside the site itself."""
     lastmod = (data.get("generated_at") or "")[:10]
-    urls = [(f"{SITE_URL}/{filename}", lastmod) for _, filename, _ in PAGES]
+    urls = [(f"{SITE_URL}/men/{filename}", lastmod) for _, filename, _ in PAGES]
     if data.get("next_fixture") and data.get("next_opponent"):
-        urls.append((f"{SITE_URL}/preview.html", lastmod))
-    urls += [(f"{SITE_URL}/match/{mp['slug']}.html", lastmod)
+        urls.append((f"{SITE_URL}/men/preview.html", lastmod))
+    urls += [(f"{SITE_URL}/men/match/{mp['slug']}.html", lastmod)
              for mp in data.get("match_pages") or [] if mp.get("slug")]
-    urls += [(f"{SITE_URL}/player/{sp['slug']}.html", lastmod)
+    urls += [(f"{SITE_URL}/men/player/{sp['slug']}.html", lastmod)
              for sp in data.get("squad") or [] if sp.get("slug")]
     women_lastmod = (women_data.get("generated_at") or "")[:10] if women_data else lastmod
     urls += [(f"{SITE_URL}/women/{filename}", women_lastmod) for _, filename, _ in WOMEN_PAGES]
@@ -1194,6 +1198,20 @@ def _write_sitemap(outdir, data, women_data):
     (outdir / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
 
 
+def _write_root_redirect(outdir):
+    """site/index.html: the bare domain redirects straight to the men's site
+    (site/men/), the same way it behaved before the men's/women's split —
+    a meta-refresh plus a plain link so it still works with JS disabled."""
+    html = (
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
+        "<meta http-equiv=\"refresh\" content=\"0; url=men/index.html\">\n"
+        f"<link rel=\"canonical\" href=\"{SITE_URL}/men/index.html\">\n"
+        "<title>Ipswich Town Stats</title>\n</head>\n<body>\n"
+        "<p>Redirecting to <a href=\"men/index.html\">Ipswich Town men's stats</a>…</p>\n"
+        "</body>\n</html>\n")
+    (outdir / "index.html").write_text(html)
+
+
 def main():
     real = json.loads(DATA.read_text())
     env = _make_env()
@@ -1205,8 +1223,11 @@ def main():
     if SITE.exists():
         shutil.rmtree(SITE)
     SITE.mkdir(parents=True)
+    # Shared assets (style.css, fonts/, share.js) live once at the site root —
+    # site/men/ and site/women/ both reference them via "../style.css" etc.
+    if ASSETS.exists():
+        shutil.copytree(ASSETS, SITE, dirs_exist_ok=True)
     render_site(template, match_template, player_template, preview_template, real)
-    (SITE / ".nojekyll").write_text("")
     n = len(real.get("match_pages", []))
     print(f"Built {len(PAGES)} pages + {n} match pages + {len(real.get('squad', []))} player pages.")
 
@@ -1222,6 +1243,8 @@ def main():
     print(f"Built {len(WOMEN_PAGES)} women's pages"
           f"{' (sample data — no live source yet)' if using_sample else ''}.")
 
+    _write_root_redirect(SITE)
+    (SITE / ".nojekyll").write_text("")
     _write_sitemap(SITE, real, women_data)
 
 

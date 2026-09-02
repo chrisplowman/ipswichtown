@@ -242,6 +242,12 @@ td,.v,.score,.kick,.gw,.h2h-rec,.shotscore,.abbr,
 .surv-big,.wp-bar,.page-match .score-row .sc{font-variant-numeric:tabular-nums}
 .card,.board,.stat,.tablewrap,.chartcard{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius-lg);box-shadow:var(--shadow-card)}
 .innerboard{background:var(--canvas)}
+.section-toggle{background:var(--brand-navy);border-bottom:1px solid rgba(255,255,255,.15)}
+.section-toggle .wrap{display:flex;justify-content:center;gap:6px;padding:6px var(--space-lg)}
+.section-toggle a{font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
+  text-decoration:none;color:var(--on-dark-muted);padding:5px 14px;border-radius:var(--radius-full);line-height:1}
+.section-toggle a:hover{color:var(--on-dark)}
+.section-toggle a.active{background:var(--ink-deep);color:var(--canvas)}
 .masthead{background:var(--brand-navy);color:var(--on-dark)}
 .masthead .wrap{padding:26px var(--space-lg) 24px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
 .crest{display:flex;align-items:center;gap:14px}

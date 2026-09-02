@@ -31,6 +31,7 @@
 </head>
 <body class="page-{{ page }}">
 <a class="skiplink" href="#main">Skip to content</a>
+{% include '_toggle.html.j2' %}
 <header class="masthead">
   <div class="wrap">
     <div class="crest">
@@ -295,7 +296,7 @@
 <footer class="wrap">
   {% if health and health.missing %}<div class="health-note" role="status">⚠ Some data sources returned nothing on the last update: {{ health.missing|join(', ') }}. Those sections may be incomplete until the next successful rebuild.</div>{% endif %}
   Data from free, public sources — {{ league_name }} results, table and squad via FotMob, Ipswich RSS feeds (news) · rebuilt automatically via GitHub Actions.<br>
-  This page deliberately omits xG, shot maps and other advanced stats shown on the men's team pages — those rely on data sources with no free women's-football coverage. <a href="../index.html">Men's team stats →</a><br>
+  This page deliberately omits xG, shot maps and other advanced stats shown on the men's team pages — those rely on data sources with no free women's-football coverage. <a href="../men/index.html">Men's team stats →</a><br>
   Raw data: <code>data/itfc_women.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>
 
