@@ -22,6 +22,14 @@ def test_norm_strips_club_suffixes_and_punctuation():
     assert _norm("Brighton & Hove Albion") == "brightonhovealbion"
 
 
+def test_norm_strips_accents():
+    # ESPN's real roster spells these with diacritics; FPL/other sources
+    # often don't — without folding to plain ASCII these silently fail to
+    # match even though they're the same player/club.
+    assert _norm("Marcelino Núñez") == _norm("Marcelino Nunez")
+    assert _norm("Saša Lukić") == _norm("Sasa Lukic")
+
+
 def test_canon_known_aliases_collapse_to_same_key():
     assert canon("Man City") == canon("Manchester City") == "mancity"
     assert canon("Spurs") == canon("Tottenham Hotspur") == "tottenham"
@@ -253,6 +261,26 @@ def test_attach_ages_merges_by_normalised_full_name():
     assert out[1]["age"] is None
     # original fields untouched
     assert out[0]["name"] == "Szmodics"
+
+
+def test_attach_ages_falls_back_to_substring_for_compound_surnames():
+    # FPL sometimes carries a player's full legal surname where ESPN uses
+    # their shorter public one (or vice versa) — an exact-name match misses
+    # this, so a substring match bridges it the same way _team_meta does
+    # for club names.
+    from ingest import _attach_ages, _norm
+    squad = [{"full_name": "Jaden Philogene-Bidace", "name": "Philogene-Bidace"}]
+    ages = {_norm("Jaden Philogene"): 24}
+    out = _attach_ages(squad, ages)
+    assert out[0]["age"] == 24
+
+
+def test_attach_ages_ignores_too_short_names_in_substring_fallback():
+    from ingest import _attach_ages
+    squad = [{"full_name": "Bo", "name": "Bo"}]
+    ages = {"bob": 22, "robert": 30}
+    out = _attach_ages(squad, ages)
+    assert out[0]["age"] is None
 
 
 def test_monte_carlo_no_remaining_fixtures_returns_none():

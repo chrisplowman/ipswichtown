@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -440,8 +441,21 @@ def fetch_espn_roster(team_id=IPSWICH_ESPN_TEAM_ID):
 
 
 def _attach_ages(squad, ages_by_name):
-    """Merge ESPN roster ages onto FPL's squad list by normalised full name."""
-    return [{**p, "age": ages_by_name.get(_norm(p["full_name"]))} for p in squad]
+    """Merge ESPN roster ages onto FPL's squad list by normalised full name,
+    falling back to a substring match (the same technique _team_meta uses to
+    bridge club-name variants) for cases like FPL's "Jaden Philogene-Bidace"
+    vs ESPN's "Jaden Philogene" — one full legal name, one shorter public one."""
+    out = []
+    for p in squad:
+        k = _norm(p["full_name"])
+        age = ages_by_name.get(k)
+        if age is None:
+            for nk, v in ages_by_name.items():
+                if len(k) > 3 and (k in nk or nk in k):
+                    age = v
+                    break
+        out.append({**p, "age": age})
+    return out
 
 
 MATCH_STAT_KEYS = ("shots_for", "shots_against", "sot_for", "sot_against",
@@ -625,7 +639,11 @@ def fetch_espn_lineups(event_id):
 #  TheSportsDB — club badges (public test key "3")                            #
 # --------------------------------------------------------------------------- #
 def _norm(name):
-    n = name.lower()
+    # Strip accents first (e.g. ESPN's "Marcelino Núñez" / "Saša Lukić" vs a
+    # plain-ASCII spelling elsewhere) so those variants land on the same key.
+    n = unicodedata.normalize("NFKD", name or "")
+    n = "".join(c for c in n if not unicodedata.combining(c))
+    n = n.lower()
     for junk in [" fc", " afc", "afc ", "'", ".", "&", "-"]:
         n = n.replace(junk, "")
     return re.sub(r"\s+", "", n)
