@@ -202,22 +202,30 @@ def test_leaderboard_no_ipswich_player_at_all():
 
 
 # ---- ESPN roster ages --------------------------------------------------------
+# Real shape (verified against a live response for team 373): "athletes" is a
+# flat list, each entry carrying "position" (an object) and "fullName" — but
+# not every entry carries "age" (a real roster had an academy player with no
+# birth date on file at all), which is exactly the regression case below.
 def test_find_player_list_handles_flat_shape():
     from ingest import _find_player_list
     data = {"team": {"id": "373"}, "athletes": [
-        {"fullName": "Sam Szmodics", "age": 29}, {"fullName": "Kalvin Phillips", "age": 29}]}
+        {"fullName": "Sam Szmodics", "position": {"name": "Forward"}, "age": 29},
+        {"fullName": "Kalvin Phillips", "position": {"name": "Midfielder"}, "age": 29}]}
     found = _find_player_list(data)
     assert found == data["athletes"]
 
 
-def test_find_player_list_handles_grouped_by_position_shape():
+def test_find_player_list_matches_even_when_one_entry_has_no_age():
+    # this is the exact shape that broke fetch_espn_roster on a real run: one
+    # academy player entirely missing "age" made an all()-must-have-"age"
+    # check reject the whole list, zeroing out every player's age, not just
+    # that one player's.
     from ingest import _find_player_list
     data = {"athletes": [
-        {"position": "goalkeeper", "items": [{"displayName": "Arijanet Muric", "age": 27}]},
-        {"position": "defender", "items": [{"displayName": "Jacob Greaves", "age": 24}]},
-    ]}
+        {"fullName": "Sam Szmodics", "position": {"name": "Forward"}, "age": 29},
+        {"fullName": "Matthew Charles Compton", "position": {"name": "Midfielder"}}]}
     found = _find_player_list(data)
-    assert found == [{"displayName": "Arijanet Muric", "age": 27}]
+    assert found == data["athletes"]
 
 
 def test_find_player_list_returns_none_when_nothing_matches():
@@ -225,10 +233,11 @@ def test_find_player_list_returns_none_when_nothing_matches():
     assert _find_player_list({"team": {"id": "373"}, "athletes": []}) is None
 
 
-def test_fetch_espn_roster_keys_ages_by_normalised_name(monkeypatch):
+def test_fetch_espn_roster_keys_ages_by_normalised_name_and_skips_missing_age(monkeypatch):
     import ingest
     fake_response = {"athletes": [
-        {"fullName": "Sam Szmodics", "age": 29}, {"fullName": "Nathan Broadhead", "age": None}]}
+        {"fullName": "Sam Szmodics", "position": {"name": "Forward"}, "age": 29},
+        {"fullName": "Matthew Charles Compton", "position": {"name": "Midfielder"}}]}
     monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: fake_response)
     ages = ingest.fetch_espn_roster()
     assert ages == {ingest._norm("Sam Szmodics"): 29}

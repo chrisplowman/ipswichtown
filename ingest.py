@@ -395,13 +395,17 @@ def fetch_espn_schedule(team_id=IPSWICH_ESPN_TEAM_ID):
 
 
 def _find_player_list(node):
-    """Depth-first search for the first list whose dict entries all carry an
-    "age" alongside a name field — used instead of a hard-coded path into
-    ESPN's roster response (which groups players by position under "items"
-    on some sports/endpoints and returns a flat list on others) so a shape
-    difference degrades to no ages found instead of a crash."""
+    """Depth-first search for the first list whose dict entries all carry a
+    "position" alongside a name field — used instead of a hard-coded path
+    into ESPN's roster response (which groups players by position under
+    "items" on some sports/endpoints and returns a flat list on others) so a
+    shape difference degrades to no ages found instead of a crash. Deliberately
+    doesn't require "age" itself here — a real roster had one academy player
+    with no birth date on file at all, which made an all-entries-must-have-
+    "age" check reject the whole list and silently zero out every player's
+    age, not just that one player's."""
     if isinstance(node, list):
-        if node and all(isinstance(x, dict) and "age" in x and
+        if node and all(isinstance(x, dict) and "position" in x and
                         ("displayName" in x or "fullName" in x) for x in node):
             return node
         for item in node:
