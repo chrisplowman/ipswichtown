@@ -228,6 +228,8 @@
 :root[data-theme="teletext"] .page-match thead th,
 :root[data-theme="teletext"] .page-match ul.plain li,
 :root[data-theme="teletext"] .page-match .assist,
+:root[data-theme="teletext"] .page-matches ul.plain li,
+:root[data-theme="teletext"] .page-matches .assist,
 :root[data-theme="teletext"] .page-player .hero .pos,
 :root[data-theme="teletext"] .page-player .hero .fpl .k,
 :root[data-theme="teletext"] .page-player .tile .k{font-size:16px}
@@ -653,20 +655,20 @@ footer code{background:var(--surface);border:1px solid var(--hairline);padding:1
 .page-match .bar{display:flex;height:8px;border-radius:6px;overflow:hidden;background:var(--hairline)}
 .page-match .legend{display:flex;gap:16px;font-size:12px;color:var(--steel);margin-bottom:14px;padding:16px}
 .page-match .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.page-match .pitch-holder{width:100%;overflow:hidden;padding:0px 16px 16px 16px}
-.page-match svg.pitch{width:100%;height:auto;display:block;background:var(--canvas)}
-.page-match ul.plain{list-style:none;margin:0;padding:0}
-.page-match ul.plain li{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--hairline-soft);font-size:14px}
-.page-match ul.plain li:last-child{border-bottom:0}
-.page-match .min{font-weight:600;color:var(--steel);min-width:38px}
-.page-match .dot{width:8px;height:8px;border-radius:50%}
-.page-match .bar .f,.page-match .dot.f{background:var(--primary)}
-.page-match .bar .a,.page-match .dot.a{background:var(--loss)}
-.page-match .assist{color:var(--stone);font-size:12px}
-.page-match .cardchip{display:inline-block;width:9px;height:13px;border-radius:1px;flex:none}
-.page-match .cardchip.yellow{background:var(--card-yellow)}
-.page-match .cardchip.red{background:var(--loss)}
-.page-match .eventtext{flex:1}
+.page-match .pitch-holder,.page-matches .pitch-holder{width:100%;overflow:hidden;padding:0px 16px 16px 16px}
+.page-match svg.pitch,.page-matches svg.pitch{width:100%;height:auto;display:block;background:var(--canvas)}
+.page-match ul.plain,.page-matches ul.plain{list-style:none;margin:0;padding:0}
+.page-match ul.plain li,.page-matches ul.plain li{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--hairline-soft);font-size:14px}
+.page-match ul.plain li:last-child,.page-matches ul.plain li:last-child{border-bottom:0}
+.page-match .min,.page-matches .min{font-weight:600;color:var(--steel);min-width:38px}
+.page-match .dot,.page-matches .dot{width:8px;height:8px;border-radius:50%}
+.page-match .bar .f,.page-match .dot.f,.page-matches .bar .f,.page-matches .dot.f{background:var(--primary)}
+.page-match .bar .a,.page-match .dot.a,.page-matches .bar .a,.page-matches .dot.a{background:var(--loss)}
+.page-match .assist,.page-matches .assist{color:var(--stone);font-size:12px}
+.page-match .cardchip,.page-matches .cardchip,.page-squad .cardchip{display:inline-block;width:9px;height:13px;border-radius:1px;flex:none}
+.page-match .cardchip.yellow,.page-matches .cardchip.yellow,.page-squad .cardchip.yellow{background:var(--card-yellow)}
+.page-match .cardchip.red,.page-matches .cardchip.red,.page-squad .cardchip.red{background:var(--loss)}
+.page-match .eventtext,.page-matches .eventtext{flex:1}
 
 /* ---- player profile pages ---- */
 .page-player .hero{background:var(--canvas);color:var(--ink);border:1px solid var(--hairline);box-shadow:var(--shadow-card);border-radius:var(--radius-lg);padding:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
