@@ -39,12 +39,15 @@ PAGES = [
     ("news",     "news.html",   "News"),
 ]
 
-# Women's team pages: a trimmed subset — no Charts (no free xG/shot source for
-# WSL2 exists yet; see templates/women.html.j2's footer note).
+# Women's team pages: a trimmed subset — Charts here only covers what's
+# derivable from results/table/squad; no free xG/shot source for WSL2 exists
+# yet, so the men's xG/PPDA/Elo charts have no equivalent (see
+# templates/women.html.j2's footer note).
 WOMEN_PAGES = [
     ("overview", "index.html", "Overview"),
     ("table",    "table.html", "Table"),
     ("matches",  "matches.html", "Matches"),
+    ("charts",   "charts.html", "Charts"),
     ("squad",    "squad.html",  "Squad"),
     ("news",     "news.html",   "News"),
 ]
@@ -921,6 +924,24 @@ def form_guide_women(data, n=6):
     return {"matches": matches, "pts": pts, "ppg": ppg, "trend": trend, "count": k}
 
 
+def by_gameweek_women(results):
+    """Chronological per-match points/goals progression from `results` (see
+    form_guide_women's docstring — no xG source exists for women's football,
+    so unlike the men's by_gameweek this carries no team_xg/team_xga)."""
+    chrono = list(reversed(results or []))  # oldest first
+    out, cum = [], 0
+    for i, r in enumerate(chrono, 1):
+        parts = (r.get("score") or "").split("-")
+        if len(parts) != 2 or not all(p.lstrip("-").isdigit() for p in parts):
+            continue
+        gf, ga = int(parts[0]), int(parts[1])
+        pts = 3 if r.get("result") == "W" else 1 if r.get("result") == "D" else 0
+        cum += pts
+        out.append({"gw": r.get("event") or i, "gf": gf, "ga": ga, "pts": pts,
+                     "cum_points": cum, "home": bool(r.get("home"))})
+    return out
+
+
 def render_women_site(template, data, outdir):
     """Renders into outdir (e.g. site/women/), sharing style.css/fonts/share.js
     from outdir's parent (the site root, alongside site/men/) — main() copies
@@ -928,11 +949,13 @@ def render_women_site(template, data, outdir):
     outdir.mkdir(parents=True, exist_ok=True)
     league_name = data.get("league_name", "Women's Super League 2")
     fguide = form_guide_women(data)
+    data["by_gameweek"] = by_gameweek_women(data.get("results"))
+    data_json = json.dumps(data).replace("<", "\\u003c")
 
     for page_id, filename, _label in WOMEN_PAGES:
         html = template.render(page=page_id, current=page_id, pages=WOMEN_PAGES,
                                css_href="../style.css", root_prefix="../", site_section="women",
-                               form_guide=fguide,
+                               form_guide=fguide, data_json=data_json,
                                og_title=f"Ipswich Town Women · {filename.replace('.html', '').title()}",
                                og_description=f"Ipswich Town Women {league_name} stats.",
                                canonical=f"{SITE_URL}/women/{filename}", **data)
