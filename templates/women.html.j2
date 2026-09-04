@@ -306,6 +306,30 @@
   </section>
   {% endif %}
 
+  <!-- CHARTS -->
+  {% if page == 'charts' %}
+  <section class="panel">
+    <div class="chartgrid">
+      <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to the end of the season (dashed) at the club's current rate.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to the end of the season at the club's current points-per-game. Source: FotMob.</span></button></div>
+        <div class="canvas-holder"><canvas id="c-wpoints"></canvas></div><div class="note" id="n-wpoints" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>Goals by match</h3><p class="sub">Goals scored and conceded in each match: a quick read of the club's best and worst weeks.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Goals scored and conceded, match by match. Source: FotMob.</span></button></div>
+        <div class="canvas-holder"><canvas id="c-wgoals"></canvas></div><div class="note" id="n-wgoals" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>Home &amp; away split</h3><p class="sub">Per-game points and goals at home vs away: how differently the side performs by venue.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points and goals per game, split by venue. Source: FotMob match results.</span></button></div>
+        <div class="canvas-holder"><canvas id="c-whomeaway"></canvas></div><div class="note" id="n-whomeaway" hidden></div>
+      </div>
+      <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>Top scorers &amp; assists</h3><p class="sub">Every squad player's goals and assists this season.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Season goals and assists for every registered player. Source: FotMob.</span></button></div>
+        <div class="canvas-holder"><canvas id="c-wscorers"></canvas></div><div class="note" id="n-wscorers" hidden></div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
   <!-- SQUAD -->
   {% if page == 'squad' %}
   <section class="panel">
@@ -377,6 +401,96 @@
   This page deliberately omits xG, shot maps and other advanced stats shown on the men's team pages — those rely on data sources with no free women's-football coverage. <a href="../men/index.html">Men's team stats →</a><br>
   Raw data: <code>data/itfc_women.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>
+
+{% if page == 'charts' %}
+<script id="itfc-data" type="application/json">{{ data_json|safe }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  var _d = document.getElementById('itfc-data');
+  var DATA = _d ? JSON.parse(_d.textContent) : {};
+  [].forEach.call(document.querySelectorAll('canvas'), function(c){
+    var card = c.closest('.chartcard'); if(!card) return;
+    var h = card.querySelector('h3'), s = card.querySelector('.sub');
+    c.setAttribute('role','img');
+    c.setAttribute('aria-label', (h?h.textContent:'Chart') + (s?'. '+s.textContent:''));
+  });
+
+  var css = getComputedStyle(document.documentElement);
+  function cv(n){ return css.getPropertyValue(n).trim(); }
+  var C = {blue:cv('--primary'),red:cv('--loss'),amber:cv('--brand-orange'),green:cv('--win'),muted:cv('--stone'),line:cv('--chart-grid')};
+
+  function showNote(id,msg){ var c=document.getElementById('c-'+id); if(c)c.style.display='none';
+    var n=document.getElementById('n-'+id); if(n){n.hidden=false;n.textContent=msg;} }
+  function baseOpts(extra){
+    var o={responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{boxWidth:12,font:{size:12}}}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:C.line}}}};
+    return Object.assign(o, extra||{});
+  }
+
+  if(!document.getElementById('c-wpoints')) return;
+  if(!window.Chart){ ['wpoints','wgoals','whomeaway','wscorers'].forEach(function(id){showNote(id,'Charts library did not load.');}); return; }
+  Chart.defaults.font.family="Inter, system-ui, sans-serif"; Chart.defaults.color=C.muted;
+
+  var gw = DATA.by_gameweek||[];
+
+  // Points progression: actual so far, projected to the end of the season
+  // (a straight-line points-per-game extrapolation, not a simulation) at the
+  // club's current pace. Season length is inferred from the table's team
+  // count (a double round-robin), falling back to WSL2's usual 22 games.
+  var tbl = DATA.table||[];
+  var TOTAL_GW = tbl.length > 1 ? (tbl.length - 1) * 2 : 22;
+  if(gw.length){
+    var seasonLabels = []; for(var _g=1;_g<=TOTAL_GW;_g++) seasonLabels.push('M'+_g);
+    var played = gw.length;
+    var cumPts = gw.map(function(d){return d.cum_points;});
+    var lastPts = cumPts[played-1], ppg = lastPts/played;
+    var actualData = seasonLabels.map(function(_,i){return i < played ? cumPts[i] : null;});
+    var projData = seasonLabels.map(function(_,i){var g=i+1;
+      if(g < played) return null;
+      if(g === played) return lastPts;
+      return +(lastPts + ppg*(g-played)).toFixed(1);});
+    new Chart(document.getElementById('c-wpoints'),{type:'line',
+      data:{labels:seasonLabels,datasets:[
+        {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
+        {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}]},
+      options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:13}},y:{beginAtZero:true,grid:{color:C.line}}}})});
+  } else showNote('wpoints','No matches played yet.');
+
+  if(gw.length){
+    new Chart(document.getElementById('c-wgoals'),{type:'bar',
+      data:{labels:gw.map(function(d){return 'M'+d.gw;}),datasets:[
+        {label:'For',data:gw.map(function(d){return d.gf;}),backgroundColor:C.blue},
+        {label:'Against',data:gw.map(function(d){return d.ga;}),backgroundColor:C.red}]},
+      options:baseOpts()});
+  } else showNote('wgoals','No matches played yet.');
+
+  if(gw.length){
+    function agg(isHome){var m=gw.filter(function(x){return !!x.home===isHome;});
+      if(!m.length) return null; var n=m.length,gf=0,ga=0,pts=0;
+      m.forEach(function(x){gf+=x.gf;ga+=x.ga;pts+=x.pts;});
+      return [pts/n,gf/n,ga/n].map(function(v){return +v.toFixed(2);});}
+    var H=agg(true),A=agg(false);
+    new Chart(document.getElementById('c-whomeaway'),{type:'bar',
+      data:{labels:['PPG','Goals for','Goals against'],datasets:[
+        {label:'Home',data:H||[0,0,0],backgroundColor:C.blue},
+        {label:'Away',data:A||[0,0,0],backgroundColor:C.amber}]},
+      options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})});
+  } else showNote('whomeaway','No match data yet.');
+
+  var squad = (DATA.squad||[]).filter(function(p){return (p.goals||0)+(p.assists||0) > 0;})
+    .sort(function(a,b){return (b.goals||0)+(b.assists||0) - ((a.goals||0)+(a.assists||0));});
+  if(squad.length){
+    new Chart(document.getElementById('c-wscorers'),{type:'bar',
+      data:{labels:squad.map(function(p){return p.name;}),datasets:[
+        {label:'Goals',data:squad.map(function(p){return p.goals||0;}),backgroundColor:C.blue},
+        {label:'Assists',data:squad.map(function(p){return p.assists||0;}),backgroundColor:C.amber}]},
+      options:baseOpts({indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:C.line}},y:{grid:{display:false}}}})});
+  } else showNote('wscorers','No goal involvements yet.');
+})();
+</script>
+{% endif %}
 
 </body>
 </html>
