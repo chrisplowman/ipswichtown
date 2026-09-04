@@ -181,8 +181,10 @@ def _map_player(p, pos):
             next((v for k, v in POS_MAP.items() if k in role_text), "MID")
     full_name = p.get("name") or ""
     return {"name": full_name.split()[-1] if full_name else "", "full_name": full_name, "pos": pos,
+            "pos_detail": (p.get("positionIdsDesc") or "").split(",")[0].strip() or None,
+            "nationality": p.get("cname"), "nat_code": p.get("ccode"),
             "age": p.get("age"), "apps": p.get("matchesPlayed"), "goals": p.get("goals"),
-            "assists": p.get("assists")}
+            "assists": p.get("assists"), "ycards": p.get("ycards"), "rcards": p.get("rcards")}
 
 
 def parse_squad(team_json):
@@ -216,6 +218,94 @@ def parse_squad(team_json):
     # flat list of player-shaped dicts anywhere in the response.
     members = _find_list(team_json, lambda x: "shirtNumber" in x and "name" in x) or []
     return [_map_player(p, None) for p in members if (p.get("role") or {}).get("key") != "coach"]
+
+
+def parse_venue(team_json):
+    """Stadium info from team_json["overview"]["venue"] — a small "widget" dict
+    (name/city) plus a "statPairs" list of [label, value] pairs (Surface/
+    Capacity/Opened)."""
+    venue = ((team_json or {}).get("overview") or {}).get("venue") or {}
+    widget = venue.get("widget") or {}
+    if not widget.get("name"):
+        return None
+    stats = {k: v for k, v in (venue.get("statPairs") or []) if k}
+    return {"name": widget.get("name"), "city": widget.get("city"),
+            "capacity": stats.get("Capacity"), "surface": stats.get("Surface"),
+            "opened": stats.get("Opened")}
+
+
+def parse_coach(team_json):
+    """Current coach's name/nationality from lastLineupStats.coach (tied to
+    the most recent actual matchday squad, so more reliable for "who's
+    currently in charge" than picking an entry out of coachHistory), with
+    that season's win/draw/loss/PPG record joined in from coachHistory where
+    the two agree on a name."""
+    overview = (team_json or {}).get("overview") or {}
+    coach = (overview.get("lastLineupStats") or {}).get("coach") or {}
+    name = coach.get("name")
+    if not name:
+        return None
+    record = next((h for h in overview.get("coachHistory") or []
+                   if h.get("name") == name and h.get("leagueId") == FOTMOB_LEAGUE_ID), None)
+    return {"name": name, "nationality": coach.get("countryName"),
+            "win": record.get("win") if record else None,
+            "draw": record.get("draw") if record else None,
+            "loss": record.get("loss") if record else None,
+            "points_per_game": record.get("pointsPerGame") if record else None}
+
+
+def _lineup_player(p):
+    """One lastLineupStats player (starter or sub) mapped onto our own shape.
+    FotMob gives goal/assist minutes and sub on/off minutes as separate event
+    lists under "performance", and — for starters only — a 0-1 fractional
+    pitch position (x = depth from own goal, y = side-to-side) that's used
+    directly for the pitch view instead of computing one ourselves."""
+    perf = p.get("performance") or {}
+    events = perf.get("events") or []
+    goals = [e.get("time") for e in events if e.get("type") == "goal"]
+    assists = [e.get("time") for e in events if e.get("type") == "assist"]
+    cards = [{"kind": "red" if "red" in (e.get("type") or "").lower() else "yellow",
+              "minute": e.get("time")} for e in events if "card" in (e.get("type") or "").lower()]
+    sub_on = sub_off = None
+    for e in perf.get("substitutionEvents") or []:
+        t = (e.get("type") or "").lower()
+        if t == "subin":
+            sub_on = e.get("time")
+        elif t == "subout":
+            sub_off = e.get("time")
+    h = p.get("horizontalLayout") or {}
+    full_name = p.get("name") or ""
+    return {"name": full_name.split()[-1] if full_name else "", "full_name": full_name,
+            "shirt": p.get("shirtNumber"), "rating": perf.get("rating"),
+            "is_captain": bool(p.get("isCaptain")), "player_of_match": bool(perf.get("playerOfTheMatch")),
+            "goals": goals, "assists": assists, "cards": cards,
+            "sub_on": sub_on, "sub_off": sub_off, "x": h.get("x"), "y": h.get("y")}
+
+
+def parse_last_match(team_json, results):
+    """The most recent match's lineup, ratings and events, from
+    team_json["overview"]["lastLineupStats"] — the only match FotMob's team
+    endpoint carries this level of detail for (older matches only have the
+    scoreline already in `results`). lastLineupStats itself carries no
+    scoreline, so the parsed `results` list (already sorted most-recent-first)
+    is checked for a matching opponent to attach one."""
+    lls = ((team_json or {}).get("overview") or {}).get("lastLineupStats")
+    if not lls or not lls.get("starters"):
+        return None
+    last = lls.get("lastMatch") or {}
+    home_name, away_name = last.get("homeTeamName") or "", last.get("awayTeamName") or ""
+    is_home = "ipswich" in _norm(home_name)
+    opponent = away_name if is_home else home_name
+    out = {"opponent": opponent, "home": is_home, "formation": lls.get("formation"),
+           "team_rating": lls.get("rating"), "average_age": lls.get("averageStarterAge"),
+           "coach_name": (lls.get("coach") or {}).get("name"),
+           "starters": [_lineup_player(p) for p in lls.get("starters") or []],
+           "subs": [_lineup_player(p) for p in lls.get("subs") or []]}
+    if results and opponent and _norm(results[0]["opponent"]) == _norm(opponent):
+        r = results[0]
+        out.update({"score": r["score"], "result": r["result"], "date": r["date"],
+                    "opponent_badge": r.get("opponent_badge")})
+    return out
 
 
 def fetch_women_news():
@@ -304,6 +394,28 @@ def main():
     if not squad:
         missing.append("squad")
 
+    venue = None
+    try:
+        venue = parse_venue(team_json) if team_json else None
+        print(f"  venue: {venue['name'] if venue else 'none found'}")
+    except Exception as e:
+        print(f"  venue: skipped ({e})")
+
+    coach = None
+    try:
+        coach = parse_coach(team_json) if team_json else None
+        print(f"  coach: {coach['name'] if coach else 'none found'}")
+    except Exception as e:
+        print(f"  coach: skipped ({e})")
+
+    last_match = None
+    try:
+        last_match = parse_last_match(team_json, results) if team_json else None
+        print(f"  last match: {len(last_match['starters'])} starters"
+              if last_match else "  last match: none found")
+    except Exception as e:
+        print(f"  last match: skipped ({e})")
+
     news = []
     try:
         news = fetch_women_news()
@@ -343,6 +455,7 @@ def main():
         "position": position, "summary": summary, "summary_text": summary_text,
         "next_fixture": next_fixture,
         "results": results, "upcoming": upcoming, "table": table, "squad": squad, "news": news,
+        "venue": venue, "coach": coach, "last_match": last_match,
         "health": {"missing": missing},
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }

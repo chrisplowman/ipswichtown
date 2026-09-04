@@ -133,6 +133,24 @@
       </div>
     </div>
 
+    {% if venue or coach %}
+    <div class="block card">
+      <div class="cardhead"><h3>Club info</h3></div>
+      <div class="stats">
+        {% if venue %}
+        <div class="stat"><div class="v" style="font-size:16px">{{ venue.name }}</div><div class="k">Stadium{% if venue.city %} · {{ venue.city }}{% endif %}</div></div>
+        {% if venue.capacity %}<div class="stat"><div class="v">{{ '{:,}'.format(venue.capacity) }}</div><div class="k">Capacity</div></div>{% endif %}
+        {% if venue.opened %}<div class="stat"><div class="v">{{ venue.opened }}</div><div class="k">Opened</div></div>{% endif %}
+        {% endif %}
+        {% if coach %}
+        <div class="stat"><div class="v" style="font-size:16px">{{ coach.name }}</div><div class="k">Head coach{% if coach.nationality %} · {{ coach.nationality }}{% endif %}</div></div>
+        {% if coach.win is not none %}<div class="stat"><div class="v">{{ coach.win }}-{{ coach.draw }}-{{ coach.loss }}</div><div class="k">W-D-L this season</div></div>{% endif %}
+        {% if coach.points_per_game is not none %}<div class="stat"><div class="v">{{ coach.points_per_game }}</div><div class="k">Points/game</div></div>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     {% if news %}
     <div class="block card">
       <div class="cardhead"><h3>Latest news</h3></div>
@@ -189,6 +207,63 @@
   <!-- MATCHES -->
   {% if page == 'matches' %}
   <section class="panel">
+    {% if last_match %}
+    {% macro women_lineup_row(p) %}
+      <li>
+        <span class="min">{{ p.shirt or '' }}</span>
+        <span class="eventtext">{{ p.name }}{% if p.is_captain %} (C){% endif %}{% if p.player_of_match %} ★{% endif %}
+          {% for c in p.cards|default([]) %}<span class="cardchip {{ c.kind }}" title="{{ c.minute }}"></span>{% endfor %}
+          {% if p.goals %}<span class="assist">G {{ p.goals|join(', ') }}</span>{% endif %}
+          {% if p.assists %}<span class="assist">A {{ p.assists|join(', ') }}</span>{% endif %}
+          {% if p.sub_off %}<span class="assist">↓ {{ p.sub_off }}</span>{% endif %}
+          {% if p.sub_on %}<span class="assist">↑ {{ p.sub_on }}</span>{% endif %}
+        </span>
+        <span class="assist">{% if p.rating %}{{ '%.1f'|format(p.rating) }}{% endif %}</span>
+      </li>
+    {% endmacro %}
+    {% macro women_pitch_marker(p) %}
+      {% if p.x is not none and p.y is not none %}
+      {% set cx = (p.x * 598 + 1)|round(1) %}{% set cy = (p.y * 398 + 1)|round(1) %}
+      <g>
+        <circle cx="{{ cx }}" cy="{{ cy }}" r="13" fill="var(--primary)" stroke="var(--canvas)" stroke-width="2"/>
+        <text x="{{ cx }}" y="{{ cy }}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" fill="#fff">{{ p.shirt or '' }}</text>
+        <text x="{{ cx }}" y="{{ cy + 22 }}" text-anchor="middle" font-size="9" fill="var(--ink)">{{ p.name }}</text>
+        <title>{{ p.full_name }}{% if p.rating %} · {{ '%.1f'|format(p.rating) }}{% endif %}</title>
+      </g>
+      {% endif %}
+    {% endmacro %}
+    <div class="block card">
+      <div class="cardhead"><h3>Last match{% if last_match.score %}: {{ last_match.score }} v {{ last_match.opponent }}{% else %} v {{ last_match.opponent }}{% endif %}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Starting XI, ratings and events from the most recent match — FotMob only carries this level of detail for the latest matchday, not the full archive. Source: FotMob.</span></button></div>
+      <div class="meta">
+        {% if last_match.result %}<span class="pill {{ last_match.result }}">{{ {'W':'Win','D':'Draw','L':'Loss'}[last_match.result] }}</span>{% endif %}
+        &nbsp; {{ 'Home' if last_match.home else 'Away' }}
+        {% if last_match.date %} · {{ last_match.date }}{% endif %}
+        {% if last_match.formation %} · {{ last_match.formation }}{% endif %}
+        {% if last_match.team_rating %} · Team rating {{ '%.1f'|format(last_match.team_rating) }}{% endif %}
+        {% if last_match.average_age %} · Avg age {{ '%.1f'|format(last_match.average_age) }}{% endif %}
+        {% if last_match.coach_name %} · Coach: {{ last_match.coach_name }}{% endif %}
+      </div>
+      <div class="pitch-holder">
+        <svg role="img" aria-label="Starting lineup on a pitch" class="pitch" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="598" height="398" fill="var(--tint-mint)" stroke="var(--hairline-strong)"/>
+          <line x1="300" y1="1" x2="300" y2="399" stroke="var(--hairline-strong)"/>
+          <circle cx="300" cy="200" r="40" fill="none" stroke="var(--hairline-strong)"/>
+          <rect x="1" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
+          <rect x="519" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
+          {% for p in last_match.starters %}{{ women_pitch_marker(p) }}{% endfor %}
+        </svg>
+      </div>
+      <ul class="plain">
+        {% for p in last_match.starters %}{{ women_lineup_row(p) }}{% endfor %}
+      </ul>
+      {% if last_match.subs %}
+      <p class="empty-note" style="padding-top:0">Substitutes:</p>
+      <ul class="plain">
+        {% for p in last_match.subs %}{{ women_lineup_row(p) }}{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
     <div class="block card">
     <div class="cardhead"><h3>Results &amp; fixtures</h3></div>
     {% if results %}
@@ -242,20 +317,24 @@
         <thead><tr>
           <th class="player" aria-sort="none"><button>Player</button></th>
           <th class="pos" aria-sort="none"><button>Pos</button></th>
+          <th aria-sort="none"><button>Nat</button></th>
           <th aria-sort="none"><button>Age</button></th>
           <th aria-sort="none"><button>Apps</button></th>
           <th aria-sort="none"><button>G</button></th>
           <th aria-sort="none"><button>A</button></th>
+          <th aria-sort="none"><button>Cards</button></th>
         </tr></thead>
         <tbody>
           {% for p in squad %}
           <tr>
             <td class="player" title="{{ p.full_name }}">{{ p.name }}</td>
-            <td class="pos"><span class="pill p-{{ p.pos }}">{{ p.pos }}</span></td>
+            <td class="pos"><span class="pill p-{{ p.pos }}" title="{{ p.pos_detail or p.pos }}">{{ p.pos }}</span></td>
+            <td title="{{ p.nationality or '' }}">{{ p.nat_code or '-' }}</td>
             <td>{{ p.age if p.age is not none else '-' }}</td>
             <td>{{ p.apps if p.apps is not none else '-' }}</td>
             <td>{{ p.goals if p.goals is not none else '-' }}</td>
             <td>{{ p.assists if p.assists is not none else '-' }}</td>
+            <td>{% if p.ycards %}<span class="cardchip yellow" title="{{ p.ycards }} yellow"></span>{% endif %}{% if p.rcards %}<span class="cardchip red" title="{{ p.rcards }} red"></span>{% endif %}{% if not p.ycards and not p.rcards %}-{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

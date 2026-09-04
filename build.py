@@ -971,13 +971,23 @@ def sample_data_women():
     lost = sum(r["result"] == "L" for r in results)
     gf = sum(int(r["score"].split("-")[0]) for r in results)
     ga = sum(int(r["score"].split("-")[1]) for r in results)
-    squad_names = [("Bethany Rutter", "GKP"), ("Freya Cook", "DEF"), ("Amelia Sharp", "DEF"),
-                   ("Chloe Wardle", "DEF"), ("Isla Barnes", "MID"), ("Millie Radford", "MID"),
-                   ("Grace Oduya", "MID"), ("Poppy Fenn", "FWD"), ("Ruby Halston", "FWD"),
-                   ("Neve Colbeck", "DEF"), ("Tilly Vance", "MID")]
-    squad = [{"name": n.split()[-1], "full_name": n, "pos": p, "age": 19 + (i * 3) % 14,
-              "apps": 8 - i % 3, "goals": max(0, 5 - i) if p == "FWD" else max(0, 2 - i % 3),
-              "assists": max(0, 3 - i % 4)} for i, (n, p) in enumerate(squad_names)]
+    # (name, pos, pitch x/y — depth-from-own-goal and side-to-side, both 0-1 —
+    # reused below for the sample "last match" lineup, same convention FotMob's
+    # own horizontalLayout uses for the real women's-team pitch view)
+    squad_names = [("Bethany Rutter", "GKP", 0.08, 0.50), ("Freya Cook", "DEF", 0.28, 0.15),
+                   ("Amelia Sharp", "DEF", 0.28, 0.38), ("Chloe Wardle", "DEF", 0.28, 0.62),
+                   ("Isla Barnes", "MID", 0.55, 0.20), ("Millie Radford", "MID", 0.55, 0.50),
+                   ("Grace Oduya", "MID", 0.55, 0.80), ("Poppy Fenn", "FWD", 0.85, 0.30),
+                   ("Ruby Halston", "FWD", 0.85, 0.70), ("Neve Colbeck", "DEF", 0.28, 0.85),
+                   ("Tilly Vance", "MID", 0.55, 0.65)]
+    nats = [("England", "ENG"), ("Scotland", "SCO"), ("Wales", "WAL"), ("Rep. of Ireland", "IRL")]
+    pos_detail = {"GKP": "GK", "DEF": "CB", "MID": "CM", "FWD": "ST"}
+    squad = [{"name": n.split()[-1], "full_name": n, "pos": p, "pos_detail": pos_detail[p],
+              "nationality": nats[i % len(nats)][0], "nat_code": nats[i % len(nats)][1],
+              "age": 19 + (i * 3) % 14, "apps": 8 - i % 3,
+              "goals": max(0, 5 - i) if p == "FWD" else max(0, 2 - i % 3),
+              "assists": max(0, 3 - i % 4), "ycards": i % 3, "rcards": 0}
+             for i, (n, p, x, y) in enumerate(squad_names)]
     table = []
     for i, opp in enumerate(opponents):
         is_ips = opp == "Ipswich Town"
@@ -992,9 +1002,36 @@ def sample_data_women():
                      "is_ipswich": True})
     for i, row in enumerate(table):
         row["rank"] = i + 1
+
+    venue = {"name": "JobServe Community Stadium", "city": "Colchester, Essex",
+             "capacity": 10083, "surface": "Grass", "opened": 2008}
+    coach = {"name": "Naomi Fletcher", "nationality": "England",
+             "win": won, "draw": drawn, "loss": lost,
+             "points_per_game": round((won * 3 + drawn) / max(1, len(results)), 2)}
+    last_opponent = results[0]["opponent"] if results else "Charlton Athletic"
+
+    def _lineup_entry(n, p, x, y, i):
+        return {"name": n.split()[-1], "full_name": n, "shirt": i + 1,
+                "rating": round(6.0 + (i % 5) * 0.4, 1), "is_captain": i == 5,
+                "player_of_match": i == 7, "goals": [67] if i == 7 else [],
+                "assists": [67] if i == 4 else [], "cards": [{"kind": "yellow", "minute": 52}] if i == 2 else [],
+                "sub_on": None, "sub_off": "78" if i == 8 else None, "x": x, "y": y}
+    last_match = {
+        "opponent": last_opponent, "home": True, "formation": "4-3-3", "team_rating": 7.0,
+        "average_age": 23.4, "coach_name": coach["name"],
+        "score": results[0]["score"] if results else "2-1",
+        "result": results[0]["result"] if results else "W",
+        "date": results[0]["date"] if results else "2026-09-06",
+        "starters": [_lineup_entry(n, p, x, y, i) for i, (n, p, x, y) in enumerate(squad_names)],
+        "subs": [{"name": "Baker", "full_name": "Ava Baker", "shirt": 12, "rating": 6.6,
+                  "is_captain": False, "player_of_match": False, "goals": [], "assists": [],
+                  "cards": [], "sub_on": "78", "sub_off": None, "x": None, "y": None}],
+    }
+
     return {
         "season": "2026/27", "league_name": "Barclays Women's Super League 2",
         "team": {"short_name": "Ipswich", "badge": None}, "position": 9,
+        "venue": venue, "coach": coach, "last_match": last_match,
         "summary": {"played": 8, "won": won, "drawn": drawn, "lost": lost,
                     "gf": gf, "ga": ga, "gd": gf - ga, "points": won * 3 + drawn},
         "summary_text": f"Ipswich Town Women sit 9th in the Barclays Women's Super League 2 "
