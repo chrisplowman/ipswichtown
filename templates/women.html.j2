@@ -133,24 +133,6 @@
       </div>
     </div>
 
-    {% if venue or coach %}
-    <div class="block card">
-      <div class="cardhead"><h3>Club info</h3></div>
-      <div class="stats">
-        {% if venue %}
-        <div class="stat"><div class="v" style="font-size:16px">{{ venue.name }}</div><div class="k">Stadium{% if venue.city %} · {{ venue.city }}{% endif %}</div></div>
-        {% if venue.capacity %}<div class="stat"><div class="v">{{ '{:,}'.format(venue.capacity) }}</div><div class="k">Capacity</div></div>{% endif %}
-        {% if venue.opened %}<div class="stat"><div class="v">{{ venue.opened }}</div><div class="k">Opened</div></div>{% endif %}
-        {% endif %}
-        {% if coach %}
-        <div class="stat"><div class="v" style="font-size:16px">{{ coach.name }}</div><div class="k">Head coach{% if coach.nationality %} · {{ coach.nationality }}{% endif %}</div></div>
-        {% if coach.win is not none %}<div class="stat"><div class="v">{{ coach.win }}-{{ coach.draw }}-{{ coach.loss }}</div><div class="k">W-D-L this season</div></div>{% endif %}
-        {% if coach.points_per_game is not none %}<div class="stat"><div class="v">{{ coach.points_per_game }}</div><div class="k">Points/game</div></div>{% endif %}
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
-
     {% if news %}
     <div class="block card">
       <div class="cardhead"><h3>Latest news</h3></div>
