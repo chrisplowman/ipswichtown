@@ -173,18 +173,59 @@ def _pos_from_code(desc):
     return "MID" if code else None
 
 
-def _map_player(p, pos):
+STAT_LEADER_FIELD = {"goals": "goals", "goal_assist": "assists",
+                      "yellow_card": "ycards", "red_card": "rcards"}
+
+
+def _squad_stat_overrides(team_json):
+    """Real per-player season goals/assists/cards, from team_json["stats"]["players"]
+    — a team-scoped "leader per category" list (confirmed against a real
+    response: each entry has a `name` like "goals"/"goal_assist"/"yellow_card",
+    a `participant` (the #1 player) and a `topThree`). The squad list itself
+    (parse_squad below) carries goals/assists/ycards/rcards fields too, but on
+    a real run every one of those is a hardcoded 0 — even for a player who'd
+    scored — so they're placeholder fields on that endpoint, not live stats;
+    this is the section that actually has real numbers.
+
+    This only covers each category's top 3 Ipswich players, not the full
+    squad — a real limit of the source, not a parsing shortcut: a team's 4th+
+    scorer in a season won't appear here. Fine for a small WSL2 squad early
+    in a season, and still far better than the always-zero squad-list fields."""
+    out = {}
+    for entry in ((team_json or {}).get("stats") or {}).get("players") or []:
+        field = STAT_LEADER_FIELD.get(entry.get("name"))
+        if not field:
+            continue
+        people = list(entry.get("topThree") or [])
+        if entry.get("participant"):
+            people.append(entry["participant"])
+        for person in people:
+            pid, val = person.get("id"), person.get("value")
+            if pid is not None and val is not None:
+                out.setdefault(pid, {})[field] = val
+    return out
+
+
+def _map_player(p, pos, stat_overrides=None):
     if pos is None:
         role = p.get("role") or {}
         role_text = f"{role.get('key') or ''} {role.get('fallback') or ''}".lower()
         pos = _pos_from_code(p.get("positionIdsDesc")) or \
             next((v for k, v in POS_MAP.items() if k in role_text), "MID")
     full_name = p.get("name") or ""
+    overrides = (stat_overrides or {}).get(p.get("id"), {})
     return {"name": full_name.split()[-1] if full_name else "", "full_name": full_name, "pos": pos,
             "pos_detail": (p.get("positionIdsDesc") or "").split(",")[0].strip() or None,
             "nationality": p.get("cname"), "nat_code": p.get("ccode"),
-            "age": p.get("age"), "apps": p.get("matchesPlayed"), "goals": p.get("goals"),
-            "assists": p.get("assists"), "ycards": p.get("ycards"), "rcards": p.get("rcards")}
+            # No free source carries a full-squad appearance count for WSL2
+            # (FotMob's own "Minutes played" leaderboard is top-3-only, same
+            # cap as the stats above) — apps stays unavailable rather than
+            # guessed, same as xG/shot maps are dropped for this site.
+            "age": p.get("age"), "apps": p.get("matchesPlayed"),
+            "goals": overrides.get("goals", p.get("goals")),
+            "assists": overrides.get("assists", p.get("assists")),
+            "ycards": overrides.get("ycards", p.get("ycards")),
+            "rcards": overrides.get("rcards", p.get("rcards"))}
 
 
 def parse_squad(team_json):
@@ -192,7 +233,10 @@ def parse_squad(team_json):
     is itself a dict ({"squad": [...], "isNationalTeam": ...}), and each
     entry in that inner list is a position group ({"title": "keepers",
     "members": [...]}) — including a non-playing "coach" group, which is
-    dropped here rather than shown as a player."""
+    dropped here rather than shown as a player. Per-player goals/assists/
+    cards are patched in from _squad_stat_overrides (see its docstring) since
+    the squad list's own such fields are always 0."""
+    stat_overrides = _squad_stat_overrides(team_json)
     squad_field = team_json.get("squad")
     if isinstance(squad_field, dict):
         groups = squad_field.get("squad") or []
@@ -210,14 +254,15 @@ def parse_squad(team_json):
             continue
         pos = POS_BY_GROUP.get(title)
         for p in g.get("members") or []:
-            squad.append(_map_player(p, pos))
+            squad.append(_map_player(p, pos, stat_overrides))
     if squad:
         return squad
 
     # FotMob reshuffled the nesting — fall back to a generic search for a
     # flat list of player-shaped dicts anywhere in the response.
     members = _find_list(team_json, lambda x: "shirtNumber" in x and "name" in x) or []
-    return [_map_player(p, None) for p in members if (p.get("role") or {}).get("key") != "coach"]
+    return [_map_player(p, None, stat_overrides) for p in members
+            if (p.get("role") or {}).get("key") != "coach"]
 
 
 def parse_venue(team_json):

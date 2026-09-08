@@ -144,6 +144,64 @@ def test_parse_squad_uses_position_ids_desc_in_fallback_path():
     assert iw.parse_squad(team_json)[0]["pos"] == "DEF"
 
 
+# ---- _squad_stat_overrides / parse_squad stat patching -----------------------
+# Confirmed against a real FotMob teams?id= response: every squad-list member
+# carries goals/assists/ycards/rcards, but they're hardcoded 0 for the whole
+# squad regardless of what actually happened — even the player who scored the
+# only goal that matchday showed "goals": 0 there. The real numbers live in
+# team_json["stats"]["players"], a team-scoped leaders-per-category list.
+def test_squad_stat_overrides_reads_real_stats_players_shape():
+    team_json = {"stats": {"players": [
+        {"name": "goals", "header": "Top scorer",
+         "participant": {"id": 1185220, "name": "Megan Hornby", "value": 1},
+         "topThree": [{"id": 1185220, "name": "Megan Hornby", "value": 1}]},
+        {"name": "goal_assist", "header": "Assists",
+         "participant": {"id": 1406585, "name": "Mary McAteer", "value": 1},
+         "topThree": [{"id": 1406585, "name": "Mary McAteer", "value": 1}]},
+        {"name": "yellow_card", "header": "Yellow cards",
+         "participant": {"id": 1703223, "name": "Leah Mitchell", "value": 1},
+         "topThree": [{"id": 1703223, "name": "Leah Mitchell", "value": 1}]},
+        {"name": "rating", "header": "FotMob rating",
+         "participant": {"id": 1082549, "name": "Aimee Palmer", "value": 7.53}, "topThree": []},
+    ]}}
+    overrides = iw._squad_stat_overrides(team_json)
+    assert overrides[1185220] == {"goals": 1}
+    assert overrides[1406585] == {"assists": 1}
+    assert overrides[1703223] == {"ycards": 1}
+    assert 1082549 not in overrides  # "rating" isn't one of the fields we patch
+
+
+def test_squad_stat_overrides_empty_when_no_stats_section():
+    assert iw._squad_stat_overrides({}) == {}
+    assert iw._squad_stat_overrides({"stats": {}}) == {}
+
+
+def test_parse_squad_patches_goals_over_always_zero_squad_list_field():
+    # goals: 0 here matches the real payload's placeholder — the override
+    # from stats.players (value 1) should win.
+    team_json = {
+        "squad": {"squad": [{"title": "attackers", "members": [
+            {"id": 1185220, "name": "Meg Hornby", "shirtNumber": 11,
+             "role": {"key": "attacker_long"}, "positionIdsDesc": "ST",
+             "goals": 0, "assists": 0, "ycards": 0, "rcards": 0}]}]},
+        "stats": {"players": [
+            {"name": "goals", "participant": {"id": 1185220, "name": "Meg Hornby", "value": 1},
+             "topThree": [{"id": 1185220, "name": "Meg Hornby", "value": 1}]},
+        ]},
+    }
+    p = iw.parse_squad(team_json)[0]
+    assert p["goals"] == 1
+    assert p["assists"] == 0  # no override found for assists — squad-list 0 stands
+
+
+def test_parse_squad_leaves_goals_as_is_without_a_stats_section():
+    team_json = {"squad": {"squad": [{"title": "attackers", "members": [
+        {"id": 1, "name": "Jane Smith", "shirtNumber": 9,
+         "role": {"key": "attacker_long"}, "goals": 3, "assists": 1}]}]}}
+    p = iw.parse_squad(team_json)[0]
+    assert p["goals"] == 3 and p["assists"] == 1
+
+
 # ---- _team_badge -------------------------------------------------------------
 def test_team_badge_none_without_id():
     assert iw._team_badge(None) is None
