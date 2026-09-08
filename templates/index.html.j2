@@ -785,28 +785,32 @@
   function showNote(id,msg){ var c=document.getElementById('c-'+id); if(c)c.style.display='none';
     var n=document.getElementById('n-'+id); if(n){n.hidden=false;n.textContent=msg;} }
   function setInsight(id,html){ var el=document.getElementById('i-'+id); if(el) el.innerHTML = html; }
+  // Legend keys: a line-type dataset gets a line-shaped legend key instead of
+  // the default square, dashed to match a dashed series, so the key reads as
+  // a miniature of the series it labels — bar datasets (including a bar
+  // dataset mixed into an otherwise-line chart) keep the usual box.
+  // usePointStyle resolves per-point (not per-line) options, which drops
+  // borderDash, so the dash pattern is read straight off the dataset instead
+  // of Chart.js's default.
+  function smartLegendLabels(chart){
+    var chartType = chart.config.type;
+    return chart.data.datasets.map(function(d,i){
+      var meta = chart.getDatasetMeta(i);
+      if((d.type||chartType) === 'line'){
+        return {text:d.label, fillStyle:'transparent', strokeStyle:d.borderColor,
+          lineWidth:2, lineDash:d.borderDash||[], pointStyle:'line',
+          hidden:!meta.visible, datasetIndex:i};
+      }
+      return {text:d.label, fillStyle:d.backgroundColor, strokeStyle:d.borderColor||d.backgroundColor,
+        lineWidth:1, pointStyle:'rect', hidden:!meta.visible, datasetIndex:i};
+    });
+  }
   function baseOpts(extra){
     var o={responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{boxWidth:12,font:{size:12}}}},
+      plugins:{legend:{labels:{boxWidth:12,font:{size:12},usePointStyle:true,generateLabels:smartLegendLabels}}},
       scales:{x:{grid:{color:C.line},ticks:{font:{size:11}}},
               y:{grid:{color:C.line},ticks:{font:{size:11}},beginAtZero:true}}};
     return Object.assign(o, extra||{});
-  }
-  // Line charts get a line-shaped legend key instead of the default square, dashed
-  // to match a dashed series, so the key reads as a miniature of the series it labels.
-  // usePointStyle resolves per-point (not per-line) options, which drops borderDash,
-  // so the dash pattern is read straight off the dataset instead of Chart.js's default.
-  function lineLabels(chart){
-    return chart.data.datasets.map(function(d,i){
-      var meta = chart.getDatasetMeta(i);
-      return {text:d.label, fillStyle:'transparent', strokeStyle:d.borderColor,
-        lineWidth:2, lineDash:d.borderDash||[], pointStyle:'line',
-        hidden:!meta.visible, datasetIndex:i};
-    });
-  }
-  function lineOpts(extra){
-    return baseOpts(Object.assign({plugins:{legend:{labels:
-      {boxWidth:12,font:{size:12},usePointStyle:true,generateLabels:lineLabels}}}}, extra||{}));
   }
 
   function buildCharts(){
@@ -851,7 +855,7 @@
         }
         new Chart(document.getElementById('c-points'),{type:'line',
           data:{labels:seasonLabels,datasets:dsets},
-          options:lineOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:13}},
+          options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:13}},
             y:{beginAtZero:true,grid:{color:C.line}}}})});
         var recentN = Math.min(3, played);
         var recentPts = cumPts[played-1] - (played > recentN ? cumPts[played-recentN-1] : 0);
@@ -898,7 +902,7 @@
         data:{labels:xgLabels,datasets:[
           {label:'Goals',data:gForCum,borderColor:C.blue,tension:.25,pointRadius:2},
           {label:'xG',data:xgForCum,borderColor:C.amber,borderDash:[6,4],tension:.25,pointRadius:2}]},
-        options:lineOpts()});
+        options:baseOpts()});
         var finGoals = gForCum[gForCum.length-1], finXg = xgForCum[xgForCum.length-1], xgDiff = finGoals-finXg;
         var xgWord = xgDiff > 1.5 ? 'clinical finishing, well ahead of the underlying chances' :
           xgDiff < -1.5 ? 'wasteful in front of goal, well behind the underlying chances' :
@@ -910,7 +914,7 @@
         data:{labels:xgLabels,datasets:[
           {label:'Conceded',data:gAgCum,borderColor:C.red,tension:.25,pointRadius:2},
           {label:'xG against',data:xgAgCum,borderColor:C.muted,borderDash:[6,4],tension:.25,pointRadius:2}]},
-        options:lineOpts()});
+        options:baseOpts()});
         var finConc = gAgCum[gAgCum.length-1], finXga = xgAgCum[xgAgCum.length-1], xgaDiff = finConc-finXga;
         var xgaWord = xgaDiff < -1.5 ? 'defending well above its underlying numbers' :
           xgaDiff > 1.5 ? 'conceding more than the defensive performance suggests it should' :
@@ -994,7 +998,7 @@
               borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:2},
             {label:'Expected points',data:uh.map(function(h){cx+=(h.xpts||0);return +cx.toFixed(1);}),
               borderColor:C.amber,borderDash:[6,4],tension:.25,pointRadius:2}]},
-          options:lineOpts()});
+          options:baseOpts()});
         var xptsDiff = cp-cx;
         var xptsWord = xptsDiff > 2 ? 'overperforming the underlying numbers — the table flatters them' :
           xptsDiff < -2 ? 'underperforming the underlying numbers — picking up fewer points than the performances deserve' :
@@ -1152,7 +1156,8 @@
         });
         new Chart(document.getElementById('c-elo'),{type:'line',
           data:{labels:dates,datasets:dsets},
-          options:baseOpts({plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},
+          options:baseOpts({plugins:{legend:{position:'bottom',labels:
+              {boxWidth:10,font:{size:11},usePointStyle:true,generateLabels:smartLegendLabels}}},
             scales:{x:{grid:{display:false}},
               y:{grid:{color:C.line},title:{display:true,text:'ClubElo rating'}}}})});
         var eloStart = eh[0].elo, eloNow = eh[eh.length-1].elo, eloDiff = eloNow-eloStart;

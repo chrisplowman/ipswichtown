@@ -293,7 +293,7 @@
   <section class="panel">
     <div class="chartgrid">
       <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to the end of the season (dashed) at the club's current rate.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to the end of the season at the club's current points-per-game. Source: FotMob.</span></button></div>
+        <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to the end of the season (dashed) at the club's current rate, against last season's top 3 final totals (right axis).</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to the end of the season at the club's current points-per-game, alongside last season's 1st/2nd/3rd-place final points totals for reference. Source: FotMob.</span></button></div>
         <div class="canvas-holder"><canvas id="c-wpoints"></canvas></div><div class="note" id="n-wpoints" hidden></div><p class="insight" id="i-wpoints"></p>
       </div>
       <div class="chartcard wide">
@@ -405,9 +405,25 @@
   function showNote(id,msg){ var c=document.getElementById('c-'+id); if(c)c.style.display='none';
     var n=document.getElementById('n-'+id); if(n){n.hidden=false;n.textContent=msg;} }
   function setInsight(id,html){ var el=document.getElementById('i-'+id); if(el) el.innerHTML = html; }
+  // Legend keys: a line-type dataset gets a line-shaped key (dashed to match
+  // a dashed series) instead of the default square, so the key reads as a
+  // miniature of the series it labels; bar datasets keep the usual box.
+  function smartLegendLabels(chart){
+    var chartType = chart.config.type;
+    return chart.data.datasets.map(function(d,i){
+      var meta = chart.getDatasetMeta(i);
+      if((d.type||chartType) === 'line'){
+        return {text:d.label, fillStyle:'transparent', strokeStyle:d.borderColor,
+          lineWidth:2, lineDash:d.borderDash||[], pointStyle:'line',
+          hidden:!meta.visible, datasetIndex:i};
+      }
+      return {text:d.label, fillStyle:d.backgroundColor, strokeStyle:d.borderColor||d.backgroundColor,
+        lineWidth:1, pointStyle:'rect', hidden:!meta.visible, datasetIndex:i};
+    });
+  }
   function baseOpts(extra){
     var o={responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{boxWidth:12,font:{size:12}}}},
+      plugins:{legend:{labels:{boxWidth:12,font:{size:12},usePointStyle:true,generateLabels:smartLegendLabels}}},
       scales:{x:{grid:{display:false}},y:{grid:{color:C.line}}}};
     return Object.assign(o, extra||{});
   }
@@ -434,17 +450,43 @@
       if(g < played) return null;
       if(g === played) return lastPts;
       return +(lastPts + ppg*(g-played)).toFixed(1);});
+    var wdsets = [
+      {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
+      {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}];
+    // Last season's top 3 final points, as flat reference lines on their own
+    // right-hand axis (a different scale than this season's in-progress
+    // points, so they read as "the target," not part of this season's line).
+    var lastTop3 = DATA.last_season_top3||[];
+    var rankWord = {1:'1st',2:'2nd',3:'3rd'};
+    var top3Dash = {1:[2,2],2:[5,3],3:[8,4]};
+    lastTop3.forEach(function(t){
+      wdsets.push({label:(rankWord[t.rank]||t.rank+'th')+' last season ('+t.team+', '+t.points+')',
+        data:seasonLabels.map(function(){return t.points;}), yAxisID:'y1',
+        borderColor:C.muted, borderDash:top3Dash[t.rank]||[4,4], borderWidth:1.5,
+        tension:0, pointRadius:0, fill:false});
+    });
+    var wScales = {x:{grid:{display:false},ticks:{maxTicksLimit:13}},y:{beginAtZero:true,grid:{color:C.line}}};
+    if(lastTop3.length){
+      var y1Max = Math.max.apply(null, lastTop3.map(function(t){return t.points;}));
+      wScales.y1 = {position:'right',beginAtZero:true,suggestedMax:Math.ceil(y1Max*1.1),
+        grid:{display:false},title:{display:true,text:'Last season final pts'}};
+    }
     new Chart(document.getElementById('c-wpoints'),{type:'line',
-      data:{labels:seasonLabels,datasets:[
-        {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
-        {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}]},
-      options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:13}},y:{beginAtZero:true,grid:{color:C.line}}}})});
+      data:{labels:seasonLabels,datasets:wdsets},
+      options:baseOpts({scales:wScales})});
     var recentN = Math.min(3, played);
     var recentPts = cumPts[played-1] - (played > recentN ? cumPts[played-recentN-1] : 0);
     var recentPpg = recentPts/recentN;
     var trendWord = recentPpg > ppg+0.15 ? 'picking up' : recentPpg < ppg-0.15 ? 'dropping off' : 'holding steady';
+    var top3Msg = '';
+    if(lastTop3.length){
+      var champ = lastTop3[0];
+      var gapToChamp = Math.round(ppg*TOTAL_GW) - champ.points;
+      top3Msg = gapToChamp>=0 ? ' On the current pace, that would better last season\'s champions (<b>'+champ.points+'</b> pts).'
+        : ' On the current pace, that finishes <b>'+Math.abs(gapToChamp)+'</b> short of last season\'s champions (<b>'+champ.points+'</b> pts).';
+    }
     setInsight('wpoints', 'Averaging <b>'+ppg.toFixed(2)+'</b> points per game across '+played+' matches, on pace for around <b>'+
-      Math.round(ppg*TOTAL_GW)+'</b> points by the end of the season. Form is '+trendWord+' — <b>'+recentPpg.toFixed(2)+'</b> PPG over the last '+recentN+'.');
+      Math.round(ppg*TOTAL_GW)+'</b> points by the end of the season. Form is '+trendWord+' — <b>'+recentPpg.toFixed(2)+'</b> PPG over the last '+recentN+'.'+top3Msg);
   } else showNote('wpoints','No matches played yet.');
 
   if(gw.length){

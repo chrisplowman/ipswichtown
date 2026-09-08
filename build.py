@@ -1051,10 +1051,17 @@ def sample_data_women():
                   "cards": [], "sub_on": "78", "sub_off": None, "x": None, "y": None}],
     }
 
+    last_season_top3 = [
+        {"rank": 1, "team": "Sunderland", "points": 58},
+        {"rank": 2, "team": "Southampton", "points": 54},
+        {"rank": 3, "team": "Newcastle United", "points": 49},
+    ]
+
     return {
         "season": "2026/27", "league_name": "Barclays Women's Super League 2",
         "team": {"short_name": "Ipswich", "badge": None}, "position": 9,
         "venue": venue, "coach": coach, "last_match": last_match,
+        "last_season_top3": last_season_top3,
         "summary": {"played": 8, "won": won, "drawn": drawn, "lost": lost,
                     "gf": gf, "ga": ga, "gd": gf - ga, "points": won * 3 + drawn},
         "summary_text": f"Ipswich Town Women sit 9th in the Barclays Women's Super League 2 "

@@ -73,6 +73,36 @@ def fetch_fotmob_league():
     return get_json(f"{FOTMOB_BASE}/leagues?id={FOTMOB_LEAGUE_ID}")
 
 
+def _previous_season_label():
+    """FotMob labels seasons like "2025/2026" (both years 4-digit) — confirmed
+    against a real response's coachHistory/historicalTableData entries — one
+    year back from SEASON_LABEL ("2026/27")."""
+    start = int(SEASON_LABEL.split("/")[0])
+    return f"{start - 1}/{start}"
+
+
+def fetch_fotmob_league_season(season_label):
+    """A specific past season's league page, via the same `season` query
+    param FotMob's own site URLs use (.../leagues/9294/overview/wsl-2?season=
+    2025%2F2026). Unlike every other endpoint in this file, this one hasn't
+    been confirmed against a real response — treat a first real run as a
+    validation pass for it specifically (see module docstring)."""
+    return get_json(f"{FOTMOB_BASE}/leagues?id={FOTMOB_LEAGUE_ID}&season={season_label}")
+
+
+def parse_last_season_top3(prev_league_json):
+    """Final points totals for last season's top 3 finishers, for the
+    right-hand reference axis on the women's Points progression chart.
+    Reuses parse_table's own generic row-shape search, so this degrades the
+    same way the rest of this file does if FotMob's shape changed."""
+    if not prev_league_json:
+        return None
+    top3 = sorted(parse_table(prev_league_json), key=lambda r: r["rank"])[:3]
+    if len(top3) < 3 or any(r.get("points") is None for r in top3):
+        return None
+    return [{"rank": r["rank"], "team": r["team"], "points": r["points"]} for r in top3]
+
+
 def fetch_fotmob_team():
     return get_json(f"{FOTMOB_BASE}/teams?id={FOTMOB_TEAM_ID}")
 
@@ -421,6 +451,14 @@ def main():
     if not table:
         missing.append("league table")
 
+    last_season_top3 = None
+    try:
+        prev_league_json = fetch_fotmob_league_season(_previous_season_label())
+        last_season_top3 = parse_last_season_top3(prev_league_json)
+        print(f"  last season top 3: {len(last_season_top3) if last_season_top3 else 0} teams")
+    except Exception as e:
+        print(f"  last season top 3: skipped ({e})")
+
     results, upcoming = [], []
     try:
         results, upcoming = parse_fixtures(league_json) if league_json else ([], [])
@@ -500,7 +538,7 @@ def main():
         "position": position, "summary": summary, "summary_text": summary_text,
         "next_fixture": next_fixture,
         "results": results, "upcoming": upcoming, "table": table, "squad": squad, "news": news,
-        "venue": venue, "coach": coach, "last_match": last_match,
+        "venue": venue, "coach": coach, "last_match": last_match, "last_season_top3": last_season_top3,
         "health": {"missing": missing},
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
