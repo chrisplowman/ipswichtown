@@ -53,6 +53,40 @@ def test_parse_table_empty_when_no_table_shape_found():
     assert iw.parse_table({"details": {}, "matches": {"allMatches": []}}) == []
 
 
+# ---- previous-season top 3 (right-hand axis reference lines) -----------------
+def test_previous_season_label_steps_back_a_year_in_fotmob_format():
+    assert iw._previous_season_label() == "2025/2026"
+
+
+def test_parse_last_season_top3_takes_first_three_ranked_rows():
+    rows = [
+        {"id": 1, "idx": 1, "name": "Sunderland", "played": 22, "wins": 18, "draws": 4, "losses": 0,
+         "scoresStr": "58-10", "goalConDiff": 48, "pts": 58, "form": []},
+        {"id": 2, "idx": 2, "name": "Southampton", "played": 22, "wins": 17, "draws": 3, "losses": 2,
+         "scoresStr": "50-15", "goalConDiff": 35, "pts": 54, "form": []},
+        {"id": 3, "idx": 3, "name": "Newcastle United", "played": 22, "wins": 15, "draws": 4, "losses": 3,
+         "scoresStr": "45-20", "goalConDiff": 25, "pts": 49, "form": []},
+        {"id": 4, "idx": 4, "name": "Ipswich Town", "played": 22, "wins": 6, "draws": 5, "losses": 11,
+         "scoresStr": "30-40", "goalConDiff": -10, "pts": 23, "form": []},
+    ]
+    top3 = iw.parse_last_season_top3(_league_json(rows))
+    assert top3 == [
+        {"rank": 1, "team": "Sunderland", "points": 58},
+        {"rank": 2, "team": "Southampton", "points": 54},
+        {"rank": 3, "team": "Newcastle United", "points": 49},
+    ]
+
+
+def test_parse_last_season_top3_none_when_fewer_than_three_teams():
+    rows = [{"id": 1, "idx": 1, "name": "A", "played": 1, "wins": 1, "draws": 0, "losses": 0,
+             "scoresStr": "1-0", "goalConDiff": 1, "pts": 3, "form": []}]
+    assert iw.parse_last_season_top3(_league_json(rows)) is None
+
+
+def test_parse_last_season_top3_none_without_a_response():
+    assert iw.parse_last_season_top3(None) is None
+
+
 # ---- parse_fixtures -------------------------------------------------------------
 def test_parse_fixtures_splits_finished_and_upcoming_and_ignores_other_teams():
     matches = [
