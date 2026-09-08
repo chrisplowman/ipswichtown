@@ -294,19 +294,19 @@
     <div class="chartgrid">
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to the end of the season (dashed) at the club's current rate.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to the end of the season at the club's current points-per-game. Source: FotMob.</span></button></div>
-        <div class="canvas-holder"><canvas id="c-wpoints"></canvas></div><div class="note" id="n-wpoints" hidden></div>
+        <div class="canvas-holder"><canvas id="c-wpoints"></canvas></div><div class="note" id="n-wpoints" hidden></div><p class="insight" id="i-wpoints"></p>
       </div>
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Goals by match</h3><p class="sub">Goals scored and conceded in each match: a quick read of the club's best and worst weeks.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Goals scored and conceded, match by match. Source: FotMob.</span></button></div>
-        <div class="canvas-holder"><canvas id="c-wgoals"></canvas></div><div class="note" id="n-wgoals" hidden></div>
+        <div class="canvas-holder"><canvas id="c-wgoals"></canvas></div><div class="note" id="n-wgoals" hidden></div><p class="insight" id="i-wgoals"></p>
       </div>
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Home &amp; away split</h3><p class="sub">Per-game points and goals at home vs away: how differently the side performs by venue.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Points and goals per game, split by venue. Source: FotMob match results.</span></button></div>
-        <div class="canvas-holder"><canvas id="c-whomeaway"></canvas></div><div class="note" id="n-whomeaway" hidden></div>
+        <div class="canvas-holder"><canvas id="c-whomeaway"></canvas></div><div class="note" id="n-whomeaway" hidden></div><p class="insight" id="i-whomeaway"></p>
       </div>
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Top scorers &amp; assists</h3><p class="sub">Every squad player's goals and assists this season.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Season goals and assists for every registered player. Source: FotMob.</span></button></div>
-        <div class="canvas-holder"><canvas id="c-wscorers"></canvas></div><div class="note" id="n-wscorers" hidden></div>
+        <div class="canvas-holder"><canvas id="c-wscorers"></canvas></div><div class="note" id="n-wscorers" hidden></div><p class="insight" id="i-wscorers"></p>
       </div>
     </div>
   </section>
@@ -404,6 +404,7 @@
 
   function showNote(id,msg){ var c=document.getElementById('c-'+id); if(c)c.style.display='none';
     var n=document.getElementById('n-'+id); if(n){n.hidden=false;n.textContent=msg;} }
+  function setInsight(id,html){ var el=document.getElementById('i-'+id); if(el) el.innerHTML = html; }
   function baseOpts(extra){
     var o={responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{boxWidth:12,font:{size:12}}}},
@@ -438,6 +439,12 @@
         {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
         {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}]},
       options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:13}},y:{beginAtZero:true,grid:{color:C.line}}}})});
+    var recentN = Math.min(3, played);
+    var recentPts = cumPts[played-1] - (played > recentN ? cumPts[played-recentN-1] : 0);
+    var recentPpg = recentPts/recentN;
+    var trendWord = recentPpg > ppg+0.15 ? 'picking up' : recentPpg < ppg-0.15 ? 'dropping off' : 'holding steady';
+    setInsight('wpoints', 'Averaging <b>'+ppg.toFixed(2)+'</b> points per game across '+played+' matches, on pace for around <b>'+
+      Math.round(ppg*TOTAL_GW)+'</b> points by the end of the season. Form is '+trendWord+' — <b>'+recentPpg.toFixed(2)+'</b> PPG over the last '+recentN+'.');
   } else showNote('wpoints','No matches played yet.');
 
   if(gw.length){
@@ -446,6 +453,11 @@
         {label:'For',data:gw.map(function(d){return d.gf;}),backgroundColor:C.blue},
         {label:'Against',data:gw.map(function(d){return d.ga;}),backgroundColor:C.red}]},
       options:baseOpts()});
+    var totalGf = gw.reduce(function(a,d){return a+d.gf;},0), totalGa = gw.reduce(function(a,d){return a+d.ga;},0);
+    var best = gw.slice().sort(function(a,b){return (b.gf-b.ga)-(a.gf-a.ga);})[0];
+    var worst = gw.slice().sort(function(a,b){return (a.gf-a.ga)-(b.gf-b.ga);})[0];
+    setInsight('wgoals', 'Scoring <b>'+(totalGf/gw.length).toFixed(2)+'</b> and conceding <b>'+(totalGa/gw.length).toFixed(2)+
+      '</b> goals per game. Best result: M'+best.gw+' ('+best.gf+'-'+best.ga+'). Toughest: M'+worst.gw+' ('+worst.gf+'-'+worst.ga+').');
   } else showNote('wgoals','No matches played yet.');
 
   if(gw.length){
@@ -459,6 +471,11 @@
         {label:'Home',data:H||[0,0,0],backgroundColor:C.blue},
         {label:'Away',data:A||[0,0,0],backgroundColor:C.amber}]},
       options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})});
+    if(H && A){
+      var vdiff = H[0]-A[0];
+      var venueWord = vdiff>0.2?'considerably stronger at home':vdiff<-0.2?'stronger on the road than at home':'fairly even by venue';
+      setInsight('whomeaway', '<b>'+H[0].toFixed(2)+'</b> PPG at home vs <b>'+A[0].toFixed(2)+'</b> away — '+venueWord+'.');
+    } else setInsight('whomeaway', 'Not enough matches at both venues yet for a home/away comparison.');
   } else showNote('whomeaway','No match data yet.');
 
   var squad = (DATA.squad||[]).filter(function(p){return (p.goals||0)+(p.assists||0) > 0;})
@@ -469,6 +486,10 @@
         {label:'Goals',data:squad.map(function(p){return p.goals||0;}),backgroundColor:C.blue},
         {label:'Assists',data:squad.map(function(p){return p.assists||0;}),backgroundColor:C.amber}]},
       options:baseOpts({indexAxis:'y',scales:{x:{beginAtZero:true,grid:{color:C.line}},y:{grid:{display:false}}}})});
+    var topScorer = squad.slice().sort(function(a,b){return (b.goals||0)-(a.goals||0);})[0];
+    var topAssist = squad.slice().sort(function(a,b){return (b.assists||0)-(a.assists||0);})[0];
+    setInsight('wscorers', '<b>'+topScorer.name+'</b> leads the scoring with '+(topScorer.goals||0)+
+      ' goal'+((topScorer.goals||0)===1?'':'s')+'; <b>'+topAssist.name+'</b> tops the assist chart with '+(topAssist.assists||0)+'.');
   } else showNote('wscorers','No goal involvements yet.');
 })();
 </script>

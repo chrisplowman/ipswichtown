@@ -189,6 +189,7 @@
 :root[data-theme="teletext"] .lkey,
 :root[data-theme="teletext"] .chartcard p.sub,
 :root[data-theme="teletext"] .chartcard .note,
+:root[data-theme="teletext"] .chartcard .insight,
 :root[data-theme="teletext"] .shotbar select,
 :root[data-theme="teletext"] .profile-controls select,
 :root[data-theme="teletext"] .shotscore,
@@ -518,6 +519,9 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .chartcard p.sub{margin:8px 0 0;font-size:13px;color:var(--steel);text-wrap:pretty;line-height:1.5}
 .canvas-holder{position:relative;height:300px;padding:0px}
 .chartcard .note{color:var(--steel);font-size:14px;padding:40px 0;text-align:center}
+.chartcard .insight{margin-top:14px;padding-top:12px;border-top:1px solid var(--hairline-soft);font-size:12.5px;line-height:1.5;color:var(--slate)}
+.chartcard .insight:empty{display:none}
+.chartcard .insight b{color:var(--ink);font-weight:600}
 .shotbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .shotbar select,.profile-controls select{font-family:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--hairline-strong);border-radius:var(--radius-md);background:var(--canvas);color:var(--ink)}
 .shotscore{font-weight:600;font-size:13px;color:var(--steel)}
