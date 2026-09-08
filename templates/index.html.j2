@@ -403,7 +403,7 @@
     <p class="label" id="cs-form">Form &amp; season</p>
     <div class="chartgrid">
       <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at the club's current rate (dashed), against a flat 40-point "typical survival" line and the pace the 18th-placed team is on. Above both = on course to survive.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to GW38 at the club's current points-per-game. Source: Fantasy Premier League API.</span></button></div>
+        <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to GW38 at the club's current rate (dashed), against the pace needed for a "typical survival" 40 points and the pace the 18th-placed team is on. Above both = on course to survive.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to GW38 at the club's current points-per-game. Source: Fantasy Premier League API.</span></button></div>
         <div class="canvas-holder"><canvas id="c-points"></canvas></div><div class="note" id="n-points" hidden></div><p class="insight" id="i-points"></p>
       </div>
       <div class="chartcard wide">
@@ -816,8 +816,8 @@
       var gw = DATA.by_gameweek||[], labels = gw.map(function(d){return 'GW'+d.gw;});
 
       // Points progression across the whole season: actual so far, projected to GW38
-      // at current points-per-game, vs a flat 40pt "typical survival" line and the
-      // pace the 18th-placed team (first in the drop zone) is on.
+      // at current points-per-game, vs the pace needed for a "typical survival" 40
+      // points and the pace the 18th-placed team (first in the drop zone) is on.
       var TOTAL_GW = 38;
       var seasonLabels = []; for(var _g=1;_g<=TOTAL_GW;_g++) seasonLabels.push('GW'+_g);
       if(gw.length){
@@ -835,7 +835,7 @@
         var dsets=[
           {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
           {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false},
-          {label:'40 pts (typical survival)',data:seasonLabels.map(function(){return 40;}),
+          {label:'40pt pace',data:seasonLabels.map(function(_,i){return +((40/TOTAL_GW)*(i+1)).toFixed(1);}),
             borderColor:C.muted,borderDash:[2,3],tension:0,pointRadius:0,fill:false}];
         var r18Final = null;
         if(r18 && r18.played){
