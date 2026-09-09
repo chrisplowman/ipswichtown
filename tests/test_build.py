@@ -319,6 +319,14 @@ def test_site_builds_end_to_end(tmp_path, monkeypatch):
     assert f"men/match/{match_slug}.html" in sitemap
     assert f"men/player/{player_slug}.html" in sitemap
     assert "women/index.html" in sitemap
+    women = site / "women"
+    assert list((women / "match").glob("*.html")), "no women's match pages built"
+    women_match_html = next((women / "match").glob("*.html")).read_text()
+    assert 'href="../../style.css"' in women_match_html and 'Starting XI' in women_match_html
+    women_match_slug = next((women / "match").glob("*.html")).stem
+    assert f"women/match/{women_match_slug}.html" in sitemap
+    matches_html = (women / "matches.html").read_text()
+    assert f'href="match/{women_match_slug}.html"' in matches_html
     assert "sitemap.xml" in (site / "robots.txt").read_text()
     assert (men / "preview.html").exists(), "no preview page built"
     assert "men/preview.html" in sitemap

@@ -30,36 +30,7 @@
 </script>
 </head>
 <body class="page-{{ page }}">
-<a class="skiplink" href="#main">Skip to content</a>
-{% include '_toggle.html.j2' %}
-<header class="masthead">
-  <div class="wrap">
-    <div class="crest">
-      <div>
-        <div class="eyebrow">{{ league_name }} · {{ season }}{% if position %} <span class="pos">{{ position|ordinal }}</span>{% endif %}</div>
-        <div class="wordmark">Ipswich Town Women</div>
-      </div>
-    </div>
-    <div class="headright">
-      <div class="themeswitch" role="group" aria-label="Theme">
-        <button type="button" class="opt" data-theme-opt="light" onclick="__setTheme('light')">Light</button>
-        <button type="button" class="opt" data-theme-opt="dark" onclick="__setTheme('dark')">Dark</button>
-        <button type="button" class="opt" data-theme-opt="teletext" onclick="__setTheme('teletext')">Txt</button>
-      </div>
-      <div class="updated">Updated<b>{{ generated_at|updated }}</b></div>
-    </div>
-  </div>
-</header>
-<script>(function(){var t=document.documentElement.getAttribute('data-theme');
-  document.querySelectorAll('.themeswitch .opt').forEach(function(b){
-    b.setAttribute('aria-pressed', b.dataset.themeOpt===t ? 'true' : 'false');});})();</script>
-<nav class="tabs">
-  <div class="wrap">
-    {% for pid, filename, label in pages %}
-    <a href="{{ filename }}"{% if pid == current %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
-    {% endfor %}
-  </div>
-</nav>
+{% include '_women_masthead.html.j2' %}
 
 <main class="wrap" id="main" tabindex="-1">
 
@@ -189,65 +160,8 @@
   <!-- MATCHES -->
   {% if page == 'matches' %}
   <section class="panel">
-    {% if last_match %}
-    {% macro women_lineup_row(p) %}
-      <li>
-        <span class="min">{{ p.shirt or '' }}</span>
-        <span class="eventtext">{{ p.name }}{% if p.is_captain %} (C){% endif %}{% if p.player_of_match %} ★{% endif %}
-          {% for c in p.cards|default([]) %}<span class="cardchip {{ c.kind }}" title="{{ c.minute }}"></span>{% endfor %}
-          {% if p.goals %}<span class="assist">G {{ p.goals|join(', ') }}</span>{% endif %}
-          {% if p.assists %}<span class="assist">A {{ p.assists|join(', ') }}</span>{% endif %}
-          {% if p.sub_off %}<span class="assist">↓ {{ p.sub_off }}</span>{% endif %}
-          {% if p.sub_on %}<span class="assist">↑ {{ p.sub_on }}</span>{% endif %}
-        </span>
-        <span class="assist">{% if p.rating %}{{ '%.1f'|format(p.rating) }}{% endif %}</span>
-      </li>
-    {% endmacro %}
-    {% macro women_pitch_marker(p) %}
-      {% if p.x is not none and p.y is not none %}
-      {% set cx = (p.x * 598 + 1)|round(1) %}{% set cy = (p.y * 398 + 1)|round(1) %}
-      <g>
-        <circle cx="{{ cx }}" cy="{{ cy }}" r="13" fill="var(--primary)" stroke="var(--canvas)" stroke-width="2"/>
-        <text x="{{ cx }}" y="{{ cy }}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" fill="#fff">{{ p.shirt or '' }}</text>
-        <text x="{{ cx }}" y="{{ cy + 22 }}" text-anchor="middle" font-size="9" fill="var(--ink)">{{ p.name }}</text>
-        <title>{{ p.full_name }}{% if p.rating %} · {{ '%.1f'|format(p.rating) }}{% endif %}</title>
-      </g>
-      {% endif %}
-    {% endmacro %}
     <div class="block card">
-      <div class="cardhead"><h3>Last match{% if last_match.score %}: {{ last_match.score }} v {{ last_match.opponent }}{% else %} v {{ last_match.opponent }}{% endif %}</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Starting XI, ratings and events from the most recent match — FotMob only carries this level of detail for the latest matchday, not the full archive. Source: FotMob.</span></button></div>
-      <div class="meta">
-        {% if last_match.result %}<span class="pill {{ last_match.result }}">{{ {'W':'Win','D':'Draw','L':'Loss'}[last_match.result] }}</span>{% endif %}
-        &nbsp; {{ 'Home' if last_match.home else 'Away' }}
-        {% if last_match.date %} · {{ last_match.date }}{% endif %}
-        {% if last_match.formation %} · {{ last_match.formation }}{% endif %}
-        {% if last_match.team_rating %} · Team rating {{ '%.1f'|format(last_match.team_rating) }}{% endif %}
-        {% if last_match.average_age %} · Avg age {{ '%.1f'|format(last_match.average_age) }}{% endif %}
-        {% if last_match.coach_name %} · Coach: {{ last_match.coach_name }}{% endif %}
-      </div>
-      <div class="pitch-holder">
-        <svg role="img" aria-label="Starting lineup on a pitch" class="pitch" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="1" width="598" height="398" fill="var(--tint-mint)" stroke="var(--hairline-strong)"/>
-          <line x1="300" y1="1" x2="300" y2="399" stroke="var(--hairline-strong)"/>
-          <circle cx="300" cy="200" r="40" fill="none" stroke="var(--hairline-strong)"/>
-          <rect x="1" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
-          <rect x="519" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
-          {% for p in last_match.starters %}{{ women_pitch_marker(p) }}{% endfor %}
-        </svg>
-      </div>
-      <ul class="plain">
-        {% for p in last_match.starters %}{{ women_lineup_row(p) }}{% endfor %}
-      </ul>
-      {% if last_match.subs %}
-      <p class="empty-note" style="padding-top:0">Substitutes:</p>
-      <ul class="plain">
-        {% for p in last_match.subs %}{{ women_lineup_row(p) }}{% endfor %}
-      </ul>
-      {% endif %}
-    </div>
-    {% endif %}
-    <div class="block card">
-    <div class="cardhead"><h3>Results &amp; fixtures</h3></div>
+    <div class="cardhead"><h3>Results &amp; reports</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every match played this season. Matches link through to a full report — starting XI, ratings and events — whenever one was captured; FotMob only ever carries that level of detail for the most recently played match, so reports build up gradually rather than covering the whole archive at once. Source: FotMob.</span></button></div>
     {% if results %}
     <div class="tablewrap">
       <table class="ltable">
@@ -256,7 +170,7 @@
           {% for m in results %}
           <tr>
             <td>{{ m.date }}</td>
-            <td class="tm">{% if m.opponent_badge %}<img class="badge" src="{{ m.opponent_badge }}" alt="">{% endif %}{{ m.opponent }} <span class="ha">{{ '(H)' if m.home else '(A)' }}</span></td>
+            <td class="tm">{% if m.opponent_badge %}<img class="badge" src="{{ m.opponent_badge }}" alt="">{% endif %}{% if m.report_slug %}<a class="playerlink" href="match/{{ m.report_slug }}.html">{{ m.opponent }}</a>{% else %}{{ m.opponent }}{% endif %} <span class="ha">{{ '(H)' if m.home else '(A)' }}</span></td>
             <td><span class="res {{ m.result }}">{{ m.result }}</span></td>
             <td><b>{{ m.score }}</b></td>
           </tr>

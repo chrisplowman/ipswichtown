@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -430,61 +431,75 @@ def test_women_match_cache_key_none_without_date_or_opponent():
     assert iw._women_match_cache_key({"date": "2026-08-10"}) is None
 
 
-# ---- career_minutes -------------------------------------------------------------
+# ---- record_match / load_recorded_matches ---------------------------------------
 # FotMob's team endpoint only ever carries lineup detail for the match that was
-# most recently played (see parse_last_match's docstring), so career_minutes
-# persists each new one to WOMEN_LINEUP_CACHE_DIR and sums across everything
-# recorded there so far — every test below points that dir at tmp_path so
-# nothing is ever written into the real repo checkout.
-def test_career_minutes_records_new_match_and_returns_totals(tmp_path, monkeypatch):
+# most recently played (see parse_last_match's docstring), so record_match
+# persists each new one to WOMEN_LINEUP_CACHE_DIR and load_recorded_matches
+# reads everything recorded there so far — every test below points that dir
+# at tmp_path so nothing is ever written into the real repo checkout.
+def test_record_match_writes_a_new_cache_file(tmp_path, monkeypatch):
     monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
     last_match = {"date": "2026-08-10", "opponent": "Sunderland",
-                  "starters": [_lp("Kenzie Weir", sub_off=80)],
-                  "subs": [_lp("Kit Graham", sub_on=80)]}
-    totals = iw.career_minutes(last_match)
-    assert totals == {"Kenzie Weir": 80, "Kit Graham": 10}
-    assert len(list((tmp_path / "cache").glob("*.json"))) == 1
+                  "starters": [_lp("Kenzie Weir", sub_off=80)], "subs": []}
+    iw.record_match(last_match)
+    files = list((tmp_path / "cache").glob("*.json"))
+    assert len(files) == 1
+    assert json.loads(files[0].read_text()) == last_match
 
 
-def test_career_minutes_sums_across_matches(tmp_path, monkeypatch):
-    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
-    iw.career_minutes({"date": "2026-08-10", "opponent": "Sunderland",
-                       "starters": [_lp("Kenzie Weir")], "subs": []})
-    totals = iw.career_minutes({"date": "2026-08-17", "opponent": "Watford",
-                                "starters": [_lp("Kenzie Weir", sub_off=45)], "subs": []})
-    assert totals == {"Kenzie Weir": 135}
-
-
-def test_career_minutes_does_not_double_count_an_already_recorded_match(tmp_path, monkeypatch):
-    # A match still being FotMob's "last match" on a later run must not
-    # re-record it — otherwise re-running the same day would inflate totals.
-    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
-    last_match = {"date": "2026-08-10", "opponent": "Sunderland",
-                  "starters": [_lp("Kenzie Weir")], "subs": []}
-    iw.career_minutes(last_match)
-    totals = iw.career_minutes(last_match)
-    assert totals == {"Kenzie Weir": 90}
-
-
-def test_career_minutes_returns_existing_totals_without_a_last_match(tmp_path, monkeypatch):
-    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
-    iw.career_minutes({"date": "2026-08-10", "opponent": "Sunderland",
-                       "starters": [_lp("Kenzie Weir")], "subs": []})
-    assert iw.career_minutes(None) == {"Kenzie Weir": 90}
-
-
-def test_career_minutes_skips_caching_without_a_joined_date(tmp_path, monkeypatch):
+def test_record_match_skips_without_a_joined_date(tmp_path, monkeypatch):
     # parse_last_match can return a match with no "date" when it couldn't
     # join a score from `results` — nothing reliable to key a cache file on.
     monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
-    last_match = {"opponent": "Sunderland", "starters": [_lp("Kenzie Weir")], "subs": []}
-    assert iw.career_minutes(last_match) == {}
+    iw.record_match({"opponent": "Sunderland", "starters": [_lp("Kenzie Weir")], "subs": []})
     assert not (tmp_path / "cache").exists()
 
 
-def test_career_minutes_empty_without_any_cache_dir(tmp_path, monkeypatch):
+def test_record_match_does_not_overwrite_an_already_recorded_match(tmp_path, monkeypatch):
+    # A match still being FotMob's "last match" on a later run must not be
+    # re-recorded — otherwise re-running the same day would inflate totals.
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    last_match = {"date": "2026-08-10", "opponent": "Sunderland",
+                  "starters": [_lp("Kenzie Weir")], "subs": []}
+    iw.record_match(last_match)
+    iw.record_match({**last_match, "starters": [_lp("Someone Else")]})
+    matches = iw.load_recorded_matches()
+    assert len(matches) == 1
+    assert matches[0]["starters"][0]["full_name"] == "Kenzie Weir"
+
+
+def test_record_match_is_a_noop_without_a_last_match(tmp_path, monkeypatch):
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    iw.record_match(None)
+    assert not (tmp_path / "cache").exists()
+
+
+def test_load_recorded_matches_sorts_most_recent_first(tmp_path, monkeypatch):
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    iw.record_match({"date": "2026-08-10", "opponent": "Sunderland", "starters": [], "subs": []})
+    iw.record_match({"date": "2026-08-24", "opponent": "Watford", "starters": [], "subs": []})
+    iw.record_match({"date": "2026-08-17", "opponent": "Charlton", "starters": [], "subs": []})
+    dates = [m["date"] for m in iw.load_recorded_matches()]
+    assert dates == ["2026-08-24", "2026-08-17", "2026-08-10"]
+
+
+def test_load_recorded_matches_empty_without_a_cache_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "does-not-exist")
-    assert iw.career_minutes(None) == {}
+    assert iw.load_recorded_matches() == []
+
+
+# ---- career_minutes -------------------------------------------------------------
+def test_career_minutes_sums_across_recorded_matches():
+    matches = [{"date": "2026-08-17", "opponent": "Watford",
+               "starters": [_lp("Kenzie Weir", sub_off=45)], "subs": []},
+              {"date": "2026-08-10", "opponent": "Sunderland",
+               "starters": [_lp("Kenzie Weir", sub_off=80)],
+               "subs": [_lp("Kit Graham", sub_on=80)]}]
+    assert iw.career_minutes(matches) == {"Kenzie Weir": 125, "Kit Graham": 10}
+
+
+def test_career_minutes_empty_without_any_recorded_matches():
+    assert iw.career_minutes([]) == {}
 
 
 # ---- parse_squad minutes wiring --------------------------------------------------
