@@ -1007,7 +1007,7 @@ def sample_data_women():
     pos_detail = {"GKP": "GK", "DEF": "CB", "MID": "CM", "FWD": "ST"}
     squad = [{"name": n.split()[-1], "full_name": n, "pos": p, "pos_detail": pos_detail[p],
               "nationality": nats[i % len(nats)][0], "nat_code": nats[i % len(nats)][1],
-              "age": 19 + (i * 3) % 14, "apps": 8 - i % 3,
+              "age": 19 + (i * 3) % 14, "minutes": (8 - i % 3) * 74,
               "goals": max(0, 5 - i) if p == "FWD" else max(0, 2 - i % 3),
               "assists": max(0, 3 - i % 4), "ycards": i % 3, "rcards": 0}
              for i, (n, p, x, y) in enumerate(squad_names)]

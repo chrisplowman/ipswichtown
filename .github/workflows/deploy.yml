@@ -89,6 +89,19 @@ jobs:
       - name: Fetch data
         run: python ingest.py
 
+      # FotMob's team endpoint only ever exposes lineup detail for the most
+      # recently played match, so ingest_women.py accumulates each match's
+      # per-player minutes into this dir across runs — never overwritten,
+      # so a permanent cache-forever key/restore-key pair (like the ESPN
+      # lineup/play/match caches above) rather than one keyed per run.
+      - name: Restore women's lineup cache
+        uses: actions/cache@v4
+        with:
+          path: women_lineup_cache
+          key: women-lineup-cache-${{ github.run_id }}
+          restore-keys: |
+            women-lineup-cache-
+
       # Best-effort: FotMob's API is unofficial/undocumented and could break
       # without notice, so a failure here shouldn't fail the whole deploy —
       # data/ isn't persisted between runs, so if this fails or is skipped,
