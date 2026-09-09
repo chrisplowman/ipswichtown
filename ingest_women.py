@@ -497,6 +497,16 @@ def _women_match_cache_key(last_match):
     return f"{date}_{slug}"
 
 
+def _is_full_match_record(cached):
+    """Whether a cache file already holds a full match record (starters/subs
+    etc.) rather than the old minutes-only shape this cache briefly used
+    before match reports existed ({"date", "opponent", "minutes": {...}}) —
+    those legacy entries are missing "starters" and need overwriting once,
+    or they'd silently starve the report pages of real data forever (the
+    cache is otherwise never rewritten once a key exists)."""
+    return isinstance(cached, dict) and "starters" in cached
+
+
 def record_match(last_match):
     """Persists last_match (see parse_last_match) to WOMEN_LINEUP_CACHE_DIR,
     once per match (see _women_match_cache_key) — the only way to build up a
@@ -505,18 +515,25 @@ def record_match(last_match):
     whichever match was most recently played, not a season's history.
 
     A no-op without a joined date (nothing reliable to key a cache file on —
-    see _women_match_cache_key) or once a match is already recorded, so a
-    later run that still sees the same match as "last" doesn't re-write it.
-    Matches that finished before this cache existed, or that no run happened
-    to catch in time before the next one overtook them, are simply absent —
-    coverage grows more complete as the season goes on."""
+    see _women_match_cache_key) or once a match is already recorded as a full
+    record (see _is_full_match_record), so a later run that still sees the
+    same match as "last" doesn't re-write it. Matches that finished before
+    this cache existed, or that no run happened to catch in time before the
+    next one overtook them, are simply absent — coverage grows more complete
+    as the season goes on."""
     key = _women_match_cache_key(last_match) if last_match else None
     if not key:
         return
     WOMEN_LINEUP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_file = WOMEN_LINEUP_CACHE_DIR / f"{key}.json"
-    if not cache_file.exists():
-        cache_file.write_text(json.dumps(last_match))
+    if cache_file.exists():
+        try:
+            cached = json.loads(cache_file.read_text())
+        except (ValueError, OSError):
+            cached = None
+        if _is_full_match_record(cached):
+            return
+    cache_file.write_text(json.dumps(last_match))
 
 
 def load_recorded_matches():

@@ -403,6 +403,26 @@ def test_record_match_does_not_overwrite_an_already_recorded_match(tmp_path, mon
     assert matches[0]["starters"][0]["full_name"] == "Kenzie Weir"
 
 
+def test_record_match_overwrites_a_legacy_minutes_only_cache_entry(tmp_path, monkeypatch):
+    # Real bug, caught live: an early version of this cache stored just
+    # {"date", "opponent", "minutes": {...}} (from a since-removed
+    # minutes-only accumulator). Because a cache key is otherwise never
+    # rewritten once it exists, that legacy shape silently starved the match
+    # report page of real data forever — starters/subs never arrived. A cache
+    # entry missing "starters" must be treated as not yet properly recorded.
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    (cache_dir / "2026-08-10_sunderland.json").write_text(json.dumps(
+        {"date": "2026-08-10", "opponent": "Sunderland", "minutes": {"Kenzie Weir": 90}}))
+    last_match = {"date": "2026-08-10", "opponent": "Sunderland",
+                  "starters": [_lp("Kenzie Weir")], "subs": []}
+    iw.record_match(last_match)
+    matches = iw.load_recorded_matches()
+    assert len(matches) == 1
+    assert matches[0] == last_match
+
+
 def test_record_match_is_a_noop_without_a_last_match(tmp_path, monkeypatch):
     monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
     iw.record_match(None)
