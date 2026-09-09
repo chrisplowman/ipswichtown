@@ -47,11 +47,11 @@ NEWS_LIMIT = 12
 
 # FotMob's team endpoint only ever exposes full lineup detail (see
 # parse_last_match) for whichever match was most recently played — not a
-# season's worth of history — so match reports (and the minutes played within
-# them) have to be accumulated across ingestion runs ourselves, one file per
-# match, the same way ingest.py persists ESPN's per-match lineups in
-# LINEUP_CACHE_DIR. Kept between CI runs by the deploy workflow's cache step,
-# same pattern as ingest.py's caches. See record_match/load_recorded_matches.
+# season's worth of history — so match reports have to be accumulated across
+# ingestion runs ourselves, one file per match, the same way ingest.py
+# persists ESPN's per-match lineups in LINEUP_CACHE_DIR. Kept between CI runs
+# by the deploy workflow's cache step, same pattern as ingest.py's caches.
+# See record_match/load_recorded_matches.
 WOMEN_LINEUP_CACHE_DIR = Path("women_lineup_cache")
 
 # FotMob's unofficial API — https://www.fotmob.com/api/data/{resource}?id={id}.
@@ -64,6 +64,21 @@ WOMEN_LINEUP_CACHE_DIR = Path("women_lineup_cache")
 FOTMOB_BASE = "https://www.fotmob.com/api/data"
 FOTMOB_LEAGUE_ID = 9294
 FOTMOB_TEAM_ID = 1134184
+
+# wslfootball.com's own official fantasy game — free, no login required. Its
+# JSON feeds live under /feeds/ (separate from the authenticated /fantasy/
+# services/ gameplay API) and are served as static files straight off a CDN
+# (an S3-style AccessDenied response for an out-of-range matchday id confirms
+# this, not a live API), discovered via the game's own public app-config feed:
+# https://gaming.wslfootball.com/feeds/config/web/configurations.json
+# Confirmed against real responses to cover every registered Ipswich player
+# (not just a top-3 leaderboard like FotMob's stats.players — see
+# _map_player), with real per-player season stats sourced from Opta —
+# including minutes played (the "onField" field, cross-checked against the
+# game's own scoring brackets and real single-match minutes distributions).
+WSL_BASE = "https://gaming.wslfootball.com"
+WSL_TOUR_ID = 1
+WSL_IPSWICH_TEAM_ID = "wpll::Football_Team::9c259ee665104c388ab23a585c5dda18"
 
 POS_BY_GROUP = {"keepers": "GKP", "defenders": "DEF", "midfielders": "MID", "attackers": "FWD"}
 POS_MAP = {"keeper": "GKP", "defender": "DEF", "midfielder": "MID",
@@ -158,8 +173,9 @@ def parse_table(league_json):
 
 # (FotMob stat name, display label, whether a lower value ranks better) for
 # the "How Ipswich compare" rank-bar widget. Confirmed against a real
-# response's team_json["stats"]["teams"] — a team-scoped leaderboard parallel
-# to stats.players (used for squad goals/assists, see _squad_stat_overrides).
+# response's team_json["stats"]["teams"] — a team-scoped leaderboard, distinct
+# from team_json["stats"]["players"] (a top-3-per-category leaderboard, no
+# longer used here now that squad stats come from fetch_wsl_ipswich_stats).
 TEAM_STAT_RANKS = [
     ("goals_team_match", "Goals per match", False),
     ("goals_conceded_team_match", "Goals conceded per match", True),
@@ -184,10 +200,10 @@ def parse_team_ranks(team_json, table):
                      "rank": ips_row["rank"], "total": total, "low_good": False})
 
     # Unlike stats.players entries (which carry their stat key as a top-level
-    # "name", e.g. "goals" — see _squad_stat_overrides), stats.teams entries
-    # carry it as "stat" instead (a plain string, sibling to "header"/
-    # "order"/"category") — confirmed against a real response after the
-    # first live run showed only 2 of 7 rows matching with "name".
+    # "name", e.g. "goals"), stats.teams entries carry it as "stat" instead (a
+    # plain string, sibling to "header"/"order"/"category") — confirmed
+    # against a real response after the first live run showed only 2 of 7
+    # rows matching with "name".
     team_stats = {t.get("stat"): t for t in ((team_json or {}).get("stats") or {}).get("teams") or []}
     for stat_name, label, low_good in TEAM_STAT_RANKS:
         participant = (team_stats.get(stat_name) or {}).get("participant") or {}
@@ -260,72 +276,99 @@ def _pos_from_code(desc):
     return "MID" if code else None
 
 
-STAT_LEADER_FIELD = {"goals": "goals", "goal_assist": "assists",
-                      "yellow_card": "ycards", "red_card": "rcards"}
+# Real football stats only, from the popup feed's seasonStats block — every
+# fantasy-game-only field (totalPoints and the rest of the *Points fields,
+# matchBonus, valuation, selectedPercentage, transferIn/Out, form) is
+# deliberately left out. "onField" is minutes played, not an on-pitch flag —
+# confirmed against real values (0/10/25/65/80/90 across a real squad) that
+# line up with the game's own "60+ minutes"/"1-59 minutes" scoring brackets.
+WSL_STAT_FIELDS = {"onField": "minutes", "goals": "goals", "assists": "assists",
+                    "yellowCard": "ycards", "redCard": "rcards"}
 
 
-def _squad_stat_overrides(team_json):
-    """Real per-player season goals/assists/cards, from team_json["stats"]["players"]
-    — a team-scoped "leader per category" list (confirmed against a real
-    response: each entry has a `name` like "goals"/"goal_assist"/"yellow_card",
-    a `participant` (the #1 player) and a `topThree`). The squad list itself
-    (parse_squad below) carries goals/assists/ycards/rcards fields too, but on
-    a real run every one of those is a hardcoded 0 — even for a player who'd
-    scored — so they're placeholder fields on that endpoint, not live stats;
-    this is the section that actually has real numbers.
-
-    This only covers each category's top 3 Ipswich players, not the full
-    squad — a real limit of the source, not a parsing shortcut: a team's 4th+
-    scorer in a season won't appear here. Fine for a small WSL2 squad early
-    in a season, and still far better than the always-zero squad-list fields."""
+def _wsl_ipswich_player_ids(listing_json):
+    """{normalized full name: playerId} for every Ipswich player in one of
+    wslfootball.com's fantasy-game matchday player-listing feeds (which,
+    despite the name, lists the whole current player pool for both BWSL and
+    BWSL2, not just that matchday's participants). Normalized name is the
+    join key back onto FotMob's squad list — neither source shares an id."""
+    players = ((listing_json or {}).get("Data") or {}).get("Value") or []
     out = {}
-    for entry in ((team_json or {}).get("stats") or {}).get("players") or []:
-        field = STAT_LEADER_FIELD.get(entry.get("name"))
-        if not field:
+    for p in players:
+        if p.get("teamId") != WSL_IPSWICH_TEAM_ID:
             continue
-        people = list(entry.get("topThree") or [])
-        if entry.get("participant"):
-            people.append(entry["participant"])
-        for person in people:
-            pid, val = person.get("id"), person.get("value")
-            if pid is not None and val is not None:
-                out.setdefault(pid, {})[field] = val
+        full_name = f"{p.get('mediaFirstName') or ''} {p.get('mediaLastName') or ''}".strip()
+        if full_name and p.get("playerId"):
+            out[_norm(full_name)] = p["playerId"]
     return out
 
 
-def _map_player(p, pos, stat_overrides=None, minutes_by_name=None):
+def _wsl_player_stats(popup_json):
+    """One player's real-football season stats (see WSL_STAT_FIELDS) from
+    their fantasy-game stats-popup feed's seasonStats block. Some registered
+    players carry no seasonStats at all yet (e.g. not part of any matchday
+    squad so far) — {} for those, same as a fetch failure, rather than
+    guessing zeroes."""
+    season = (((popup_json or {}).get("Data") or {}).get("Value") or {}).get("seasonStats") or {}
+    return {out_key: season[key] for key, out_key in WSL_STAT_FIELDS.items() if key in season}
+
+
+def fetch_wsl_ipswich_stats():
+    """Real per-player season stats for every registered Ipswich player, from
+    wslfootball.com's fantasy game (see the comment above WSL_BASE for why
+    this is trusted as a free, public, Opta-sourced source) — a big upgrade
+    over FotMob's top-3-per-category leaderboard. Keyed by normalized full
+    name, matched against FotMob's squad list of the same name. Returns {} if
+    any step fails, same as every other optional source in this file — a
+    build never depends on this succeeding."""
+    tour = get_json(f"{WSL_BASE}/feeds/tour/details/{WSL_TOUR_ID}.json")
+    matchday_id = (((tour or {}).get("Data") or {}).get("Value") or {}).get("currMatchdayId")
+    if not matchday_id:
+        return {}
+    listing = get_json(f"{WSL_BASE}/feeds/players/matchday_en_{WSL_TOUR_ID}_{matchday_id}.json?v=3")
+    player_ids = _wsl_ipswich_player_ids(listing)
+
+    out = {}
+    for norm_name, player_id in player_ids.items():
+        try:
+            popup = get_json(f"{WSL_BASE}/feeds/popup/stats/player_en_{WSL_TOUR_ID}_{player_id}.json")
+        except requests.RequestException:
+            continue  # one player's stats failing shouldn't cost the other 24
+        stats = _wsl_player_stats(popup)
+        if stats:
+            out[norm_name] = stats
+    return out
+
+
+def _map_player(p, pos, wsl_stats=None):
     if pos is None:
         role = p.get("role") or {}
         role_text = f"{role.get('key') or ''} {role.get('fallback') or ''}".lower()
         pos = _pos_from_code(p.get("positionIdsDesc")) or \
             next((v for k, v in POS_MAP.items() if k in role_text), "MID")
     full_name = p.get("name") or ""
-    overrides = (stat_overrides or {}).get(p.get("id"), {})
+    overrides = (wsl_stats or {}).get(_norm(full_name), {})
     return {"name": full_name.split()[-1] if full_name else "", "full_name": full_name, "pos": pos,
             "pos_detail": (p.get("positionIdsDesc") or "").split(",")[0].strip() or None,
             "nationality": p.get("cname"), "nat_code": p.get("ccode"),
-            # No free source carries a season-to-date minutes total for WSL2
-            # players directly — matchesPlayed here is always 0 on a real
-            # response, same placeholder problem as goals/assists had (see
-            # _squad_stat_overrides) — so this is instead accumulated
-            # match-by-match ourselves; see career_minutes's docstring.
-            "age": p.get("age"), "minutes": (minutes_by_name or {}).get(full_name),
-            "goals": overrides.get("goals", p.get("goals")),
-            "assists": overrides.get("assists", p.get("assists")),
-            "ycards": overrides.get("ycards", p.get("ycards")),
-            "rcards": overrides.get("rcards", p.get("rcards"))}
+            # FotMob's own goals/assists/cards/matchesPlayed fields on this
+            # endpoint are always 0 on a real response — placeholders, not
+            # live stats — so every one of these instead comes from
+            # wsl_stats (see fetch_wsl_ipswich_stats), matched by normalized
+            # name since neither source shares a player id.
+            "age": p.get("age"), "minutes": overrides.get("minutes"),
+            "goals": overrides.get("goals"), "assists": overrides.get("assists"),
+            "ycards": overrides.get("ycards"), "rcards": overrides.get("rcards")}
 
 
-def parse_squad(team_json, minutes_by_name=None):
+def parse_squad(team_json, wsl_stats=None):
     """FotMob nests the real squad list two levels down: team_json["squad"]
     is itself a dict ({"squad": [...], "isNationalTeam": ...}), and each
     entry in that inner list is a position group ({"title": "keepers",
     "members": [...]}) — including a non-playing "coach" group, which is
-    dropped here rather than shown as a player. Per-player goals/assists/
-    cards are patched in from _squad_stat_overrides (see its docstring) since
-    the squad list's own such fields are always 0. minutes_by_name (from
-    career_minutes) patches in each player's accumulated minutes the same way."""
-    stat_overrides = _squad_stat_overrides(team_json)
+    dropped here rather than shown as a player. Per-player minutes/goals/
+    assists/cards are patched in from wsl_stats (see fetch_wsl_ipswich_stats)
+    since FotMob's own such fields on this endpoint are always 0."""
     squad_field = team_json.get("squad")
     if isinstance(squad_field, dict):
         groups = squad_field.get("squad") or []
@@ -343,14 +386,14 @@ def parse_squad(team_json, minutes_by_name=None):
             continue
         pos = POS_BY_GROUP.get(title)
         for p in g.get("members") or []:
-            squad.append(_map_player(p, pos, stat_overrides, minutes_by_name))
+            squad.append(_map_player(p, pos, wsl_stats))
     if squad:
         return squad
 
     # FotMob reshuffled the nesting — fall back to a generic search for a
     # flat list of player-shaped dicts anywhere in the response.
     members = _find_list(team_json, lambda x: "shirtNumber" in x and "name" in x) or []
-    return [_map_player(p, None, stat_overrides, minutes_by_name) for p in members
+    return [_map_player(p, None, wsl_stats) for p in members
             if (p.get("role") or {}).get("key") != "coach"]
 
 
@@ -442,37 +485,6 @@ def parse_last_match(team_json, results):
     return out
 
 
-def _minutes_played(lineup_player, is_starter):
-    """Minutes actually on the pitch, from the sub_on/sub_off already parsed
-    by _lineup_player. A starter kicks off at minute 0; a substitute has no
-    pitch time at all unless sub_on is set (an unused bench player has both
-    sub_on and sub_off unset, same as a starter who played the full 90 — the
-    is_starter flag is what tells those two apart). Whichever one starts, the
-    match ends at sub_off if they were taken off, otherwise 90 — no source
-    here gives real added time, so this is the same 90-minute simplification
-    used elsewhere on the site."""
-    sub_on = lineup_player.get("sub_on")
-    if not is_starter and sub_on is None:
-        return 0
-    start = sub_on or 0
-    end = lineup_player.get("sub_off")
-    end = end if end is not None else 90
-    return max(0, end - start)
-
-
-def _last_match_minutes(last_match):
-    """{full_name: minutes} for everyone who actually featured in this one
-    match — starters, plus subs who came on (an unused sub sits at 0 and is
-    dropped, same as a real "Apps" count would treat them)."""
-    out = {}
-    for is_starter, players in ((True, last_match.get("starters")), (False, last_match.get("subs"))):
-        for p in players or []:
-            mins = _minutes_played(p, is_starter)
-            if mins > 0 and p.get("full_name"):
-                out[p["full_name"]] = mins
-    return out
-
-
 def _women_match_cache_key(last_match):
     """A stable identifier for a finished match — FotMob's lastLineupStats
     carries no match id of its own, but date + opponent (already joined from
@@ -488,17 +500,16 @@ def _women_match_cache_key(last_match):
 def record_match(last_match):
     """Persists last_match (see parse_last_match) to WOMEN_LINEUP_CACHE_DIR,
     once per match (see _women_match_cache_key) — the only way to build up a
-    library of match reports and career minutes, since FotMob's team endpoint
-    only ever exposes this level of detail for whichever match was most
-    recently played, not a season's history.
+    library of match reports (formation, ratings, starting XI, events), since
+    FotMob's team endpoint only ever exposes this level of detail for
+    whichever match was most recently played, not a season's history.
 
     A no-op without a joined date (nothing reliable to key a cache file on —
     see _women_match_cache_key) or once a match is already recorded, so a
-    later run that still sees the same match as "last" doesn't re-write it or
-    double-count its minutes. Matches that finished before this cache existed,
-    or that no run happened to catch in time before the next one overtook
-    them, are simply absent, not wrongly zeroed — coverage grows more
-    complete as the season goes on."""
+    later run that still sees the same match as "last" doesn't re-write it.
+    Matches that finished before this cache existed, or that no run happened
+    to catch in time before the next one overtook them, are simply absent —
+    coverage grows more complete as the season goes on."""
     key = _women_match_cache_key(last_match) if last_match else None
     if not key:
         return
@@ -522,18 +533,6 @@ def load_recorded_matches():
                 continue
     matches.sort(key=lambda m: m.get("date") or "", reverse=True)
     return matches
-
-
-def career_minutes(recorded_matches):
-    """Season-to-date minutes per player, summed across every match
-    load_recorded_matches returns — only as complete as what's actually been
-    recorded so far (see record_match's docstring), not necessarily the
-    whole season to date."""
-    totals = {}
-    for match in recorded_matches:
-        for name, mins in _last_match_minutes(match).items():
-            totals[name] = totals.get(name, 0) + mins
-    return totals
 
 
 def fetch_women_news():
@@ -658,12 +657,16 @@ def main():
     except Exception as e:
         print(f"  match reports: skipped ({e})")
 
-    minutes_by_name = career_minutes(match_pages)
-    print(f"  minutes: {len(minutes_by_name)} players with recorded minutes")
+    wsl_stats = {}
+    try:
+        wsl_stats = fetch_wsl_ipswich_stats()
+        print(f"  wsl fantasy stats: {len(wsl_stats)} players")
+    except Exception as e:
+        print(f"  wsl fantasy stats: skipped ({e})")
 
     squad = []
     try:
-        squad = parse_squad(team_json, minutes_by_name) if team_json else []
+        squad = parse_squad(team_json, wsl_stats) if team_json else []
         print(f"  squad: {len(squad)} players")
     except Exception as e:
         print(f"  squad: skipped ({e})")
