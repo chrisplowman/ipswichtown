@@ -453,9 +453,11 @@
     var wdsets = [
       {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
       {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}];
-    // Last season's top 3 final points, as flat reference lines on their own
-    // right-hand axis (a different scale than this season's in-progress
-    // points, so they read as "the target," not part of this season's line).
+    // Last season's top 3 final points, as flat reference lines mirrored onto
+    // a right-hand axis — but that axis shares the exact same 0..max range
+    // as the left one (explicit min/max on both, not just visually similar),
+    // so a reference line's height is directly comparable to this season's
+    // points line rather than reading at some unrelated scale.
     var lastTop3 = DATA.last_season_top3||[];
     var rankWord = {1:'1st',2:'2nd',3:'3rd'};
     var top3Dash = {1:[2,2],2:[5,3],3:[8,4]};
@@ -467,9 +469,11 @@
     });
     var wScales = {x:{grid:{display:false},ticks:{maxTicksLimit:13}},y:{beginAtZero:true,grid:{color:C.line}}};
     if(lastTop3.length){
-      var y1Max = Math.max.apply(null, lastTop3.map(function(t){return t.points;}));
-      wScales.y1 = {position:'right',beginAtZero:true,suggestedMax:Math.ceil(y1Max*1.1),
-        grid:{display:false},title:{display:true,text:'Last season final pts'}};
+      var yMax = Math.ceil(Math.max.apply(null,
+        [Math.round(ppg*TOTAL_GW)].concat(lastTop3.map(function(t){return t.points;}))) * 1.08);
+      wScales.y.min = 0; wScales.y.max = yMax;
+      wScales.y1 = {position:'right', min:0, max:yMax, grid:{display:false},
+        title:{display:true,text:'Points'}};
     }
     new Chart(document.getElementById('c-wpoints'),{type:'line',
       data:{labels:seasonLabels,datasets:wdsets},
