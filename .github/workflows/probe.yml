@@ -1,10 +1,15 @@
 name: Probe WSL Fantasy feeds (throwaway)
 
-# Manual-only diagnostic — never runs on a schedule or push. Investigates
+# Throwaway diagnostic, scoped to this feature branch only — investigates
 # whether wslfootball.com's fantasy-game JSON feeds are a usable free data
-# source for the women's site (see wsl_probe.py). Delete this workflow and
-# wsl_probe.py once the investigation is done.
-on: workflow_dispatch
+# source for the women's site (see wsl_probe.py). Not workflow_dispatch:
+# GitHub only registers that trigger for workflows already on the default
+# branch, and this never should be. Delete this workflow and wsl_probe.py
+# once the investigation is done.
+on:
+  push:
+    branches: [claude/repo-design-review-ajtl4n]
+    paths: [wsl_probe.py, .github/workflows/probe.yml]
 
 jobs:
   probe:
