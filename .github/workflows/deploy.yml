@@ -90,10 +90,12 @@ jobs:
         run: python ingest.py
 
       # FotMob's team endpoint only ever exposes lineup detail for the most
-      # recently played match, so ingest_women.py accumulates each match's
-      # per-player minutes into this dir across runs — never overwritten,
-      # so a permanent cache-forever key/restore-key pair (like the ESPN
-      # lineup/play/match caches above) rather than one keyed per run.
+      # recently played match, so ingest_women.py accumulates a full report
+      # (lineup, ratings, events) per match into this dir across runs — never
+      # overwritten, so a permanent cache-forever key/restore-key pair (like
+      # the ESPN lineup/play/match caches above) rather than one keyed per
+      # run. Powers both career minutes on the squad page and the women's
+      # site's own per-match report pages.
       - name: Restore women's lineup cache
         uses: actions/cache@v4
         with:

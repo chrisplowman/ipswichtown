@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ m.score or '' }}{% if m.score %} · {% endif %}Ipswich Town Women v {{ m.opponent }} · Match report</title>
+{% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
+<meta name="description" content="{{ og_description }}">
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ og_title }}">
+<meta property="og:description" content="{{ og_description }}">
+{% if canonical %}<meta property="og:url" content="{{ canonical }}">{% endif %}
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{ og_title }}">
+<meta name="twitter:description" content="{{ og_description }}">
+{% if ld_json %}<script type="application/ld+json">{{ ld_json|safe }}</script>{% endif %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ css_href }}">
+{% if ga_id %}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_id }}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ ga_id }}');</script>
+{% endif %}
+<script>
+(function(){var K='itfc-theme',d=document.documentElement;
+ try{if(sessionStorage.getItem('itfc-seen')){d.classList.add('seen');}else{sessionStorage.setItem('itfc-seen','1');}}catch(e){}
+ function set(t){d.setAttribute('data-theme',t);}
+ try{set(localStorage.getItem(K)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));}catch(e){set('light');}
+ window.__setTheme=function(t){set(t);try{localStorage.setItem(K,t);}catch(e){}location.reload();};
+})();
+</script>
+</head>
+<body class="page-match">
+{% include '_women_masthead.html.j2' %}
+
+<main class="wrap" id="main" tabindex="-1">
+
+  {% macro women_lineup_row(p) %}
+    <li>
+      <span class="min">{{ p.shirt or '' }}</span>
+      <span class="eventtext">{{ p.name }}{% if p.is_captain %} (C){% endif %}{% if p.player_of_match %} ★{% endif %}
+        {% for c in p.cards|default([]) %}<span class="cardchip {{ c.kind }}" title="{{ c.minute }}"></span>{% endfor %}
+        {% if p.goals %}<span class="assist">G {{ p.goals|join(', ') }}</span>{% endif %}
+        {% if p.assists %}<span class="assist">A {{ p.assists|join(', ') }}</span>{% endif %}
+        {% if p.sub_off %}<span class="assist">↓ {{ p.sub_off }}</span>{% endif %}
+        {% if p.sub_on %}<span class="assist">↑ {{ p.sub_on }}</span>{% endif %}
+      </span>
+      <span class="assist">{% if p.rating %}{{ '%.1f'|format(p.rating) }}{% endif %}</span>
+    </li>
+  {% endmacro %}
+  {% macro women_pitch_marker(p) %}
+    {% if p.x is not none and p.y is not none %}
+    {% set cx = (p.x * 598 + 1)|round(1) %}{% set cy = (p.y * 398 + 1)|round(1) %}
+    <g>
+      <circle cx="{{ cx }}" cy="{{ cy }}" r="13" fill="var(--primary)" stroke="var(--canvas)" stroke-width="2"/>
+      <text x="{{ cx }}" y="{{ cy }}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" fill="#fff">{{ p.shirt or '' }}</text>
+      <text x="{{ cx }}" y="{{ cy + 22 }}" text-anchor="middle" font-size="9" fill="var(--ink)">{{ p.name }}</text>
+      <title>{{ p.full_name }}{% if p.rating %} · {{ '%.1f'|format(p.rating) }}{% endif %}</title>
+    </g>
+    {% endif %}
+  {% endmacro %}
+
+  <!-- SCORELINE -->
+  <div class="block">
+    <div class="score-card">
+      <div class="score-row">
+        <div class="side">{% if m.home %}{% if m.team_badge %}<img src="{{ m.team_badge }}" alt="">{% endif %}<div class="nm">Ipswich</div>{% else %}{% if m.opponent_badge %}<img src="{{ m.opponent_badge }}" alt="">{% endif %}<div class="nm">{{ m.opponent }}</div>{% endif %}</div>
+        <div class="sc">{% if m.score %}{{ m.score.replace('-', '–') }}{% else %}v{% endif %}</div>
+        <div class="side">{% if m.home %}{% if m.opponent_badge %}<img src="{{ m.opponent_badge }}" alt="">{% endif %}<div class="nm">{{ m.opponent }}</div>{% else %}{% if m.team_badge %}<img src="{{ m.team_badge }}" alt="">{% endif %}<div class="nm">Ipswich</div>{% endif %}</div>
+      </div>
+      <div class="meta">
+        {% if m.result %}<span class="pill {{ m.result }}">{{ {'W':'Win','D':'Draw','L':'Loss'}[m.result] }}</span>{% endif %}
+        &nbsp; {{ 'Home' if m.home else 'Away' }}
+        {% if m.date %} · {{ m.date }}{% endif %}
+        {% if m.formation %} · {{ m.formation }}{% endif %}
+        {% if m.team_rating %} · Team rating {{ '%.1f'|format(m.team_rating) }}{% endif %}
+        {% if m.average_age %} · Avg age {{ '%.1f'|format(m.average_age) }}{% endif %}
+        {% if m.coach_name %} · Coach: {{ m.coach_name }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- STARTING XI -->
+  <div class="block">
+    <div class="card">
+      <div class="cardhead"><h3>Starting XI</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Ipswich's starting XI, ratings and events — FotMob only publishes the opposing team's lineup on their own site, not through this endpoint, so this page covers Ipswich only. Source: FotMob.</span></button></div>
+      <div class="pitch-holder">
+        <svg role="img" aria-label="Starting lineup on a pitch" class="pitch" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="598" height="398" fill="var(--tint-mint)" stroke="var(--hairline-strong)"/>
+          <line x1="300" y1="1" x2="300" y2="399" stroke="var(--hairline-strong)"/>
+          <circle cx="300" cy="200" r="40" fill="none" stroke="var(--hairline-strong)"/>
+          <rect x="1" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
+          <rect x="519" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
+          {% for p in m.starters %}{{ women_pitch_marker(p) }}{% endfor %}
+        </svg>
+      </div>
+      <ul class="plain">
+        {% for p in m.starters %}{{ women_lineup_row(p) }}{% endfor %}
+      </ul>
+      {% if m.subs %}
+      <p class="empty-note" style="padding-top:0">Substitutes:</p>
+      <ul class="plain">
+        {% for p in m.subs %}{{ women_lineup_row(p) }}{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+
+</main>
+
+<footer class="wrap">
+  Data from free, public sources — Ipswich Town Women's lineup and events via FotMob · rebuilt automatically via GitHub Actions.<br>
+  This page deliberately omits the opposing lineup, match stats, xG and shot maps shown on the men's team pages — those rely on data sources with no free women's-football coverage. <a href="{{ root_prefix }}women/matches.html">Back to matches →</a><br>
+  Raw data: <code>data/itfc_women.json</code> · A reference page, not affiliated with Ipswich Town FC.
+</footer>
+
+</body>
+</html>

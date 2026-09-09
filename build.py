@@ -942,25 +942,59 @@ def by_gameweek_women(results):
     return out
 
 
-def render_women_site(template, data, outdir):
+def render_women_site(template, match_template, data, outdir):
     """Renders into outdir (e.g. site/women/), sharing style.css/fonts/share.js
     from outdir's parent (the site root, alongside site/men/) — main() copies
     those into SITE before calling this."""
     outdir.mkdir(parents=True, exist_ok=True)
     league_name = data.get("league_name", "Women's Super League 2")
+    team = data.get("team") or {}
     fguide = form_guide_women(data)
     data["by_gameweek"] = by_gameweek_women(data.get("results"))
+
+    # readable match-page URLs (date + opponent + venue), same convention as
+    # the men's side's slugs — see render_site. Results are linked to a
+    # report by date alone (rather than also matching on opponent name, which
+    # can format slightly differently between FotMob's team and league
+    # endpoints) since Ipswich play at most one match a day.
+    used_slugs = {}
+    match_pages = data.get("match_pages") or []
+    for mp in match_pages:
+        base = f"{mp.get('date', '')}-{_slugify(mp.get('opponent', ''))}-{'h' if mp.get('home') else 'a'}"
+        used_slugs[base] = used_slugs.get(base, 0) + 1
+        mp["slug"] = base if used_slugs[base] == 1 else f"{base}-{used_slugs[base]}"
+        mp["team_badge"] = team.get("badge")
+    slug_by_date = {mp["date"]: mp["slug"] for mp in match_pages if mp.get("date")}
+    for r in data.get("results") or []:
+        if r.get("date") in slug_by_date:
+            r["report_slug"] = slug_by_date[r["date"]]
+
     data_json = json.dumps(data).replace("<", "\\u003c")
 
     for page_id, filename, _label in WOMEN_PAGES:
         html = template.render(page=page_id, current=page_id, pages=WOMEN_PAGES,
-                               css_href="../style.css", root_prefix="../", site_section="women",
+                               css_href="../style.css", nav_prefix="", root_prefix="../", site_section="women",
                                form_guide=fguide, data_json=data_json,
                                og_title=f"Ipswich Town Women · {filename.replace('.html', '').title()}",
                                og_description=f"Ipswich Town Women {league_name} stats.",
                                canonical=f"{SITE_URL}/women/{filename}", **data)
         (outdir / filename).write_text(html)
     (outdir / "data.json").write_text(json.dumps(data))
+
+    # a report page per match record_match has captured (see ingest_women.py)
+    if match_pages:
+        (outdir / "match").mkdir(exist_ok=True)
+        for mp in match_pages:
+            score = f"Ipswich {mp['score']} {mp['opponent']}" if mp.get("score") else f"Ipswich v {mp['opponent']}"
+            html = match_template.render(
+                m=mp, season=data.get("season"), league_name=league_name, position=data.get("position"),
+                generated_at=data.get("generated_at"), ga_id=data.get("ga_id"),
+                pages=WOMEN_PAGES, current="matches", nav_prefix="../",
+                css_href="../../style.css", root_prefix="../../", site_section="women",
+                og_title=f"{score} · Match report",
+                og_description=f"Ipswich Town Women's report v {mp['opponent']}: starting XI, ratings and events.",
+                canonical=f"{SITE_URL}/women/match/{mp['slug']}.html")
+            (outdir / "match" / f"{mp['slug']}.html").write_text(html)
 
 
 def _women_data_is_meaningful(data):
@@ -1050,6 +1084,13 @@ def sample_data_women():
                   "is_captain": False, "player_of_match": False, "goals": [], "assists": [],
                   "cards": [], "sub_on": "78", "sub_off": None, "x": None, "y": None}],
     }
+    # A handful of recorded match reports, same shape record_match accumulates
+    # for real — see ingest_women.py. Only the most recent match ever has real
+    # lineup detail, so these reuse the same sample lineup, just with each
+    # match's own opponent/date/score swapped in.
+    match_pages = [{**last_match, "opponent": r["opponent"], "home": r["home"],
+                    "score": r["score"], "result": r["result"], "date": r["date"],
+                    "opponent_badge": None} for r in results[:3]]
 
     last_season_top3 = [
         {"rank": 1, "team": "Sunderland", "points": 58},
@@ -1075,7 +1116,7 @@ def sample_data_women():
     return {
         "season": "2026/27", "league_name": "Barclays Women's Super League 2",
         "team": {"short_name": "Ipswich", "badge": None}, "position": 9,
-        "venue": venue, "coach": coach, "last_match": last_match,
+        "venue": venue, "coach": coach, "last_match": last_match, "match_pages": match_pages,
         "last_season_top3": last_season_top3, "team_ranks": team_ranks,
         "summary": {"played": 8, "won": won, "drawn": drawn, "lost": lost,
                     "gf": gf, "ga": ga, "gd": gf - ga, "points": won * 3 + drawn},
@@ -1270,6 +1311,8 @@ def _write_sitemap(outdir, data, women_data):
              for sp in data.get("squad") or [] if sp.get("slug")]
     women_lastmod = (women_data.get("generated_at") or "")[:10] if women_data else lastmod
     urls += [(f"{SITE_URL}/women/{filename}", women_lastmod) for _, filename, _ in WOMEN_PAGES]
+    urls += [(f"{SITE_URL}/women/match/{mp['slug']}.html", women_lastmod)
+             for mp in (women_data or {}).get("match_pages") or [] if mp.get("slug")]
 
     entries = "\n".join(f"  <url><loc>{loc}</loc>{f'<lastmod>{lm}</lastmod>' if lm else ''}</url>"
                         for loc, lm in urls)
@@ -1317,12 +1360,13 @@ def main():
     # whenever ingest_women.py hasn't produced anything meaningful, not just
     # when its output file is missing — see _women_data_is_meaningful's docstring.
     women_template = env.get_template("women.html.j2")
+    women_match_template = env.get_template("women_match.html.j2")
     real_women_data = json.loads(DATA_WOMEN.read_text()) if DATA_WOMEN.exists() else {}
     using_sample = not _women_data_is_meaningful(real_women_data)
     women_data = sample_data_women() if using_sample else real_women_data
     women_data["ga_id"] = GA_MEASUREMENT_ID
-    render_women_site(women_template, women_data, SITE / "women")
-    print(f"Built {len(WOMEN_PAGES)} women's pages"
+    render_women_site(women_template, women_match_template, women_data, SITE / "women")
+    print(f"Built {len(WOMEN_PAGES)} women's pages + {len(women_data.get('match_pages') or [])} match pages"
           f"{' (sample data — no live source yet)' if using_sample else ''}.")
 
     _write_root_redirect(SITE)

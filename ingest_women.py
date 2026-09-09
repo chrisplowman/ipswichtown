@@ -47,10 +47,11 @@ NEWS_LIMIT = 12
 
 # FotMob's team endpoint only ever exposes full lineup detail (see
 # parse_last_match) for whichever match was most recently played — not a
-# season's worth of history — so minutes played have to be accumulated across
-# ingestion runs ourselves, one file per match, the same way ingest.py
-# persists ESPN's per-match lineups in LINEUP_CACHE_DIR. Kept between CI runs
-# by the deploy workflow's cache step, same pattern as ingest.py's caches.
+# season's worth of history — so match reports (and the minutes played within
+# them) have to be accumulated across ingestion runs ourselves, one file per
+# match, the same way ingest.py persists ESPN's per-match lineups in
+# LINEUP_CACHE_DIR. Kept between CI runs by the deploy workflow's cache step,
+# same pattern as ingest.py's caches. See record_match/load_recorded_matches.
 WOMEN_LINEUP_CACHE_DIR = Path("women_lineup_cache")
 
 # FotMob's unofficial API — https://www.fotmob.com/api/data/{resource}?id={id}.
@@ -484,36 +485,54 @@ def _women_match_cache_key(last_match):
     return f"{date}_{slug}"
 
 
-def career_minutes(last_match):
-    """Records last_match's per-player minutes to WOMEN_LINEUP_CACHE_DIR (once
-    per match — see _women_match_cache_key) and returns season-to-date totals
-    summed across every match recorded there so far.
+def record_match(last_match):
+    """Persists last_match (see parse_last_match) to WOMEN_LINEUP_CACHE_DIR,
+    once per match (see _women_match_cache_key) — the only way to build up a
+    library of match reports and career minutes, since FotMob's team endpoint
+    only ever exposes this level of detail for whichever match was most
+    recently played, not a season's history.
 
-    This can only start accumulating once a match has been captured while it
-    was still FotMob's "last match" (see parse_last_match's docstring on why
-    that's the only match with lineup detail available at all) — matches
-    that finished before this cache existed, or that no run happened to catch
-    in time before the next match overtook them, are simply absent, not
-    wrongly zeroed. Totals grow more complete as the season goes on."""
+    A no-op without a joined date (nothing reliable to key a cache file on —
+    see _women_match_cache_key) or once a match is already recorded, so a
+    later run that still sees the same match as "last" doesn't re-write it or
+    double-count its minutes. Matches that finished before this cache existed,
+    or that no run happened to catch in time before the next one overtook
+    them, are simply absent, not wrongly zeroed — coverage grows more
+    complete as the season goes on."""
     key = _women_match_cache_key(last_match) if last_match else None
-    if key:
-        WOMEN_LINEUP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        cache_file = WOMEN_LINEUP_CACHE_DIR / f"{key}.json"
-        if not cache_file.exists():
-            cache_file.write_text(json.dumps({
-                "date": last_match["date"], "opponent": last_match.get("opponent"),
-                "minutes": _last_match_minutes(last_match),
-            }))
+    if not key:
+        return
+    WOMEN_LINEUP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = WOMEN_LINEUP_CACHE_DIR / f"{key}.json"
+    if not cache_file.exists():
+        cache_file.write_text(json.dumps(last_match))
 
-    totals = {}
+
+def load_recorded_matches():
+    """Every match record_match has captured so far, most recent first —
+    matching `results`' own ordering convention. This is the women's-site
+    equivalent of ingest.py's match_pages: one full report per match, built
+    up gradually rather than fetched for the whole season at once."""
+    matches = []
     if WOMEN_LINEUP_CACHE_DIR.is_dir():
         for cache_file in WOMEN_LINEUP_CACHE_DIR.glob("*.json"):
             try:
-                cached = json.loads(cache_file.read_text())
+                matches.append(json.loads(cache_file.read_text()))
             except (ValueError, OSError):
                 continue
-            for name, mins in (cached.get("minutes") or {}).items():
-                totals[name] = totals.get(name, 0) + mins
+    matches.sort(key=lambda m: m.get("date") or "", reverse=True)
+    return matches
+
+
+def career_minutes(recorded_matches):
+    """Season-to-date minutes per player, summed across every match
+    load_recorded_matches returns — only as complete as what's actually been
+    recorded so far (see record_match's docstring), not necessarily the
+    whole season to date."""
+    totals = {}
+    for match in recorded_matches:
+        for name, mins in _last_match_minutes(match).items():
+            totals[name] = totals.get(name, 0) + mins
     return totals
 
 
@@ -631,12 +650,16 @@ def main():
     except Exception as e:
         print(f"  last match: skipped ({e})")
 
-    minutes_by_name = {}
+    match_pages = []
     try:
-        minutes_by_name = career_minutes(last_match)
-        print(f"  minutes: {len(minutes_by_name)} players with recorded minutes")
+        record_match(last_match)
+        match_pages = load_recorded_matches()
+        print(f"  match reports: {len(match_pages)} recorded")
     except Exception as e:
-        print(f"  minutes: skipped ({e})")
+        print(f"  match reports: skipped ({e})")
+
+    minutes_by_name = career_minutes(match_pages)
+    print(f"  minutes: {len(minutes_by_name)} players with recorded minutes")
 
     squad = []
     try:
@@ -686,8 +709,8 @@ def main():
         "position": position, "summary": summary, "summary_text": summary_text,
         "next_fixture": next_fixture,
         "results": results, "upcoming": upcoming, "table": table, "squad": squad, "news": news,
-        "venue": venue, "coach": coach, "last_match": last_match, "last_season_top3": last_season_top3,
-        "team_ranks": team_ranks,
+        "venue": venue, "coach": coach, "last_match": last_match, "match_pages": match_pages,
+        "last_season_top3": last_season_top3, "team_ranks": team_ranks,
         "health": {"missing": missing},
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }

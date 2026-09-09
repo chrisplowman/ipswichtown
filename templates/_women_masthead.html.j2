@@ -1,0 +1,33 @@
+{# Shared header + nav for every women's-team page. nav_prefix is "" for
+   top-level pages and "../" for match pages so links resolve correctly —
+   same convention as _masthead.html.j2 on the men's side. #}
+<a class="skiplink" href="#main">Skip to content</a>
+{% include '_toggle.html.j2' %}
+<header class="masthead">
+  <div class="wrap">
+    <div class="crest">
+      <div>
+        <div class="eyebrow">{{ league_name }} · {{ season }}{% if position %} <span class="pos">{{ position|ordinal }}</span>{% endif %}</div>
+        <div class="wordmark">Ipswich Town Women</div>
+      </div>
+    </div>
+    <div class="headright">
+      <div class="themeswitch" role="group" aria-label="Theme">
+        <button type="button" class="opt" data-theme-opt="light" onclick="__setTheme('light')">Light</button>
+        <button type="button" class="opt" data-theme-opt="dark" onclick="__setTheme('dark')">Dark</button>
+        <button type="button" class="opt" data-theme-opt="teletext" onclick="__setTheme('teletext')">Txt</button>
+      </div>
+      <div class="updated">Updated<b>{{ generated_at|updated }}</b></div>
+    </div>
+  </div>
+</header>
+<script>(function(){var t=document.documentElement.getAttribute('data-theme');
+  document.querySelectorAll('.themeswitch .opt').forEach(function(b){
+    b.setAttribute('aria-pressed', b.dataset.themeOpt===t ? 'true' : 'false');});})();</script>
+<nav class="tabs">
+  <div class="wrap">
+    {% for pid, filename, label in pages %}
+    <a href="{{ nav_prefix }}{{ filename }}"{% if pid == current %} class="active" aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </div>
+</nav>
