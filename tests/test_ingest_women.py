@@ -87,6 +87,53 @@ def test_parse_last_season_top3_none_without_a_response():
     assert iw.parse_last_season_top3(None) is None
 
 
+# ---- parse_team_ranks ("How Ipswich compare" rank bars) ----------------------
+# Confirmed against a real response: team_json["stats"]["teams"] is a list of
+# per-stat entries, each with a "name" (e.g. "goals_team_match") and a
+# "participant" carrying Ipswich's own rank/value for that stat.
+def _team_json_with_stats(entries):
+    return {"stats": {"teams": [
+        {"name": name, "participant": {"rank": rank, "value": value}}
+        for name, rank, value in entries
+    ]}}
+
+
+def _wsl2_table(points=1, rank=5, gd=0, total=12):
+    table = [{"rank": i, "team": f"Team {i}", "points": 0, "gd": 0, "is_ipswich": False}
+             for i in range(1, total + 1) if i != rank]
+    table.insert(rank - 1, {"rank": rank, "team": "Ipswich Town", "points": points,
+                             "gd": gd, "is_ipswich": True})
+    return table
+
+
+def test_parse_team_ranks_bookends_with_points_and_goal_difference():
+    team_json = _team_json_with_stats([("goals_team_match", 4, 1)])
+    table = _wsl2_table(points=1, rank=5, gd=0)
+    ranks = iw.parse_team_ranks(team_json, table)
+    assert ranks[0] == {"label": "Points", "value": 1, "rank": 5, "total": 12, "low_good": False}
+    assert ranks[-1]["label"] == "Goal difference"
+    assert any(r["label"] == "Goals per match" and r["rank"] == 4 for r in ranks)
+
+
+def test_parse_team_ranks_skips_stats_missing_from_response():
+    team_json = _team_json_with_stats([("goals_team_match", 4, 1)])
+    ranks = iw.parse_team_ranks(team_json, _wsl2_table())
+    labels = [r["label"] for r in ranks]
+    assert "Goals per match" in labels
+    assert "Goals conceded per match" not in labels  # not present in team_json
+
+
+def test_parse_team_ranks_empty_without_a_table():
+    assert iw.parse_team_ranks(_team_json_with_stats([("goals_team_match", 4, 1)]), []) == []
+
+
+def test_parse_team_ranks_empty_without_team_json():
+    assert iw.parse_team_ranks(None, _wsl2_table()) == [
+        {"label": "Points", "value": 1, "rank": 5, "total": 12, "low_good": False},
+        {"label": "Goal difference", "value": 0, "rank": 5, "total": 12, "low_good": False},
+    ]
+
+
 # ---- parse_fixtures -------------------------------------------------------------
 def test_parse_fixtures_splits_finished_and_upcoming_and_ignores_other_teams():
     matches = [

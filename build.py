@@ -1057,11 +1057,26 @@ def sample_data_women():
         {"rank": 3, "team": "Newcastle United", "points": 49},
     ]
 
+    ips_table_row = next(r for r in table if r["is_ipswich"])
+    team_ranks = [
+        {"label": "Points", "value": ips_table_row["points"], "rank": ips_table_row["rank"],
+         "total": len(table), "low_good": False},
+        {"label": "Goals per match", "value": round(gf / max(1, len(results)), 1),
+         "rank": 5, "total": len(table), "low_good": False},
+        {"label": "Goals conceded per match", "value": round(ga / max(1, len(results)), 1),
+         "rank": 6, "total": len(table), "low_good": True},
+        {"label": "Shots on target per match", "value": 3.4, "rank": 7, "total": len(table), "low_good": False},
+        {"label": "Possession", "value": 41.2, "rank": 8, "total": len(table), "low_good": False},
+        {"label": "Fouls per match", "value": 11.5, "rank": 4, "total": len(table), "low_good": True},
+        {"label": "Goal difference", "value": ips_table_row["gd"], "rank": ips_table_row["rank"],
+         "total": len(table), "low_good": False},
+    ]
+
     return {
         "season": "2026/27", "league_name": "Barclays Women's Super League 2",
         "team": {"short_name": "Ipswich", "badge": None}, "position": 9,
         "venue": venue, "coach": coach, "last_match": last_match,
-        "last_season_top3": last_season_top3,
+        "last_season_top3": last_season_top3, "team_ranks": team_ranks,
         "summary": {"played": 8, "won": won, "drawn": drawn, "lost": lost,
                     "gf": gf, "ga": ga, "gd": gf - ga, "points": won * 3 + drawn},
         "summary_text": f"Ipswich Town Women sit 9th in the Barclays Women's Super League 2 "

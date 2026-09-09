@@ -308,6 +308,11 @@
         <div class="cardhead"><div class="htitle"><h3>Top scorers &amp; assists</h3><p class="sub">Every squad player's goals and assists this season.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Season goals and assists for every registered player. Source: FotMob.</span></button></div>
         <div class="canvas-holder"><canvas id="c-wscorers"></canvas></div><div class="note" id="n-wscorers" hidden></div><p class="insight" id="i-wscorers"></p>
       </div>
+      <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>How Ipswich compare</h3><p class="sub">Ipswich's rank out of the league on each measure: a longer bar is better.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Ipswich's rank in the league table on points, goal difference, and a handful of season stats. Source: FotMob.</span></button></div>
+        <div class="ranks" id="wranks"></div>
+        <div class="note" id="n-wranks" hidden></div>
+      </div>
     </div>
   </section>
   {% endif %}
@@ -405,6 +410,8 @@
   function showNote(id,msg){ var c=document.getElementById('c-'+id); if(c)c.style.display='none';
     var n=document.getElementById('n-'+id); if(n){n.hidden=false;n.textContent=msg;} }
   function setInsight(id,html){ var el=document.getElementById('i-'+id); if(el) el.innerHTML = html; }
+  function ord(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+  function fmtVal(v){return (Math.round(v)===v)?v:(+v).toFixed(2);}
   // Legend keys: a line-type dataset gets a line-shaped key (dashed to match
   // a dashed series) instead of the default square, so the key reads as a
   // miniature of the series it labels; bar datasets keep the usual box.
@@ -537,6 +544,17 @@
     setInsight('wscorers', '<b>'+topScorer.name+'</b> leads the scoring with '+(topScorer.goals||0)+
       ' goal'+((topScorer.goals||0)===1?'':'s')+'; <b>'+topAssist.name+'</b> tops the assist chart with '+(topAssist.assists||0)+'.');
   } else showNote('wscorers','No goal involvements yet.');
+
+  var tr = DATA.team_ranks||[], rc = document.getElementById('wranks');
+  if(tr.length && rc){
+    rc.innerHTML = tr.map(function(r){
+      var frac=(r.total-r.rank+1)/r.total;
+      var cls = r.rank<=Math.ceil(r.total*0.3) ? 'good' : r.rank>Math.ceil(r.total*0.75) ? 'bad' : '';
+      return '<div class="rankrow"><div class="top"><span>'+r.label+'</span>'+
+        '<span><b>'+fmtVal(r.value)+'</b> <span class="pos">'+ord(r.rank)+'/'+r.total+'</span></span></div>'+
+        '<div class="rankbar"><span class="'+cls+'" style="width:'+(frac*100).toFixed(0)+'%"></span></div></div>';
+    }).join('');
+  } else showNote('wranks','League comparison unavailable yet.');
 })();
 </script>
 {% endif %}
