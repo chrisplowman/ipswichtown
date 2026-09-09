@@ -196,7 +196,7 @@ def test_parse_squad_falls_back_to_generic_search_when_shape_unrecognised():
                               "role": {"key": "midfielder_long"}, "goals": None, "assists": None}]}
     squad = iw.parse_squad(team_json)
     assert squad == [{"name": "Smith", "full_name": "Jane Smith", "pos": "MID", "pos_detail": None,
-                      "nationality": None, "nat_code": None, "age": None, "apps": None, "goals": None,
+                      "nationality": None, "nat_code": None, "age": None, "minutes": None, "goals": None,
                       "assists": None, "ycards": None, "rcards": None}]
 
 
@@ -384,3 +384,118 @@ def test_parse_last_match_skips_score_when_opponent_doesnt_match_latest_result()
     results = [{"opponent": "Some Other Club", "home": True, "score": "1-0", "result": "W", "date": "2026-08-01"}]
     m = iw.parse_last_match(team_json, results)
     assert "score" not in m
+
+
+# ---- _minutes_played / _last_match_minutes ------------------------------------
+def _lp(full_name, sub_on=None, sub_off=None):
+    return {"full_name": full_name, "sub_on": sub_on, "sub_off": sub_off}
+
+
+def test_minutes_played_starter_who_played_full_match():
+    assert iw._minutes_played(_lp("A"), is_starter=True) == 90
+
+
+def test_minutes_played_starter_subbed_off_early():
+    assert iw._minutes_played(_lp("A", sub_off=70), is_starter=True) == 70
+
+
+def test_minutes_played_sub_who_came_on():
+    assert iw._minutes_played(_lp("A", sub_on=60), is_starter=False) == 30
+
+
+def test_minutes_played_sub_brought_on_and_off_again():
+    assert iw._minutes_played(_lp("A", sub_on=60, sub_off=80), is_starter=False) == 20
+
+
+def test_minutes_played_unused_sub_never_came_on():
+    # Both sub_on and sub_off are unset here — same as a starter who played
+    # the full match — so is_starter is what has to tell them apart.
+    assert iw._minutes_played(_lp("A"), is_starter=False) == 0
+
+
+def test_last_match_minutes_drops_unused_subs():
+    last_match = {"starters": [_lp("Starter", sub_off=70)],
+                  "subs": [_lp("Used Sub", sub_on=70), _lp("Unused Sub")]}
+    assert iw._last_match_minutes(last_match) == {"Starter": 70, "Used Sub": 20}
+
+
+# ---- _women_match_cache_key ----------------------------------------------------
+def test_women_match_cache_key_slugifies_opponent():
+    key = iw._women_match_cache_key({"date": "2026-08-10", "opponent": "Nott'm Forest"})
+    assert key == "2026-08-10_nott-m-forest"
+
+
+def test_women_match_cache_key_none_without_date_or_opponent():
+    assert iw._women_match_cache_key({"opponent": "Sunderland"}) is None
+    assert iw._women_match_cache_key({"date": "2026-08-10"}) is None
+
+
+# ---- career_minutes -------------------------------------------------------------
+# FotMob's team endpoint only ever carries lineup detail for the match that was
+# most recently played (see parse_last_match's docstring), so career_minutes
+# persists each new one to WOMEN_LINEUP_CACHE_DIR and sums across everything
+# recorded there so far — every test below points that dir at tmp_path so
+# nothing is ever written into the real repo checkout.
+def test_career_minutes_records_new_match_and_returns_totals(tmp_path, monkeypatch):
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    last_match = {"date": "2026-08-10", "opponent": "Sunderland",
+                  "starters": [_lp("Kenzie Weir", sub_off=80)],
+                  "subs": [_lp("Kit Graham", sub_on=80)]}
+    totals = iw.career_minutes(last_match)
+    assert totals == {"Kenzie Weir": 80, "Kit Graham": 10}
+    assert len(list((tmp_path / "cache").glob("*.json"))) == 1
+
+
+def test_career_minutes_sums_across_matches(tmp_path, monkeypatch):
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    iw.career_minutes({"date": "2026-08-10", "opponent": "Sunderland",
+                       "starters": [_lp("Kenzie Weir")], "subs": []})
+    totals = iw.career_minutes({"date": "2026-08-17", "opponent": "Watford",
+                                "starters": [_lp("Kenzie Weir", sub_off=45)], "subs": []})
+    assert totals == {"Kenzie Weir": 135}
+
+
+def test_career_minutes_does_not_double_count_an_already_recorded_match(tmp_path, monkeypatch):
+    # A match still being FotMob's "last match" on a later run must not
+    # re-record it — otherwise re-running the same day would inflate totals.
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    last_match = {"date": "2026-08-10", "opponent": "Sunderland",
+                  "starters": [_lp("Kenzie Weir")], "subs": []}
+    iw.career_minutes(last_match)
+    totals = iw.career_minutes(last_match)
+    assert totals == {"Kenzie Weir": 90}
+
+
+def test_career_minutes_returns_existing_totals_without_a_last_match(tmp_path, monkeypatch):
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    iw.career_minutes({"date": "2026-08-10", "opponent": "Sunderland",
+                       "starters": [_lp("Kenzie Weir")], "subs": []})
+    assert iw.career_minutes(None) == {"Kenzie Weir": 90}
+
+
+def test_career_minutes_skips_caching_without_a_joined_date(tmp_path, monkeypatch):
+    # parse_last_match can return a match with no "date" when it couldn't
+    # join a score from `results` — nothing reliable to key a cache file on.
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
+    last_match = {"opponent": "Sunderland", "starters": [_lp("Kenzie Weir")], "subs": []}
+    assert iw.career_minutes(last_match) == {}
+    assert not (tmp_path / "cache").exists()
+
+
+def test_career_minutes_empty_without_any_cache_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "does-not-exist")
+    assert iw.career_minutes(None) == {}
+
+
+# ---- parse_squad minutes wiring --------------------------------------------------
+def test_parse_squad_carries_minutes_by_name():
+    team_json = {"squad": {"squad": [{"title": "attackers", "members": [
+        {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker_long"}}]}]}}
+    squad = iw.parse_squad(team_json, {"Jane Smith": 180})
+    assert squad[0]["minutes"] == 180
+
+
+def test_parse_squad_minutes_none_when_player_not_in_minutes_by_name():
+    team_json = {"squad": {"squad": [{"title": "attackers", "members": [
+        {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker_long"}}]}]}}
+    assert iw.parse_squad(team_json)[0]["minutes"] is None

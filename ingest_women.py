@@ -45,6 +45,14 @@ SEASON_LABEL = "2026/27"
 NEWS_KEYWORDS = ("women", "ladies", "wsl")
 NEWS_LIMIT = 12
 
+# FotMob's team endpoint only ever exposes full lineup detail (see
+# parse_last_match) for whichever match was most recently played — not a
+# season's worth of history — so minutes played have to be accumulated across
+# ingestion runs ourselves, one file per match, the same way ingest.py
+# persists ESPN's per-match lineups in LINEUP_CACHE_DIR. Kept between CI runs
+# by the deploy workflow's cache step, same pattern as ingest.py's caches.
+WOMEN_LINEUP_CACHE_DIR = Path("women_lineup_cache")
+
 # FotMob's unofficial API — https://www.fotmob.com/api/data/{resource}?id={id}.
 # IDs found by searching fotmob.com and reading them off the team/league URLs:
 #   https://www.fotmob.com/en-GB/teams/1134184/overview/ipswich-town-wfc
@@ -284,7 +292,7 @@ def _squad_stat_overrides(team_json):
     return out
 
 
-def _map_player(p, pos, stat_overrides=None):
+def _map_player(p, pos, stat_overrides=None, minutes_by_name=None):
     if pos is None:
         role = p.get("role") or {}
         role_text = f"{role.get('key') or ''} {role.get('fallback') or ''}".lower()
@@ -295,25 +303,27 @@ def _map_player(p, pos, stat_overrides=None):
     return {"name": full_name.split()[-1] if full_name else "", "full_name": full_name, "pos": pos,
             "pos_detail": (p.get("positionIdsDesc") or "").split(",")[0].strip() or None,
             "nationality": p.get("cname"), "nat_code": p.get("ccode"),
-            # No free source carries a full-squad appearance count for WSL2
-            # (FotMob's own "Minutes played" leaderboard is top-3-only, same
-            # cap as the stats above) — apps stays unavailable rather than
-            # guessed, same as xG/shot maps are dropped for this site.
-            "age": p.get("age"), "apps": p.get("matchesPlayed"),
+            # No free source carries a season-to-date minutes total for WSL2
+            # players directly — matchesPlayed here is always 0 on a real
+            # response, same placeholder problem as goals/assists had (see
+            # _squad_stat_overrides) — so this is instead accumulated
+            # match-by-match ourselves; see career_minutes's docstring.
+            "age": p.get("age"), "minutes": (minutes_by_name or {}).get(full_name),
             "goals": overrides.get("goals", p.get("goals")),
             "assists": overrides.get("assists", p.get("assists")),
             "ycards": overrides.get("ycards", p.get("ycards")),
             "rcards": overrides.get("rcards", p.get("rcards"))}
 
 
-def parse_squad(team_json):
+def parse_squad(team_json, minutes_by_name=None):
     """FotMob nests the real squad list two levels down: team_json["squad"]
     is itself a dict ({"squad": [...], "isNationalTeam": ...}), and each
     entry in that inner list is a position group ({"title": "keepers",
     "members": [...]}) — including a non-playing "coach" group, which is
     dropped here rather than shown as a player. Per-player goals/assists/
     cards are patched in from _squad_stat_overrides (see its docstring) since
-    the squad list's own such fields are always 0."""
+    the squad list's own such fields are always 0. minutes_by_name (from
+    career_minutes) patches in each player's accumulated minutes the same way."""
     stat_overrides = _squad_stat_overrides(team_json)
     squad_field = team_json.get("squad")
     if isinstance(squad_field, dict):
@@ -332,14 +342,14 @@ def parse_squad(team_json):
             continue
         pos = POS_BY_GROUP.get(title)
         for p in g.get("members") or []:
-            squad.append(_map_player(p, pos, stat_overrides))
+            squad.append(_map_player(p, pos, stat_overrides, minutes_by_name))
     if squad:
         return squad
 
     # FotMob reshuffled the nesting — fall back to a generic search for a
     # flat list of player-shaped dicts anywhere in the response.
     members = _find_list(team_json, lambda x: "shirtNumber" in x and "name" in x) or []
-    return [_map_player(p, None, stat_overrides) for p in members
+    return [_map_player(p, None, stat_overrides, minutes_by_name) for p in members
             if (p.get("role") or {}).get("key") != "coach"]
 
 
@@ -429,6 +439,82 @@ def parse_last_match(team_json, results):
         out.update({"score": r["score"], "result": r["result"], "date": r["date"],
                     "opponent_badge": r.get("opponent_badge")})
     return out
+
+
+def _minutes_played(lineup_player, is_starter):
+    """Minutes actually on the pitch, from the sub_on/sub_off already parsed
+    by _lineup_player. A starter kicks off at minute 0; a substitute has no
+    pitch time at all unless sub_on is set (an unused bench player has both
+    sub_on and sub_off unset, same as a starter who played the full 90 — the
+    is_starter flag is what tells those two apart). Whichever one starts, the
+    match ends at sub_off if they were taken off, otherwise 90 — no source
+    here gives real added time, so this is the same 90-minute simplification
+    used elsewhere on the site."""
+    sub_on = lineup_player.get("sub_on")
+    if not is_starter and sub_on is None:
+        return 0
+    start = sub_on or 0
+    end = lineup_player.get("sub_off")
+    end = end if end is not None else 90
+    return max(0, end - start)
+
+
+def _last_match_minutes(last_match):
+    """{full_name: minutes} for everyone who actually featured in this one
+    match — starters, plus subs who came on (an unused sub sits at 0 and is
+    dropped, same as a real "Apps" count would treat them)."""
+    out = {}
+    for is_starter, players in ((True, last_match.get("starters")), (False, last_match.get("subs"))):
+        for p in players or []:
+            mins = _minutes_played(p, is_starter)
+            if mins > 0 and p.get("full_name"):
+                out[p["full_name"]] = mins
+    return out
+
+
+def _women_match_cache_key(last_match):
+    """A stable identifier for a finished match — FotMob's lastLineupStats
+    carries no match id of its own, but date + opponent (already joined from
+    `results`) is unique for a single team's fixture list."""
+    date = last_match.get("date")
+    opponent = last_match.get("opponent")
+    if not date or not opponent:
+        return None
+    slug = re.sub(r"[^a-z0-9]+", "-", opponent.lower()).strip("-")
+    return f"{date}_{slug}"
+
+
+def career_minutes(last_match):
+    """Records last_match's per-player minutes to WOMEN_LINEUP_CACHE_DIR (once
+    per match — see _women_match_cache_key) and returns season-to-date totals
+    summed across every match recorded there so far.
+
+    This can only start accumulating once a match has been captured while it
+    was still FotMob's "last match" (see parse_last_match's docstring on why
+    that's the only match with lineup detail available at all) — matches
+    that finished before this cache existed, or that no run happened to catch
+    in time before the next match overtook them, are simply absent, not
+    wrongly zeroed. Totals grow more complete as the season goes on."""
+    key = _women_match_cache_key(last_match) if last_match else None
+    if key:
+        WOMEN_LINEUP_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_file = WOMEN_LINEUP_CACHE_DIR / f"{key}.json"
+        if not cache_file.exists():
+            cache_file.write_text(json.dumps({
+                "date": last_match["date"], "opponent": last_match.get("opponent"),
+                "minutes": _last_match_minutes(last_match),
+            }))
+
+    totals = {}
+    if WOMEN_LINEUP_CACHE_DIR.is_dir():
+        for cache_file in WOMEN_LINEUP_CACHE_DIR.glob("*.json"):
+            try:
+                cached = json.loads(cache_file.read_text())
+            except (ValueError, OSError):
+                continue
+            for name, mins in (cached.get("minutes") or {}).items():
+                totals[name] = totals.get(name, 0) + mins
+    return totals
 
 
 def fetch_women_news():
@@ -523,15 +609,6 @@ def main():
     if not results and not upcoming:
         missing.append("fixtures & results")
 
-    squad = []
-    try:
-        squad = parse_squad(team_json) if team_json else []
-        print(f"  squad: {len(squad)} players")
-    except Exception as e:
-        print(f"  squad: skipped ({e})")
-    if not squad:
-        missing.append("squad")
-
     venue = None
     try:
         venue = parse_venue(team_json) if team_json else None
@@ -553,6 +630,22 @@ def main():
               if last_match else "  last match: none found")
     except Exception as e:
         print(f"  last match: skipped ({e})")
+
+    minutes_by_name = {}
+    try:
+        minutes_by_name = career_minutes(last_match)
+        print(f"  minutes: {len(minutes_by_name)} players with recorded minutes")
+    except Exception as e:
+        print(f"  minutes: skipped ({e})")
+
+    squad = []
+    try:
+        squad = parse_squad(team_json, minutes_by_name) if team_json else []
+        print(f"  squad: {len(squad)} players")
+    except Exception as e:
+        print(f"  squad: skipped ({e})")
+    if not squad:
+        missing.append("squad")
 
     news = []
     try:

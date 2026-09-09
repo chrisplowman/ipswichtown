@@ -330,7 +330,7 @@
           <th class="pos" aria-sort="none"><button>Pos</button></th>
           <th aria-sort="none"><button>Nat</button></th>
           <th aria-sort="none"><button>Age</button></th>
-          <th aria-sort="none"><button>Apps</button></th>
+          <th aria-sort="none"><button>Mins</button></th>
           <th aria-sort="none"><button>G</button></th>
           <th aria-sort="none"><button>A</button></th>
           <th aria-sort="none"><button>Cards</button></th>
@@ -342,7 +342,7 @@
             <td class="pos"><span class="pill p-{{ p.pos }}" title="{{ p.pos_detail or p.pos }}">{{ p.pos }}</span></td>
             <td title="{{ p.nationality or '' }}">{{ p.nat_code or '-' }}</td>
             <td>{{ p.age if p.age is not none else '-' }}</td>
-            <td>{{ p.apps if p.apps is not none else '-' }}</td>
+            <td>{{ p.minutes if p.minutes is not none else '-' }}</td>
             <td>{{ p.goals if p.goals is not none else '-' }}</td>
             <td>{{ p.assists if p.assists is not none else '-' }}</td>
             <td>{% if p.ycards %}<span class="cardchip yellow" title="{{ p.ycards }} yellow"></span>{% endif %}{% if p.rcards %}<span class="cardchip red" title="{{ p.rcards }} red"></span>{% endif %}{% if not p.ycards and not p.rcards %}-{% endif %}</td>
