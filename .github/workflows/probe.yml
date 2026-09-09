@@ -1,0 +1,18 @@
+name: Probe WSL Fantasy feeds (throwaway)
+
+# Manual-only diagnostic — never runs on a schedule or push. Investigates
+# whether wslfootball.com's fantasy-game JSON feeds are a usable free data
+# source for the women's site (see wsl_probe.py). Delete this workflow and
+# wsl_probe.py once the investigation is done.
+on: workflow_dispatch
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python wsl_probe.py
