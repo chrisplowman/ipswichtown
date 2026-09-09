@@ -174,7 +174,12 @@ def parse_team_ranks(team_json, table):
         out.append({"label": "Points", "value": ips_row["points"],
                      "rank": ips_row["rank"], "total": total, "low_good": False})
 
-    team_stats = {t.get("name"): t for t in ((team_json or {}).get("stats") or {}).get("teams") or []}
+    # Unlike stats.players entries (which carry their stat key as a top-level
+    # "name", e.g. "goals" — see _squad_stat_overrides), stats.teams entries
+    # carry it as "stat" instead (a plain string, sibling to "header"/
+    # "order"/"category") — confirmed against a real response after the
+    # first live run showed only 2 of 7 rows matching with "name".
+    team_stats = {t.get("stat"): t for t in ((team_json or {}).get("stats") or {}).get("teams") or []}
     for stat_name, label, low_good in TEAM_STAT_RANKS:
         participant = (team_stats.get(stat_name) or {}).get("participant") or {}
         rank, value = participant.get("rank"), participant.get("value")

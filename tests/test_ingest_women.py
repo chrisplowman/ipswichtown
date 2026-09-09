@@ -89,12 +89,13 @@ def test_parse_last_season_top3_none_without_a_response():
 
 # ---- parse_team_ranks ("How Ipswich compare" rank bars) ----------------------
 # Confirmed against a real response: team_json["stats"]["teams"] is a list of
-# per-stat entries, each with a "name" (e.g. "goals_team_match") and a
-# "participant" carrying Ipswich's own rank/value for that stat.
+# per-stat entries, each with a "stat" (e.g. "goals_team_match" — note this is
+# "stat", not "name" as stats.players entries use) and a "participant"
+# carrying Ipswich's own rank/value for that stat.
 def _team_json_with_stats(entries):
     return {"stats": {"teams": [
-        {"name": name, "participant": {"rank": rank, "value": value}}
-        for name, rank, value in entries
+        {"stat": stat, "participant": {"rank": rank, "value": value}}
+        for stat, rank, value in entries
     ]}}
 
 
