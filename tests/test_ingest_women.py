@@ -180,36 +180,33 @@ def test_parse_squad_flattens_position_groups_and_drops_coach():
         {"title": "coach", "members": [{"name": "David Wright", "role": {"key": "coach"}}]},
         {"title": "keepers", "members": [
             {"name": "Freya Scherpen", "shirtNumber": 1, "role": {"key": "keeper_long"},
-             "positionIdsDesc": "GK", "age": 24, "goals": 0, "assists": 0}]},
+             "positionIdsDesc": "GK", "age": 24}]},
         {"title": "attackers", "members": [
             {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker_long"},
-             "positionIdsDesc": "ST", "age": 27, "goals": 3, "assists": 1}]},
+             "positionIdsDesc": "ST", "age": 27}]},
     ]}}
     squad = iw.parse_squad(team_json)
     assert [p["name"] for p in squad] == ["Scherpen", "Smith"]
     assert [p["pos"] for p in squad] == ["GKP", "FWD"]
     assert [p["age"] for p in squad] == [24, 27]
-    assert squad[1]["goals"] == 3 and squad[1]["assists"] == 1
 
 
 def test_parse_squad_falls_back_to_generic_search_when_shape_unrecognised():
     team_json = {"players": [{"name": "Jane Smith", "shirtNumber": 9,
-                              "role": {"key": "midfielder_long"}, "goals": None, "assists": None}]}
+                              "role": {"key": "midfielder_long"}}]}
     squad = iw.parse_squad(team_json)
     assert squad == [{"name": "Smith", "full_name": "Jane Smith", "pos": "MID", "pos_detail": None,
                       "nationality": None, "nat_code": None, "age": None, "minutes": None, "goals": None,
                       "assists": None, "ycards": None, "rcards": None}]
 
 
-def test_parse_squad_carries_nationality_pos_detail_and_cards():
+def test_parse_squad_carries_nationality_and_pos_detail():
     team_json = {"squad": {"squad": [{"title": "attackers", "members": [
         {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker_long"},
-         "positionIdsDesc": "ST,LW", "cname": "England", "ccode": "ENG",
-         "goals": 3, "assists": 1, "ycards": 2, "rcards": 0}]}]}}
+         "positionIdsDesc": "ST,LW", "cname": "England", "ccode": "ENG"}]}]}}
     p = iw.parse_squad(team_json)[0]
     assert p["pos_detail"] == "ST"
     assert (p["nationality"], p["nat_code"]) == ("England", "ENG")
-    assert (p["ycards"], p["rcards"]) == (2, 0)
 
 
 def test_parse_squad_defaults_unknown_role_to_mid():
@@ -227,62 +224,29 @@ def test_parse_squad_uses_position_ids_desc_in_fallback_path():
     assert iw.parse_squad(team_json)[0]["pos"] == "DEF"
 
 
-# ---- _squad_stat_overrides / parse_squad stat patching -----------------------
+# ---- parse_squad / wsl_stats patching -----------------------------------------
 # Confirmed against a real FotMob teams?id= response: every squad-list member
-# carries goals/assists/ycards/rcards, but they're hardcoded 0 for the whole
-# squad regardless of what actually happened — even the player who scored the
-# only goal that matchday showed "goals": 0 there. The real numbers live in
-# team_json["stats"]["players"], a team-scoped leaders-per-category list.
-def test_squad_stat_overrides_reads_real_stats_players_shape():
-    team_json = {"stats": {"players": [
-        {"name": "goals", "header": "Top scorer",
-         "participant": {"id": 1185220, "name": "Megan Hornby", "value": 1},
-         "topThree": [{"id": 1185220, "name": "Megan Hornby", "value": 1}]},
-        {"name": "goal_assist", "header": "Assists",
-         "participant": {"id": 1406585, "name": "Mary McAteer", "value": 1},
-         "topThree": [{"id": 1406585, "name": "Mary McAteer", "value": 1}]},
-        {"name": "yellow_card", "header": "Yellow cards",
-         "participant": {"id": 1703223, "name": "Leah Mitchell", "value": 1},
-         "topThree": [{"id": 1703223, "name": "Leah Mitchell", "value": 1}]},
-        {"name": "rating", "header": "FotMob rating",
-         "participant": {"id": 1082549, "name": "Aimee Palmer", "value": 7.53}, "topThree": []},
-    ]}}
-    overrides = iw._squad_stat_overrides(team_json)
-    assert overrides[1185220] == {"goals": 1}
-    assert overrides[1406585] == {"assists": 1}
-    assert overrides[1703223] == {"ycards": 1}
-    assert 1082549 not in overrides  # "rating" isn't one of the fields we patch
+# carries goals/assists/ycards/rcards/matchesPlayed, but they're hardcoded 0
+# for the whole squad regardless of what actually happened — even the player
+# who scored the only goal that matchday showed "goals": 0 there. Real numbers
+# come from wsl_stats (fetch_wsl_ipswich_stats), keyed by normalized name.
+def test_parse_squad_patches_stats_from_wsl_stats_by_normalized_name():
+    team_json = {"squad": {"squad": [{"title": "attackers", "members": [
+        {"name": "Meg Hornby", "shirtNumber": 11, "role": {"key": "attacker_long"},
+         "positionIdsDesc": "ST", "goals": 0, "assists": 0, "ycards": 0, "rcards": 0}]}]}}
+    wsl_stats = {iw._norm("Meg Hornby"): {"minutes": 90, "goals": 1, "assists": 0, "ycards": 0, "rcards": 0}}
+    p = iw.parse_squad(team_json, wsl_stats)[0]
+    assert (p["minutes"], p["goals"], p["assists"]) == (90, 1, 0)
 
 
-def test_squad_stat_overrides_empty_when_no_stats_section():
-    assert iw._squad_stat_overrides({}) == {}
-    assert iw._squad_stat_overrides({"stats": {}}) == {}
-
-
-def test_parse_squad_patches_goals_over_always_zero_squad_list_field():
-    # goals: 0 here matches the real payload's placeholder — the override
-    # from stats.players (value 1) should win.
-    team_json = {
-        "squad": {"squad": [{"title": "attackers", "members": [
-            {"id": 1185220, "name": "Meg Hornby", "shirtNumber": 11,
-             "role": {"key": "attacker_long"}, "positionIdsDesc": "ST",
-             "goals": 0, "assists": 0, "ycards": 0, "rcards": 0}]}]},
-        "stats": {"players": [
-            {"name": "goals", "participant": {"id": 1185220, "name": "Meg Hornby", "value": 1},
-             "topThree": [{"id": 1185220, "name": "Meg Hornby", "value": 1}]},
-        ]},
-    }
-    p = iw.parse_squad(team_json)[0]
-    assert p["goals"] == 1
-    assert p["assists"] == 0  # no override found for assists — squad-list 0 stands
-
-
-def test_parse_squad_leaves_goals_as_is_without_a_stats_section():
+def test_parse_squad_stats_none_without_a_wsl_stats_match():
+    # No fallback to the squad-list's own always-zero fields — None ("-" in
+    # the UI) is more honest than a guessed zero for an unmatched player.
     team_json = {"squad": {"squad": [{"title": "attackers", "members": [
         {"id": 1, "name": "Jane Smith", "shirtNumber": 9,
          "role": {"key": "attacker_long"}, "goals": 3, "assists": 1}]}]}}
     p = iw.parse_squad(team_json)[0]
-    assert p["goals"] == 3 and p["assists"] == 1
+    assert (p["minutes"], p["goals"], p["assists"]) == (None, None, None)
 
 
 # ---- _team_badge -------------------------------------------------------------
@@ -387,37 +351,8 @@ def test_parse_last_match_skips_score_when_opponent_doesnt_match_latest_result()
     assert "score" not in m
 
 
-# ---- _minutes_played / _last_match_minutes ------------------------------------
 def _lp(full_name, sub_on=None, sub_off=None):
     return {"full_name": full_name, "sub_on": sub_on, "sub_off": sub_off}
-
-
-def test_minutes_played_starter_who_played_full_match():
-    assert iw._minutes_played(_lp("A"), is_starter=True) == 90
-
-
-def test_minutes_played_starter_subbed_off_early():
-    assert iw._minutes_played(_lp("A", sub_off=70), is_starter=True) == 70
-
-
-def test_minutes_played_sub_who_came_on():
-    assert iw._minutes_played(_lp("A", sub_on=60), is_starter=False) == 30
-
-
-def test_minutes_played_sub_brought_on_and_off_again():
-    assert iw._minutes_played(_lp("A", sub_on=60, sub_off=80), is_starter=False) == 20
-
-
-def test_minutes_played_unused_sub_never_came_on():
-    # Both sub_on and sub_off are unset here — same as a starter who played
-    # the full match — so is_starter is what has to tell them apart.
-    assert iw._minutes_played(_lp("A"), is_starter=False) == 0
-
-
-def test_last_match_minutes_drops_unused_subs():
-    last_match = {"starters": [_lp("Starter", sub_off=70)],
-                  "subs": [_lp("Used Sub", sub_on=70), _lp("Unused Sub")]}
-    assert iw._last_match_minutes(last_match) == {"Starter": 70, "Used Sub": 20}
 
 
 # ---- _women_match_cache_key ----------------------------------------------------
@@ -488,29 +423,55 @@ def test_load_recorded_matches_empty_without_a_cache_dir(tmp_path, monkeypatch):
     assert iw.load_recorded_matches() == []
 
 
-# ---- career_minutes -------------------------------------------------------------
-def test_career_minutes_sums_across_recorded_matches():
-    matches = [{"date": "2026-08-17", "opponent": "Watford",
-               "starters": [_lp("Kenzie Weir", sub_off=45)], "subs": []},
-              {"date": "2026-08-10", "opponent": "Sunderland",
-               "starters": [_lp("Kenzie Weir", sub_off=80)],
-               "subs": [_lp("Kit Graham", sub_on=80)]}]
-    assert iw.career_minutes(matches) == {"Kenzie Weir": 125, "Kit Graham": 10}
+# ---- _wsl_ipswich_player_ids / _wsl_player_stats -------------------------------
+# wslfootball.com's own free fantasy game (see WSL_BASE's docstring for how
+# this was confirmed): its matchday player-listing feed covers the whole
+# current player pool, and its per-player stats-popup feed carries a real
+# season box score under "seasonStats" — confirmed against real responses.
+def _wsl_player_entry(first, last, team_id, player_id):
+    return {"playerId": player_id, "mediaFirstName": first, "mediaLastName": last, "teamId": team_id}
 
 
-def test_career_minutes_empty_without_any_recorded_matches():
-    assert iw.career_minutes([]) == {}
+def test_wsl_ipswich_player_ids_filters_to_ipswich_and_normalizes_names():
+    listing = {"Data": {"Value": [
+        _wsl_player_entry("Meg", "Hornby", iw.WSL_IPSWICH_TEAM_ID, "p1"),
+        _wsl_player_entry("Some", "Other", "wpll::Football_Team::not-ipswich", "p2"),
+    ]}}
+    assert iw._wsl_ipswich_player_ids(listing) == {iw._norm("Meg Hornby"): "p1"}
 
 
-# ---- parse_squad minutes wiring --------------------------------------------------
-def test_parse_squad_carries_minutes_by_name():
+def test_wsl_ipswich_player_ids_empty_without_a_listing():
+    assert iw._wsl_ipswich_player_ids(None) == {}
+    assert iw._wsl_ipswich_player_ids({}) == {}
+
+
+def test_wsl_player_stats_keeps_only_real_football_fields():
+    # Confirmed against a real response: seasonStats also carries a *Points
+    # field per stat plus totalPoints/matchBonus — all fantasy-game-only,
+    # deliberately dropped here.
+    popup = {"Data": {"Value": {"seasonStats": {
+        "onField": 90, "onFieldPoints": 2.0, "goals": 1, "goalsPoints": 4.0,
+        "assists": 0, "yellowCard": 0, "redCard": 0, "totalPoints": 9.0, "matchBonus": 12,
+        "tackles": 1, "tacklesPoints": 0.0,
+    }}}}
+    assert iw._wsl_player_stats(popup) == {"minutes": 90, "goals": 1, "assists": 0,
+                                            "ycards": 0, "rcards": 0}
+
+
+def test_wsl_player_stats_empty_without_season_stats():
+    assert iw._wsl_player_stats(None) == {}
+    assert iw._wsl_player_stats({"Data": {"Value": {}}}) == {}
+
+
+# ---- parse_squad / wsl_stats wiring --------------------------------------------
+def test_parse_squad_carries_wsl_stats_by_name():
     team_json = {"squad": {"squad": [{"title": "attackers", "members": [
         {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker_long"}}]}]}}
-    squad = iw.parse_squad(team_json, {"Jane Smith": 180})
+    squad = iw.parse_squad(team_json, {iw._norm("Jane Smith"): {"minutes": 180}})
     assert squad[0]["minutes"] == 180
 
 
-def test_parse_squad_minutes_none_when_player_not_in_minutes_by_name():
+def test_parse_squad_minutes_none_when_player_not_in_wsl_stats():
     team_json = {"squad": {"squad": [{"title": "attackers", "members": [
         {"name": "Jane Smith", "shirtNumber": 9, "role": {"key": "attacker_long"}}]}]}}
     assert iw.parse_squad(team_json)[0]["minutes"] is None
