@@ -1,0 +1,31 @@
+name: Probe women's lineup cache (throwaway)
+
+# Diagnostic only, scoped to this feature branch — dumps the real content of
+# the persisted women_lineup_cache/ (restored from the same repo-wide cache
+# the deploy workflow uses) to figure out why the Forest match report page
+# is showing no data. Delete this workflow once the investigation is done.
+on:
+  push:
+    branches: [claude/repo-design-review-ajtl4n]
+    paths: [.github/workflows/probe.yml]
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore women's lineup cache
+        uses: actions/cache/restore@v4
+        with:
+          path: women_lineup_cache
+          key: women-lineup-cache-nonexistent
+          restore-keys: |
+            women-lineup-cache-
+      - name: Dump cache contents
+        run: |
+          echo "Files in women_lineup_cache:"
+          ls -la women_lineup_cache || echo "(dir does not exist)"
+          for f in women_lineup_cache/*.json; do
+            echo "=== $f ==="
+            cat "$f"
+            echo
+          done
