@@ -147,6 +147,49 @@ def parse_table(league_json):
     return out
 
 
+# (FotMob stat name, display label, whether a lower value ranks better) for
+# the "How Ipswich compare" rank-bar widget. Confirmed against a real
+# response's team_json["stats"]["teams"] — a team-scoped leaderboard parallel
+# to stats.players (used for squad goals/assists, see _squad_stat_overrides).
+TEAM_STAT_RANKS = [
+    ("goals_team_match", "Goals per match", False),
+    ("goals_conceded_team_match", "Goals conceded per match", True),
+    ("ontarget_scoring_att_team", "Shots on target per match", False),
+    ("possession_percentage_team", "Possession", False),
+    ("fk_foul_lost_team", "Fouls per match", True),
+]
+
+
+def parse_team_ranks(team_json, table):
+    """Ipswich's league rank on a curated set of season stats, from
+    team_json["stats"]["teams"], bookended with points and goal difference
+    from the already-parsed league table — same shape and same bookending as
+    the men's site's equivalent widget (build.py/ingest.py's team_ranks)."""
+    out = []
+    total = len(table)
+    if not total:
+        return out
+    ips_row = next((r for r in table if r.get("is_ipswich")), None)
+    if ips_row:
+        out.append({"label": "Points", "value": ips_row["points"],
+                     "rank": ips_row["rank"], "total": total, "low_good": False})
+
+    team_stats = {t.get("name"): t for t in ((team_json or {}).get("stats") or {}).get("teams") or []}
+    for stat_name, label, low_good in TEAM_STAT_RANKS:
+        participant = (team_stats.get(stat_name) or {}).get("participant") or {}
+        rank, value = participant.get("rank"), participant.get("value")
+        if rank is None or value is None:
+            continue
+        out.append({"label": label, "value": value, "rank": rank, "total": total, "low_good": low_good})
+
+    if ips_row and ips_row.get("gd") is not None:
+        gd_rank = next((i for i, r in enumerate(sorted(table, key=lambda r: -(r.get("gd") or 0)), 1)
+                         if r.get("is_ipswich")), None)
+        out.append({"label": "Goal difference", "value": ips_row["gd"], "rank": gd_rank,
+                     "total": total, "low_good": False})
+    return out
+
+
 def parse_fixtures(league_json):
     """Full season's matches for the league, split into finished results and
     upcoming fixtures for whichever rows involve Ipswich."""
@@ -459,6 +502,13 @@ def main():
     except Exception as e:
         print(f"  last season top 3: skipped ({e})")
 
+    team_ranks = []
+    try:
+        team_ranks = parse_team_ranks(team_json, table) if team_json else []
+        print(f"  team ranks: {len(team_ranks)} stats")
+    except Exception as e:
+        print(f"  team ranks: skipped ({e})")
+
     results, upcoming = [], []
     try:
         results, upcoming = parse_fixtures(league_json) if league_json else ([], [])
@@ -539,6 +589,7 @@ def main():
         "next_fixture": next_fixture,
         "results": results, "upcoming": upcoming, "table": table, "squad": squad, "news": news,
         "venue": venue, "coach": coach, "last_match": last_match, "last_season_top3": last_season_top3,
+        "team_ranks": team_ranks,
         "health": {"missing": missing},
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
