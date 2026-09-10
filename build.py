@@ -1067,22 +1067,51 @@ def sample_data_women():
              "points_per_game": round((won * 3 + drawn) / max(1, len(results)), 2)}
     last_opponent = results[0]["opponent"] if results else "Charlton Athletic"
 
-    def _lineup_entry(n, p, x, y, i):
-        return {"name": n.split()[-1], "full_name": n, "shirt": i + 1,
+    def _lineup_entry(n, p, x, y, i, shots=None, passes=None, passes_total=None, chances=None):
+        return {"id": 9000 + i, "name": n.split()[-1], "full_name": n, "shirt": i + 1,
                 "rating": round(6.0 + (i % 5) * 0.4, 1), "is_captain": i == 5,
                 "player_of_match": i == 7, "goals": [67] if i == 7 else [],
                 "assists": [67] if i == 4 else [], "cards": [{"kind": "yellow", "minute": 52}] if i == 2 else [],
-                "sub_on": None, "sub_off": "78" if i == 8 else None, "x": x, "y": y}
+                "sub_on": None, "sub_off": "78" if i == 8 else None, "x": x, "y": y,
+                "shots": shots, "passes": passes, "passes_total": passes_total, "chances_created": chances}
+    opponent_names = [("Freya Turner", "GKP", 0.1, 0.5), ("Nia Cassidy", "DEF", 0.28, 0.15),
+                      ("Erin Whitmore", "DEF", 0.28, 0.38), ("Sophie Rankin", "DEF", 0.28, 0.62),
+                      ("Kayleigh Nolan", "MID", 0.55, 0.2), ("Maisie Brennan", "MID", 0.55, 0.5),
+                      ("Tara Dunmore", "MID", 0.55, 0.8), ("Ellie Foscombe", "FWD", 0.85, 0.3),
+                      ("Robyn Carslake", "FWD", 0.85, 0.7), ("Chloe Yardley", "DEF", 0.28, 0.85),
+                      ("Beth Okafor", "MID", 0.55, 0.65)]
     last_match = {
         "opponent": last_opponent, "home": True, "formation": "4-3-3", "team_rating": 7.0,
         "average_age": 23.4, "coach_name": coach["name"],
         "score": results[0]["score"] if results else "2-1",
         "result": results[0]["result"] if results else "W",
         "date": results[0]["date"] if results else "2026-09-06",
-        "starters": [_lineup_entry(n, p, x, y, i) for i, (n, p, x, y) in enumerate(squad_names)],
-        "subs": [{"name": "Baker", "full_name": "Ava Baker", "shirt": 12, "rating": 6.6,
+        "starters": [_lineup_entry(n, p, x, y, i, shots=2 + i % 3, passes=20 + i, passes_total=28 + i,
+                                   chances=1 if i in (4, 7) else 0)
+                    for i, (n, p, x, y) in enumerate(squad_names)],
+        "subs": [{"id": 9099, "name": "Baker", "full_name": "Ava Baker", "shirt": 12, "rating": 6.6,
                   "is_captain": False, "player_of_match": False, "goals": [], "assists": [],
-                  "cards": [], "sub_on": "78", "sub_off": None, "x": None, "y": None}],
+                  "cards": [], "sub_on": "78", "sub_off": None, "x": None, "y": None,
+                  "shots": 0, "passes": 4, "passes_total": 5, "chances_created": 0}],
+        "opponent_formation": "4-2-3-1", "opponent_team_rating": 6.8, "opponent_average_age": 24.9,
+        "opponent_coach_name": "Priya Anand",
+        # Same "depth from own goal" convention as Ipswich's own squad_names —
+        # the template mirrors this for display, so it must NOT be pre-mirrored here.
+        "opponent_starters": [_lineup_entry(n, p, x, y, 8000 + i, shots=1 + i % 2, passes=15 + i,
+                                            passes_total=22 + i, chances=1 if i == 6 else 0)
+                              for i, (n, p, x, y) in enumerate(opponent_names)],
+        "opponent_subs": [],
+        "team_stats": [
+            {"label": "Ball possession", "ipswich": 58, "opponent": 42},
+            {"label": "Total shots", "ipswich": 11, "opponent": 7},
+            {"label": "Shots on target", "ipswich": 5, "opponent": 2},
+            {"label": "Big chances", "ipswich": 2, "opponent": 1},
+            {"label": "Accurate passes", "ipswich": "312 (81%)", "opponent": "241 (74%)"},
+            {"label": "Corners", "ipswich": 6, "opponent": 3},
+        ],
+        "player_of_match": {"name": "Poppy Fenn", "team": "Ipswich Town", "rating": "8.3", "is_ipswich": True},
+        "weather": {"description": "Cloudy", "temperature": 17},
+        "h2h": [{"date": "2026-03-22", "opponent": last_opponent, "home": False, "score": "2-0", "result": "L"}],
     }
     # A handful of recorded match reports, same shape record_match accumulates
     # for real — see ingest_women.py. Only the most recent match ever has real
@@ -1090,7 +1119,9 @@ def sample_data_women():
     # match's own opponent/date/score swapped in.
     match_pages = [{**last_match, "opponent": r["opponent"], "home": r["home"],
                     "score": r["score"], "result": r["result"], "date": r["date"],
-                    "opponent_badge": None} for r in results[:3]]
+                    "opponent_badge": None,
+                    "h2h": [{"date": "2026-03-22", "opponent": r["opponent"], "home": False,
+                            "score": "2-0", "result": "L"}]} for r in results[:3]]
 
     last_season_top3 = [
         {"rank": 1, "team": "Sunderland", "points": 58},

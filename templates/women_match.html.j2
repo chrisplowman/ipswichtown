@@ -45,20 +45,33 @@
         {% if p.assists %}<span class="assist">A {{ p.assists|join(', ') }}</span>{% endif %}
         {% if p.sub_off %}<span class="assist">↓ {{ p.sub_off }}</span>{% endif %}
         {% if p.sub_on %}<span class="assist">↑ {{ p.sub_on }}</span>{% endif %}
+        {% if p.shots is not none %}<span class="assist">{{ p.shots }} sh</span>{% endif %}
+        {% if p.passes is not none %}<span class="assist">{{ p.passes }}/{{ p.passes_total }} pass</span>{% endif %}
+        {% if p.chances_created %}<span class="assist">{{ p.chances_created }} chances</span>{% endif %}
       </span>
       <span class="assist">{% if p.rating %}{{ '%.1f'|format(p.rating) }}{% endif %}</span>
     </li>
   {% endmacro %}
-  {% macro women_pitch_marker(p) %}
+  {% macro women_pitch_marker(p, color, mirror=false) %}
     {% if p.x is not none and p.y is not none %}
-    {% set cx = (p.x * 598 + 1)|round(1) %}{% set cy = (p.y * 398 + 1)|round(1) %}
+    {% set px = (1 - p.x) if mirror else p.x %}
+    {% set cx = (px * 598 + 1)|round(1) %}{% set cy = (p.y * 398 + 1)|round(1) %}
     <g>
-      <circle cx="{{ cx }}" cy="{{ cy }}" r="13" fill="var(--primary)" stroke="var(--canvas)" stroke-width="2"/>
+      <circle cx="{{ cx }}" cy="{{ cy }}" r="13" fill="{{ color }}" stroke="var(--canvas)" stroke-width="2"/>
       <text x="{{ cx }}" y="{{ cy }}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" fill="#fff">{{ p.shirt or '' }}</text>
       <text x="{{ cx }}" y="{{ cy + 22 }}" text-anchor="middle" font-size="9" fill="var(--ink)">{{ p.name }}</text>
       <title>{{ p.full_name }}{% if p.rating %} · {{ '%.1f'|format(p.rating) }}{% endif %}</title>
     </g>
     {% endif %}
+  {% endmacro %}
+  {% macro team_statrow(label, ips, opp) %}
+    <div class="statrow">
+      <div class="top"><span class="v">{{ ips if ips is not none else '-' }}</span><span class="lab">{{ label }}</span><span class="v">{{ opp if opp is not none else '-' }}</span></div>
+      {% if ips is number and opp is number %}
+      {% set tot = (ips|float) + (opp|float) %}
+      <div class="bar"><span class="f" style="width:{{ (ips/tot*100) if tot else 50 }}%"></span><span class="a" style="width:{{ (opp/tot*100) if tot else 50 }}%"></span></div>
+      {% endif %}
+    </div>
   {% endmacro %}
 
   <!-- SCORELINE -->
@@ -73,45 +86,93 @@
         {% if m.result %}<span class="pill {{ m.result }}">{{ {'W':'Win','D':'Draw','L':'Loss'}[m.result] }}</span>{% endif %}
         &nbsp; {{ 'Home' if m.home else 'Away' }}
         {% if m.date %} · {{ m.date }}{% endif %}
-        {% if m.formation %} · {{ m.formation }}{% endif %}
-        {% if m.team_rating %} · Team rating {{ '%.1f'|format(m.team_rating) }}{% endif %}
-        {% if m.average_age %} · Avg age {{ '%.1f'|format(m.average_age) }}{% endif %}
-        {% if m.coach_name %} · Coach: {{ m.coach_name }}{% endif %}
+        {% if m.weather %} · {{ m.weather.description }}{% if m.weather.temperature is not none %} {{ m.weather.temperature }}°C{% endif %}{% endif %}
       </div>
+      {% if m.player_of_match %}<div class="meta">Player of the match: <b>{{ m.player_of_match.name }}</b> ({{ m.player_of_match.team }}{% if m.player_of_match.rating %} · {{ m.player_of_match.rating }}{% endif %})</div>{% endif %}
     </div>
   </div>
 
   <!-- STARTING XI -->
   <div class="block">
     <div class="card">
-      <div class="cardhead"><h3>Starting XI</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Ipswich's starting XI, ratings and events — FotMob only publishes the opposing team's lineup on their own site, not through this endpoint, so this page covers Ipswich only. Source: FotMob.</span></button></div>
+      <div class="cardhead"><h3>Starting XI</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Both starting elevens on one pitch — Ipswich attack rightward, {{ m.opponent }} attack leftward. Ratings and events per player below. Source: FotMob.</span></button></div>
+      {% if m.opponent_starters %}
+      <div class="legend"><span><i style="background:var(--primary)"></i>Ipswich{% if m.formation %} ({{ m.formation }}){% endif %}</span><span><i style="background:var(--loss)"></i>{{ m.opponent }}{% if m.opponent_formation %} ({{ m.opponent_formation }}){% endif %}</span></div>
+      {% endif %}
       <div class="pitch-holder">
-        <svg role="img" aria-label="Starting lineup on a pitch" class="pitch" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+        <svg role="img" aria-label="Starting lineups on a pitch" class="pitch" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
           <rect x="1" y="1" width="598" height="398" fill="var(--tint-mint)" stroke="var(--hairline-strong)"/>
           <line x1="300" y1="1" x2="300" y2="399" stroke="var(--hairline-strong)"/>
           <circle cx="300" cy="200" r="40" fill="none" stroke="var(--hairline-strong)"/>
           <rect x="1" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
           <rect x="519" y="110" width="80" height="180" fill="none" stroke="var(--hairline-strong)"/>
-          {% for p in m.starters %}{{ women_pitch_marker(p) }}{% endfor %}
+          {% for p in m.starters %}{{ women_pitch_marker(p, 'var(--primary)') }}{% endfor %}
+          {% for p in m.opponent_starters %}{{ women_pitch_marker(p, 'var(--loss)', mirror=true) }}{% endfor %}
         </svg>
       </div>
-      <ul class="plain">
-        {% for p in m.starters %}{{ women_lineup_row(p) }}{% endfor %}
-      </ul>
-      {% if m.subs %}
-      <p class="empty-note" style="padding-top:0">Substitutes:</p>
-      <ul class="plain">
-        {% for p in m.subs %}{{ women_lineup_row(p) }}{% endfor %}
-      </ul>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <div class="cardhead"><h3>Ipswich{% if m.formation %} ({{ m.formation }}){% endif %}</h3></div>
+        <div class="meta" style="padding:0 0 8px">{% if m.team_rating %}Team rating {{ '%.1f'|format(m.team_rating) }}{% endif %}{% if m.average_age %} · Avg age {{ '%.1f'|format(m.average_age) }}{% endif %}{% if m.coach_name %} · Coach: {{ m.coach_name }}{% endif %}</div>
+        <ul class="plain">
+          {% for p in m.starters %}{{ women_lineup_row(p) }}{% endfor %}
+        </ul>
+        {% if m.subs %}
+        <p class="empty-note" style="padding-top:0">Substitutes:</p>
+        <ul class="plain">
+          {% for p in m.subs %}{{ women_lineup_row(p) }}{% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% if m.opponent_starters %}
+      <div class="card">
+        <div class="cardhead"><h3>{{ m.opponent }}{% if m.opponent_formation %} ({{ m.opponent_formation }}){% endif %}</h3></div>
+        <div class="meta" style="padding:0 0 8px">{% if m.opponent_team_rating %}Team rating {{ '%.1f'|format(m.opponent_team_rating) }}{% endif %}{% if m.opponent_average_age %} · Avg age {{ '%.1f'|format(m.opponent_average_age) }}{% endif %}{% if m.opponent_coach_name %} · Coach: {{ m.opponent_coach_name }}{% endif %}</div>
+        <ul class="plain">
+          {% for p in m.opponent_starters %}{{ women_lineup_row(p) }}{% endfor %}
+        </ul>
+        {% if m.opponent_subs %}
+        <p class="empty-note" style="padding-top:0">Substitutes:</p>
+        <ul class="plain">
+          {% for p in m.opponent_subs %}{{ women_lineup_row(p) }}{% endfor %}
+        </ul>
+        {% endif %}
+      </div>
       {% endif %}
     </div>
   </div>
 
+  <!-- MATCH STATS -->
+  {% if m.team_stats %}
+  <div class="block">
+    <div class="card">
+      <div class="cardhead"><h3>Match statistics</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Team-level stats for this match — possession, shots, passing and more. Source: FotMob.</span></button></div>
+      <div class="legend"><span><i style="background:var(--primary)"></i>Ipswich</span><span><i style="background:var(--loss)"></i>{{ m.opponent }}</span></div>
+      {% for s in m.team_stats %}{{ team_statrow(s.label, s.ipswich, s.opponent) }}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- RECENT MEETINGS -->
+  {% if m.h2h %}
+  <div class="block">
+    <div class="card">
+      <div class="cardhead"><h3>Recent meetings</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Results from previous meetings between these two clubs. Source: FotMob.</span></button></div>
+      <ul class="plain">
+        {% for h in m.h2h %}
+        <li>{% if h.result %}<span class="res {{ h.result }}">{{ h.result }}</span>{% endif %}{{ h.opponent }} <span class="assist">{{ '(H)' if h.home else '(A)' }} {{ h.score }} · {{ h.date }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
 </main>
 
 <footer class="wrap">
-  Data from free, public sources — Ipswich Town Women's lineup and events via FotMob · rebuilt automatically via GitHub Actions.<br>
-  This page deliberately omits the opposing lineup, match stats, xG and shot maps shown on the men's team pages — those rely on data sources with no free women's-football coverage. <a href="{{ root_prefix }}women/matches.html">Back to matches →</a><br>
+  Data from free, public sources — Ipswich Town Women's match report via FotMob · rebuilt automatically via GitHub Actions.<br>
+  This page deliberately omits xG and shot maps shown on the men's team pages — those rely on data sources with no free women's-football coverage. <a href="{{ root_prefix }}women/matches.html">Back to matches →</a><br>
   Raw data: <code>data/itfc_women.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>
 

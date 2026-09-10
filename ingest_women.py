@@ -452,7 +452,7 @@ def _lineup_player(p):
             sub_off = e.get("time")
     h = p.get("horizontalLayout") or {}
     full_name = p.get("name") or ""
-    return {"name": full_name.split()[-1] if full_name else "", "full_name": full_name,
+    return {"id": p.get("id"), "name": full_name.split()[-1] if full_name else "", "full_name": full_name,
             "shirt": p.get("shirtNumber"), "rating": perf.get("rating"),
             "is_captain": bool(p.get("isCaptain")), "player_of_match": bool(perf.get("playerOfTheMatch")),
             "goals": goals, "assists": assists, "cards": cards,
@@ -475,7 +475,7 @@ def parse_last_match(team_json, results):
     opponent = away_name if is_home else home_name
     out = {"opponent": opponent, "home": is_home, "formation": lls.get("formation"),
            "team_rating": lls.get("rating"), "average_age": lls.get("averageStarterAge"),
-           "coach_name": (lls.get("coach") or {}).get("name"),
+           "coach_name": (lls.get("coach") or {}).get("name"), "match_id": last.get("matchId"),
            "starters": [_lineup_player(p) for p in lls.get("starters") or []],
            "subs": [_lineup_player(p) for p in lls.get("subs") or []]}
     if results and opponent and _norm(results[0]["opponent"]) == _norm(opponent):
@@ -483,6 +483,125 @@ def parse_last_match(team_json, results):
         out.update({"score": r["score"], "result": r["result"], "date": r["date"],
                     "opponent_badge": r.get("opponent_badge")})
     return out
+
+
+def fetch_fotmob_match_details(match_id):
+    return get_json(f"{FOTMOB_BASE}/matchDetails?matchId={match_id}")
+
+
+def _matchdetails_player_stats(player_stats_by_id, player_id):
+    """A player's per-match shots/passes/chances-created from matchDetails'
+    content.playerStats (keyed by the player's FotMob id as a string), on top
+    of the goals/assists/cards/rating _lineup_player already reads from the
+    same player's lineup entry. {} for a player with nothing recorded there
+    (e.g. an unused substitute)."""
+    entry = (player_stats_by_id or {}).get(str(player_id)) or {}
+    top_stats = next((g.get("stats") or {} for g in entry.get("stats") or []
+                       if g.get("key") == "top_stats"), {})
+    shots = (top_stats.get("Total shots") or {}).get("stat") or {}
+    passes = (top_stats.get("Accurate passes") or {}).get("stat") or {}
+    chances = (top_stats.get("Chances created") or {}).get("stat") or {}
+    return {"shots": shots.get("value"), "passes": passes.get("value"),
+            "passes_total": passes.get("total"), "chances_created": chances.get("value")}
+
+
+def parse_match_details(details_json):
+    """Extra detail for the most recent match beyond what the team endpoint's
+    lastLineupStats gives (see parse_last_match) — the opposing lineup (with
+    the same per-player shape _lineup_player already produces, plus shots/
+    passes/chances created from playerStats), a full team-stats comparison,
+    player of the match, weather, and recent head-to-head meetings.
+
+    Confirmed against a real response from FotMob's own matchDetails
+    endpoint (https://www.fotmob.com/api/data/matchDetails?matchId=<id>),
+    reached via the matchId already present on lastLineupStats.lastMatch —
+    free, no login required, same tier of source as the rest of this file.
+    Also re-sources Ipswich's own starters/subs from here rather than
+    lastLineupStats, since the shapes are compatible and this gives the
+    same shots/passes/chances-created enrichment to both sides — but only
+    once this fetch actually succeeds; the caller keeps the lastLineupStats
+    version as a fallback if it doesn't (see main()).
+
+    Doesn't cover shot maps/xG: confirmed empty on a real WSL2 response, so
+    that part of the site's "no free women's-football xG source" framing
+    still holds — this only closes the opposing-lineup/match-stats gap."""
+    content = (details_json or {}).get("content") or {}
+    lineup = content.get("lineup") or {}
+    home, away = lineup.get("homeTeam") or {}, lineup.get("awayTeam") or {}
+    if not home or not away:
+        return None
+    is_ipswich_home = home.get("id") == FOTMOB_TEAM_ID
+    ipswich_team, opp_team = (home, away) if is_ipswich_home else (away, home)
+    player_stats = content.get("playerStats") or {}
+
+    def augment(entries):
+        rows = []
+        for p in entries:
+            row = _lineup_player(p)
+            row.update(_matchdetails_player_stats(player_stats, row["id"]))
+            rows.append(row)
+        return rows
+
+    team_stats = []
+    periods = ((content.get("stats") or {}).get("Periods") or {}).get("All") or {}
+    top_group = next((g for g in periods.get("stats") or [] if g.get("key") == "top_stats"), {})
+    for s in top_group.get("stats") or []:
+        if not s.get("title"):
+            continue
+        vals = s.get("stats") or []
+        home_val = vals[0] if len(vals) > 0 else None
+        away_val = vals[1] if len(vals) > 1 else None
+        ips_val, opp_val = (home_val, away_val) if is_ipswich_home else (away_val, home_val)
+        team_stats.append({"label": s["title"], "ipswich": ips_val, "opponent": opp_val})
+
+    potm_raw = (content.get("matchFacts") or {}).get("playerOfTheMatch") or {}
+    player_of_match = None
+    if potm_raw.get("name"):
+        player_of_match = {
+            "name": potm_raw["name"].get("fullName"), "team": potm_raw.get("teamName"),
+            "rating": (potm_raw.get("rating") or {}).get("num"),
+            "is_ipswich": potm_raw.get("teamId") == FOTMOB_TEAM_ID,
+        }
+
+    weather_raw = content.get("weather") or {}
+    weather = None
+    if weather_raw.get("description"):
+        weather = {"description": weather_raw["description"], "temperature": weather_raw.get("temperature")}
+
+    h2h = []
+    for m in (content.get("h2h") or {}).get("matches") or []:
+        status = m.get("status") or {}
+        if not status.get("finished"):
+            continue
+        home_m, away_m = m.get("home") or {}, m.get("away") or {}
+        is_home_match = str(home_m.get("id")) == str(FOTMOB_TEAM_ID)
+        score_str = status.get("scoreStr") or ""
+        parts = score_str.split("-")
+        result = None
+        if len(parts) == 2:
+            try:
+                home_score, away_score = int(parts[0].strip()), int(parts[1].strip())
+            except ValueError:
+                pass
+            else:
+                ours, theirs = (home_score, away_score) if is_home_match else (away_score, home_score)
+                result = "W" if ours > theirs else "L" if ours < theirs else "D"
+        h2h.append({"date": ((m.get("time") or {}).get("utcTime") or "")[:10],
+                    "opponent": (away_m if is_home_match else home_m).get("name"),
+                    "home": is_home_match, "score": score_str, "result": result})
+    h2h.sort(key=lambda x: x["date"], reverse=True)
+
+    return {
+        "opponent_formation": opp_team.get("formation"), "opponent_team_rating": opp_team.get("rating"),
+        "opponent_average_age": opp_team.get("averageStarterAge"),
+        "opponent_coach_name": (opp_team.get("coach") or {}).get("name"),
+        "starters": augment(ipswich_team.get("starters") or []),
+        "subs": augment(ipswich_team.get("subs") or []),
+        "opponent_starters": augment(opp_team.get("starters") or []),
+        "opponent_subs": augment(opp_team.get("subs") or []),
+        "team_stats": team_stats, "player_of_match": player_of_match,
+        "weather": weather, "h2h": h2h[:5],
+    }
 
 
 def _women_match_cache_key(last_match):
@@ -498,13 +617,14 @@ def _women_match_cache_key(last_match):
 
 
 def _is_full_match_record(cached):
-    """Whether a cache file already holds a full match record (starters/subs
-    etc.) rather than the old minutes-only shape this cache briefly used
-    before match reports existed ({"date", "opponent", "minutes": {...}}) —
-    those legacy entries are missing "starters" and need overwriting once,
-    or they'd silently starve the report pages of real data forever (the
-    cache is otherwise never rewritten once a key exists)."""
-    return isinstance(cached, dict) and "starters" in cached
+    """Whether a cache file already holds a full match record — starters/subs
+    (missing from an old minutes-only shape this cache briefly used before
+    match reports existed: {"date", "opponent", "minutes": {...}}) AND
+    team_stats (missing from every record written before parse_match_details
+    existed). Either gap needs overwriting once, or it would silently starve
+    the report page of real data forever (the cache is otherwise never
+    rewritten once a key exists) — see record_match's docstring."""
+    return isinstance(cached, dict) and "starters" in cached and "team_stats" in cached
 
 
 def record_match(last_match):
@@ -665,6 +785,18 @@ def main():
               if last_match else "  last match: none found")
     except Exception as e:
         print(f"  last match: skipped ({e})")
+
+    if last_match and last_match.get("match_id"):
+        try:
+            details = fetch_fotmob_match_details(last_match["match_id"])
+            extra = parse_match_details(details)
+            if extra:
+                last_match.update(extra)
+                print(f"  match details: opposing lineup + {len(extra['team_stats'])} team stats")
+            else:
+                print("  match details: none found")
+        except Exception as e:
+            print(f"  match details: skipped ({e})")
 
     match_pages = []
     try:
