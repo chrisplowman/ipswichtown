@@ -168,6 +168,21 @@ def test_team_meta_resolves_man_utd_and_man_city_without_colliding():
     assert _team_meta("Manchester City", meta_by_norm) == ("MCI", badges["MCI"])
 
 
+def test_team_meta_resolves_football_data_man_united_spelling():
+    # football-data.co.uk's CSVs spell it "Man United" (-> "manunited"), a
+    # third spelling distinct from both FPL's "Man Utd" (-> "manutd") and
+    # Understat's "Manchester United" (-> "manchesterunited"). Home/away
+    # tables are built from football-data rows, so this spelling must also
+    # resolve — otherwise it falls through to the "MAN" fallback and the
+    # short code no longer matches any club's FPL code, losing the badge.
+    from ingest import _build_meta_by_norm, _team_meta
+    teams = {1: {"name": "Man Utd", "short_name": "MUN"},
+             2: {"name": "Man City", "short_name": "MCI"}}
+    badges = {"MUN": "https://example.com/mun.svg"}
+    meta_by_norm = _build_meta_by_norm(teams, badges)
+    assert _team_meta("Man United", meta_by_norm) == ("MUN", badges["MUN"])
+
+
 def test_team_meta_falls_back_to_substring_match():
     from ingest import _build_meta_by_norm, _team_meta
     teams = {1: {"name": "Fulham", "short_name": "FUL"}}

@@ -648,29 +648,33 @@ def _norm(name):
         n = n.replace(junk, "")
     return re.sub(r"\s+", "", n)
 
-ALIASES = {  # bridge FPL/ESPN naming to TheSportsDB where a plain match fails
-    "spurs": "tottenham", "wolves": "wolverhampton", "nottmforest": "nottingham",
-    "manutd": "manchesterunited", "mancity": "manchestercity",
-    "newcastleunited": "newcastle", "brightonhovealbion": "brighton",
-    "westhamunited": "westham", "leedsunited": "leeds",
+ALIASES = {  # bridge FPL/ESPN/football-data naming to TheSportsDB where a plain match fails
+    "spurs": ("tottenham",), "wolves": ("wolverhampton",), "nottmforest": ("nottingham",),
+    # football-data.co.uk uses "Man United" (-> "manunited"), distinct from both
+    # FPL's own "Man Utd" (-> "manutd") and Understat's "Manchester United"
+    # (-> "manchesterunited") — all three must resolve to the same club.
+    "manutd": ("manchesterunited", "manunited"), "mancity": ("manchestercity",),
+    "newcastleunited": ("newcastle",), "brightonhovealbion": ("brighton",),
+    "westhamunited": ("westham",), "leedsunited": ("leeds",),
 }
 
 
 def _build_meta_by_norm(teams, badges):
     """FPL's own team "name" is the short colloquial form ("Man Utd", "Man
     City") while Understat's team_title is the full official name
-    ("Manchester United", "Manchester City") — index under both norms via
-    ALIASES so an exact match is found for either. Without this, both
-    collapse to the same substring-search fallback in _team_meta ("Manchester
-    City"/"Manchester United" both truncate to "MAN") and silently lose
-    their badge."""
+    ("Manchester United", "Manchester City") and football-data.co.uk has its
+    own conventions again ("Man United") — index under every variant's norm
+    via ALIASES so an exact match is found for any of them. Without this,
+    they collapse to the same substring-search fallback in _team_meta
+    ("Manchester City"/"Manchester United"/"Man United" all truncate to
+    "MAN") and silently lose their badge."""
     meta_by_norm = {}
     for t in teams.values():
         nk = _norm(t["name"])
         v = (t["short_name"], badges.get(t["short_name"]))
         meta_by_norm[nk] = v
-        if nk in ALIASES:
-            meta_by_norm[ALIASES[nk]] = v
+        for alias in ALIASES.get(nk, ()):
+            meta_by_norm[alias] = v
     return meta_by_norm
 
 
@@ -1648,7 +1652,8 @@ def main():
     # performing" read a plain points table can't show.
     league_table = []
     for title, agg in league_teams.items():
-        short, badge = team_meta(title)
+        short, _ = team_meta(title)
+        badge = badge_for(short)
         pts, xpts = agg.get("pts"), agg.get("xpts")
         league_table.append({
             "team": title, "short": short, "badge": badge,
