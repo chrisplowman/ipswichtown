@@ -1,18 +1,18 @@
-import json
-import requests
+from playwright.sync_api import sync_playwright
 
-r = requests.get("https://chrisplowman.github.io/ipswichtown/women/data.json", timeout=20)
-r.raise_for_status()
-data = r.json()
+URL = "https://chrisplowman.github.io/ipswichtown/women/match/2026-09-06-nottingham-forest-wfc-h.html"
 
-match_pages = data.get("match_pages") or []
-print("match_pages:", len(match_pages))
-for mp in match_pages:
-    print("---", mp.get("slug"), mp.get("opponent"), mp.get("date"))
-    print("starters:", len(mp.get("starters") or []))
-    print("opponent_starters:", len(mp.get("opponent_starters") or []))
-    for p in (mp.get("starters") or [])[:3]:
-        print("  ips:", p.get("name"), p.get("x"), p.get("y"))
-    for p in (mp.get("opponent_starters") or [])[:3]:
-        print("  opp:", p.get("name"), p.get("x"), p.get("y"))
-    print("team_stats:", mp.get("team_stats"))
+with sync_playwright() as p:
+    browser = p.chromium.launch()
+    page = browser.new_page(viewport={"width": 1200, "height": 2400})
+    page.goto(URL, wait_until="networkidle")
+    page.screenshot(path="pitch_probe.png", full_page=True)
+    svg = page.query_selector(".pitch")
+    if svg:
+        svg.screenshot(path="pitch_only.png")
+        circles = page.eval_on_selector_all(
+            ".pitch circle",
+            "els => els.map(e => ({cx: e.getAttribute('cx'), cy: e.getAttribute('cy'), fill: e.getAttribute('fill')}))",
+        )
+        print("circles:", circles)
+    browser.close()
