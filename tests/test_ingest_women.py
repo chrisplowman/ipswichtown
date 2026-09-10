@@ -351,6 +351,133 @@ def test_parse_last_match_skips_score_when_opponent_doesnt_match_latest_result()
     assert "score" not in m
 
 
+# ---- parse_match_details / _matchdetails_player_stats -------------------------
+# Confirmed against a real response from FotMob's matchDetails endpoint
+# (https://www.fotmob.com/api/data/matchDetails?matchId=<id>), reached via the
+# matchId now captured by parse_last_match.
+def _md_lineup_player(id_, name, shirt, rating, x, y, events=None, captain=False):
+    return {"id": id_, "name": name, "shirtNumber": shirt, "isCaptain": captain,
+            "horizontalLayout": {"x": x, "y": y},
+            "performance": {"rating": rating, "events": events or [], "substitutionEvents": []}}
+
+
+def _md_player_stats(shots=None, passes=None, passes_total=None, chances=None):
+    stats = {}
+    if shots is not None:
+        stats["Total shots"] = {"stat": {"value": shots}}
+    if passes is not None:
+        stats["Accurate passes"] = {"stat": {"value": passes, "total": passes_total}}
+    if chances is not None:
+        stats["Chances created"] = {"stat": {"value": chances}}
+    return {"stats": [{"title": "Top stats", "key": "top_stats", "stats": stats}]}
+
+
+def test_matchdetails_player_stats_reads_top_stats_group():
+    player_stats = {"123": _md_player_stats(shots=2, passes=5, passes_total=10, chances=1)}
+    assert iw._matchdetails_player_stats(player_stats, 123) == \
+        {"shots": 2, "passes": 5, "passes_total": 10, "chances_created": 1}
+
+
+def test_matchdetails_player_stats_empty_without_an_entry():
+    assert iw._matchdetails_player_stats({}, 999) == \
+        {"shots": None, "passes": None, "passes_total": None, "chances_created": None}
+
+
+def _match_details_json(is_ipswich_home=True):
+    ips = {"id": 1134184, "formation": "4-4-2", "rating": 6.5, "averageStarterAge": 25.5,
+           "coach": {"name": "David Wright"},
+           "starters": [_md_lineup_player(1185220, "Megan Hornby", "11", 7.0, 0.6, 0.9,
+                                          events=[{"type": "goal", "time": 90}], captain=True)],
+           "subs": []}
+    opp = {"id": 231481, "formation": "4-2-3-1", "rating": 7.1, "averageStarterAge": 26.8,
+           "coach": {"name": "Tom Mallinson"},
+           "starters": [_md_lineup_player(1457729, "Alana Murphy", "8", 8.1, 0.4, 0.5)],
+           "subs": []}
+    home, away = (ips, opp) if is_ipswich_home else (opp, ips)
+    return {"content": {
+        "lineup": {"homeTeam": home, "awayTeam": away},
+        "stats": {"Periods": {"All": {"stats": [
+            {"title": "Top stats", "key": "top_stats", "stats": [
+                {"title": "Ball possession", "key": "BallPossesion", "stats": [36, 64]},
+                {"title": "Total shots", "key": "total_shots", "stats": [8, 10]},
+            ]},
+            {"title": "Defence", "key": "defence", "stats": [
+                {"title": "Defence", "key": "defense", "stats": [None, None]},
+                {"title": "Tackles", "key": "tackles", "stats": [22, 34]},
+            ]},
+        ]}}},
+        "playerStats": {
+            "1185220": _md_player_stats(shots=2, passes=5, passes_total=10, chances=1),
+            "1457729": _md_player_stats(shots=1, passes=30, passes_total=36),
+        },
+        "matchFacts": {"playerOfTheMatch": {
+            "name": {"fullName": "Alana Murphy"}, "teamName": "Nottingham Forest WFC",
+            "teamId": 231481, "rating": {"num": "8.1"},
+        }},
+        "weather": {"description": "Sunny", "temperature": 26},
+        "h2h": {"matches": [
+            {"status": {"finished": False}, "home": {"id": "231481", "name": "Forest"},
+             "away": {"id": "1134184", "name": "Ipswich"}},
+            {"status": {"finished": True, "scoreStr": "2 - 0"}, "time": {"utcTime": "2026-03-22T14:00:00.000Z"},
+             "home": {"id": "231481", "name": "Nottingham Forest WFC"},
+             "away": {"id": "1134184", "name": "Ipswich Town WFC"}},
+        ]},
+    }}
+
+
+def test_parse_match_details_pulls_opposing_lineup_and_team_stats():
+    parsed = iw.parse_match_details(_match_details_json(is_ipswich_home=True))
+    assert parsed["opponent_formation"] == "4-2-3-1"
+    assert parsed["opponent_team_rating"] == 7.1
+    assert parsed["opponent_coach_name"] == "Tom Mallinson"
+    assert len(parsed["opponent_starters"]) == 1
+    assert parsed["opponent_starters"][0]["full_name"] == "Alana Murphy"
+    assert parsed["opponent_starters"][0]["shots"] == 1
+    # Ipswich's own starters are re-sourced from here too, enriched with shots/passes.
+    assert parsed["starters"][0]["full_name"] == "Megan Hornby"
+    assert parsed["starters"][0]["goals"] == [90]
+    assert parsed["starters"][0]["shots"] == 2
+    assert parsed["starters"][0]["chances_created"] == 1
+
+
+def test_parse_match_details_team_stats_relative_to_ipswich_not_home_away():
+    # Ipswich away this time — team_stats should still read [ipswich, opponent],
+    # not [home, away], even though the raw feed's own values are home-first.
+    parsed = iw.parse_match_details(_match_details_json(is_ipswich_home=False))
+    possession = next(s for s in parsed["team_stats"] if s["label"] == "Ball possession")
+    assert (possession["ipswich"], possession["opponent"]) == (64, 36)
+
+
+def test_parse_match_details_team_stats_only_uses_top_stats_group():
+    parsed = iw.parse_match_details(_match_details_json())
+    labels = [s["label"] for s in parsed["team_stats"]]
+    assert labels == ["Ball possession", "Total shots"]
+
+
+def test_parse_match_details_player_of_the_match():
+    parsed = iw.parse_match_details(_match_details_json())
+    assert parsed["player_of_match"] == {"name": "Alana Murphy", "team": "Nottingham Forest WFC",
+                                          "rating": "8.1", "is_ipswich": False}
+
+
+def test_parse_match_details_weather():
+    parsed = iw.parse_match_details(_match_details_json())
+    assert parsed["weather"] == {"description": "Sunny", "temperature": 26}
+
+
+def test_parse_match_details_h2h_only_finished_matches():
+    # Forest (home) beat Ipswich (away) 2-0, so from Ipswich's side that's a loss.
+    parsed = iw.parse_match_details(_match_details_json())
+    assert parsed["h2h"] == [{"date": "2026-03-22", "opponent": "Nottingham Forest WFC",
+                              "home": False, "score": "2 - 0", "result": "L"}]
+
+
+def test_parse_match_details_none_without_both_teams_lineup():
+    assert iw.parse_match_details(None) is None
+    assert iw.parse_match_details({"content": {}}) is None
+    assert iw.parse_match_details({"content": {"lineup": {"homeTeam": {}}}}) is None
+
+
 def _lp(full_name, sub_on=None, sub_off=None):
     return {"full_name": full_name, "sub_on": sub_on, "sub_off": sub_off}
 
@@ -395,7 +522,7 @@ def test_record_match_does_not_overwrite_an_already_recorded_match(tmp_path, mon
     # re-recorded — otherwise re-running the same day would inflate totals.
     monkeypatch.setattr(iw, "WOMEN_LINEUP_CACHE_DIR", tmp_path / "cache")
     last_match = {"date": "2026-08-10", "opponent": "Sunderland",
-                  "starters": [_lp("Kenzie Weir")], "subs": []}
+                  "starters": [_lp("Kenzie Weir")], "subs": [], "team_stats": []}
     iw.record_match(last_match)
     iw.record_match({**last_match, "starters": [_lp("Someone Else")]})
     matches = iw.load_recorded_matches()
