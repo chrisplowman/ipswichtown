@@ -1,0 +1,17 @@
+name: Probe match details fields (throwaway)
+
+on:
+  push:
+    branches: [claude/repo-design-review-ajtl4n]
+    paths: [probe3.py, .github/workflows/probe.yml]
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python probe3.py
