@@ -116,7 +116,15 @@ def test_guardian_report_url_home_match():
 def test_guardian_report_url_away_match_uses_slug_map():
     from build import guardian_report_url
     url = guardian_report_url({"date": "2026-09-01", "opponent": "West Ham United", "home": False})
-    assert url == "https://www.theguardian.com/football/2026/sep/1/west-ham-ipswich-premier-league-match-report"
+    assert url == "https://www.theguardian.com/football/2026/sep/01/west-ham-ipswich-premier-league-match-report"
+
+
+def test_guardian_report_url_zero_pads_single_digit_day():
+    # The Guardian's own URLs zero-pad the day (.../sep/04/...) — a bare
+    # d.day would give ".../sep/4/..." and 404 against the real article.
+    from build import guardian_report_url
+    url = guardian_report_url({"date": "2026-09-04", "opponent": "Liverpool", "home": True})
+    assert url == "https://www.theguardian.com/football/2026/sep/04/ipswich-liverpool-premier-league-match-report"
 
 
 def test_guardian_report_url_invalid_date_returns_none():

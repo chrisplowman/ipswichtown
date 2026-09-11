@@ -188,7 +188,7 @@ def guardian_report_url(mp):
     if not opp_slug:
         return None
     home_slug, away_slug = ("ipswich", opp_slug) if mp.get("home") else (opp_slug, "ipswich")
-    return (f"https://www.theguardian.com/football/{d.year}/{d.strftime('%b').lower()}/{d.day}/"
+    return (f"https://www.theguardian.com/football/{d.year}/{d.strftime('%b').lower()}/{d.day:02d}/"
             f"{home_slug}-{away_slug}-premier-league-match-report")
 
 
