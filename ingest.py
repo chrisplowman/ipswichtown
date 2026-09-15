@@ -8,6 +8,8 @@ Sources (all free; only football-data-style keys avoided — none needed here):
   ESPN (hidden)    https://site.web.api.espn.com/.../eng.1/standings  league table  (keyless)
   ESPN Core API    https://sports.core.api.espn.com/.../events/.../plays  bookings/subs, shots/corners/fouls/HT (keyless)
   TheSportsDB      https://www.thesportsdb.com/api/v1/json/3/...   club badges   (public test key)
+  FotMob (hidden)  https://www.fotmob.com/api/data/leagues?id=...   defensive/goalkeeping/physical
+                                                                     player leaderboards, extra team stats
 
 Each non-FPL source is wrapped so a failure just drops that section — the page
 still builds from whatever succeeded.
@@ -1378,6 +1380,114 @@ def fetch_news():
 
 
 # --------------------------------------------------------------------------- #
+#  FotMob — league-wide stat leaderboards (defensive actions, goalkeeping,    #
+#  physical/running data) that Understat doesn't carry at all, since it's     #
+#  scoped to attacking output (shots/xG/xA/key passes). Same unofficial API   #
+#  ingest_women.py already uses for the women's side. The league page's own  #
+#  payload (fetch_fotmob_league_stats) gives every category's top 3 plus a    #
+#  fetchAllUrl to a full ranked list per category on a separate static-file   #
+#  host (data.fotmob.com) — that full list is what lets Ipswich's own         #
+#  players be found even when they're outside the top 3. League id (47) and   #
+#  Ipswich's FotMob team id (9902) found by reading them off fotmob.com's own #
+#  URLs (.../leagues/47/overview/premier-league, .../teams/9902/overview/...).#
+FOTMOB_BASE = "https://www.fotmob.com/api/data"
+FOTMOB_LEAGUE_ID = 47
+FOTMOB_TEAM_ID = 9902
+
+# category "name" keys (FotMob's own stat identifiers) worth surfacing beyond
+# what Understat already covers, grouped the way the site presents them.
+FOTMOB_PLAYER_STAT_GROUPS = {
+    "defensive": ["defensive_contributions", "total_tackle", "interception",
+                  "effective_clearance", "outfielder_block", "ball_recovery",
+                  "poss_won_att_3rd"],
+    "goalkeeping": ["saves", "_save_percentage", "_goals_prevented",
+                    "clean_sheet", "goals_conceded"],
+    "physical": ["phys_ts", "phys_tdc", "phys_sprints",
+                 "phys_tdc_per_90", "phys_sprints_per_90"],
+}
+# team-level categories not already derivable from Understat/ClubElo (points,
+# xG, xGA, npxG, pressing, Elo are already in league_table above).
+FOTMOB_TEAM_STAT_NAMES = ["rating_team", "possession_percentage_team", "clean_sheet_team",
+                          "accurate_pass_team", "big_chance_team", "touches_in_opp_box_team",
+                          "total_tackle_team", "interception_team", "effective_clearance_team",
+                          "phys_tdc_team"]
+
+
+def fetch_fotmob_league_stats():
+    return get_json(f"{FOTMOB_BASE}/leagues?id={FOTMOB_LEAGUE_ID}")
+
+
+def _fotmob_stat_categories(league_json):
+    """{name: category_dict} for every player/team stat category the league
+    payload advertises — each carries a "fetchAllUrl" to that category's full
+    ranked list (the payload itself only embeds the top 3)."""
+    stats = (league_json or {}).get("stats") or {}
+    out = {}
+    for scope_key in ("players", "teams"):
+        for s in stats.get(scope_key) or []:
+            if s.get("name"):
+                out[s["name"]] = s
+    return out
+
+
+def _fotmob_stat_list(fetch_all_url):
+    """One category's full ranked list (every player/team, not just the top
+    3), from FotMob's static per-category JSON file."""
+    data = get_json(fetch_all_url)
+    top_lists = data.get("TopLists") or []
+    return (top_lists[0].get("StatList") or []) if top_lists else []
+
+
+def parse_fotmob_player_stats(categories):
+    """Ipswich-only leaderboards for the defensive/goalkeeping/physical
+    groups above — {group: [{"key","label","total","players":[...]}]}, one
+    entry per category that actually has an Ipswich player in it (a fringe
+    player can rank outside a category's tracked list entirely). Each
+    player row carries FotMob's own rank/total, so no "is higher better?"
+    judgement call is needed here — FotMob's own ordering already encodes it."""
+    out = {}
+    for group, names in FOTMOB_PLAYER_STAT_GROUPS.items():
+        rows = []
+        for name in names:
+            cat = categories.get(name)
+            if not cat or not cat.get("fetchAllUrl"):
+                continue
+            stat_list = _fotmob_stat_list(cat["fetchAllUrl"])
+            ipswich = sorted((p for p in stat_list if p.get("TeamId") == FOTMOB_TEAM_ID),
+                              key=lambda p: p.get("Rank") or 9999)
+            if not ipswich:
+                continue
+            rows.append({
+                "key": name, "label": cat.get("header"), "total": len(stat_list),
+                "players": [{"name": p.get("ParticipantName"), "value": p.get("StatValue"),
+                             "rank": p.get("Rank"), "minutes": p.get("MinutesPlayed"),
+                             "matches": p.get("MatchesPlayed")} for p in ipswich],
+            })
+        out[group] = rows
+    return out
+
+
+def parse_fotmob_team_ranks(categories):
+    """Ipswich's rank/value on each of FOTMOB_TEAM_STAT_NAMES — same shape as
+    the Understat-derived team_ranks entries built in main(), so both can be
+    rendered by the same "How Ipswich compare" widget. FotMob's own "Rank"
+    field is used as-is (already correctly ordered per stat), so this needs
+    no separate low_good judgement call either."""
+    rows = []
+    for name in FOTMOB_TEAM_STAT_NAMES:
+        cat = categories.get(name)
+        if not cat or not cat.get("fetchAllUrl"):
+            continue
+        stat_list = _fotmob_stat_list(cat["fetchAllUrl"])
+        mine = next((t for t in stat_list if t.get("TeamId") == FOTMOB_TEAM_ID), None)
+        if not mine:
+            continue
+        rows.append({"label": cat.get("header"), "value": mine.get("StatValue"),
+                     "rank": mine.get("Rank"), "total": len(stat_list)})
+    return rows
+
+
+# --------------------------------------------------------------------------- #
 def main():
     fpl = fetch_fpl()
     tid, teams, ipswich = fpl["tid"], fpl["teams"], fpl["ipswich"]
@@ -1644,6 +1754,19 @@ def main():
                                   "rank": ips_row["rank"], "total": nt, "low_good": False})
             team_ranks.append({"label": "Goal difference", "value": ips_row["gd"],
                                "rank": gd_rank, "total": nt, "low_good": False})
+
+    # FotMob — defensive/goalkeeping/physical player leaderboards and a
+    # further batch of team_ranks entries Understat/ClubElo don't carry
+    fotmob_player_stats = {}
+    try:
+        fotmob_categories = _fotmob_stat_categories(fetch_fotmob_league_stats())
+        fotmob_player_stats = parse_fotmob_player_stats(fotmob_categories)
+        team_ranks += parse_fotmob_team_ranks(fotmob_categories)
+        n_player_rows = sum(len(v) for v in fotmob_player_stats.values())
+        print(f"  fotmob: {n_player_rows} player-stat categories with an Ipswich player, "
+              f"{len(team_ranks)} team_ranks total")
+    except Exception as e:
+        print(f"  fotmob: skipped ({e})")
 
     # full underlying-numbers table: every club's actual points (derived the same
     # way from Understat's own match-by-match record, so it needs no join against
@@ -1950,12 +2073,13 @@ def main():
         "News": bool(news),
         "ESPN match events": bool(espn_events_by_date),
         "Top scorers/assists": bool(top_scorers),
+        "FotMob stats": bool(fotmob_player_stats) and any(fotmob_player_stats.values()),
     }
     # Pre-season is expected to have no match-derived data; don't flag those.
     preseason = fpl["summary"]["played"] == 0
     match_derived = {"Understat matches", "Match detail", "Match stats",
                      "Home/away tables", "Understat players", "Survival model",
-                     "ESPN match events", "Top scorers/assists"}
+                     "ESPN match events", "Top scorers/assists", "FotMob stats"}
     missing = [name for name, ok in checks.items()
                if not ok and not (preseason and name in match_derived)]
     health = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -1982,6 +2106,7 @@ def main():
         "top_assists": top_assists,
         "league_table": league_table,
         "player_profiles": player_profiles,
+        "fotmob_player_stats": fotmob_player_stats,
         "by_gameweek": fpl["by_gameweek"],
         "understat_matches": understat["matches"],
         "understat_history": ips_history,
