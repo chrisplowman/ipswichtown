@@ -576,3 +576,87 @@ def test_parse_feed_date_invalid_or_blank_returns_none():
     from ingest import _parse_feed_date
     assert _parse_feed_date("") is None
     assert _parse_feed_date("not a date") is None
+
+
+# ---- FotMob player/team stat leaderboards ------------------------------------
+def test_fotmob_stat_categories_indexes_players_and_teams_by_name():
+    from ingest import _fotmob_stat_categories
+    league_json = {"stats": {
+        "players": [{"name": "goals", "header": "Top scorer", "fetchAllUrl": "u1"}],
+        "teams": [{"name": "rating_team", "header": "FotMob rating", "fetchAllUrl": "u2"}],
+    }}
+    cats = _fotmob_stat_categories(league_json)
+    assert cats["goals"]["header"] == "Top scorer"
+    assert cats["rating_team"]["fetchAllUrl"] == "u2"
+
+
+def test_fotmob_stat_categories_skips_entries_without_a_name():
+    from ingest import _fotmob_stat_categories
+    league_json = {"stats": {"players": [{"header": "no name field"}], "teams": []}}
+    assert _fotmob_stat_categories(league_json) == {}
+
+
+def _fotmob_participant(name, team_id, rank, value, minutes=270, matches=3):
+    return {"ParticipantName": name, "TeamId": team_id, "Rank": rank, "StatValue": value,
+            "MinutesPlayed": minutes, "MatchesPlayed": matches}
+
+
+def test_parse_fotmob_player_stats_filters_to_ipswich_and_sorts_by_rank(monkeypatch):
+    # Two Ipswich players in one category (out of order in the source list —
+    # the real API doesn't guarantee Ipswich's own entries are contiguous or
+    # already sorted relative to each other) plus a category with no Ipswich
+    # player at all, which must be omitted rather than showing an empty row.
+    import ingest
+    stat_lists = {
+        "https://data.fotmob.com/tackles.json": {"TopLists": [{"StatList": [
+            _fotmob_participant("Rival Player", 999, 1, 5.0),
+            _fotmob_participant("Second Ipswich", 9902, 12, 2.1),
+            _fotmob_participant("First Ipswich", 9902, 4, 3.4),
+        ]}]},
+        "https://data.fotmob.com/interceptions.json": {"TopLists": [{"StatList": [
+            _fotmob_participant("Someone Else", 111, 1, 9.0),
+        ]}]},
+    }
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: stat_lists[url])
+    categories = {
+        "total_tackle": {"header": "Tackles per 90", "fetchAllUrl": "https://data.fotmob.com/tackles.json"},
+        "interception": {"header": "Interceptions per 90", "fetchAllUrl": "https://data.fotmob.com/interceptions.json"},
+    }
+    out = ingest.parse_fotmob_player_stats(categories)
+    assert set(out.keys()) == {"defensive", "goalkeeping", "physical"}
+    defensive = out["defensive"]
+    assert len(defensive) == 1  # interceptions had no Ipswich player -> omitted
+    tackles = defensive[0]
+    assert tackles["key"] == "total_tackle"
+    assert tackles["total"] == 3
+    assert [p["name"] for p in tackles["players"]] == ["First Ipswich", "Second Ipswich"]
+    assert [p["rank"] for p in tackles["players"]] == [4, 12]
+
+
+def test_parse_fotmob_player_stats_skips_categories_missing_from_league_payload():
+    from ingest import parse_fotmob_player_stats
+    out = parse_fotmob_player_stats({})
+    assert out == {"defensive": [], "goalkeeping": [], "physical": []}
+
+
+def test_parse_fotmob_team_ranks_uses_fotmobs_own_rank_and_total(monkeypatch):
+    import ingest
+    stat_lists = {
+        "https://data.fotmob.com/rating_team.json": {"TopLists": [{"StatList": [
+            {"TeamId": 8456, "Rank": 1, "StatValue": 7.45},
+            {"TeamId": 9902, "Rank": 14, "StatValue": 6.62},
+        ]}]},
+    }
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: stat_lists[url])
+    categories = {"rating_team": {"header": "FotMob rating",
+                                   "fetchAllUrl": "https://data.fotmob.com/rating_team.json"}}
+    rows = ingest.parse_fotmob_team_ranks(categories)
+    assert rows == [{"label": "FotMob rating", "value": 6.62, "rank": 14, "total": 2}]
+
+
+def test_parse_fotmob_team_ranks_skips_stat_missing_ipswich(monkeypatch):
+    import ingest
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: {"TopLists": [{"StatList": [
+        {"TeamId": 8456, "Rank": 1, "StatValue": 7.45}]}]})
+    categories = {"rating_team": {"header": "FotMob rating", "fetchAllUrl": "u"}}
+    assert ingest.parse_fotmob_team_ranks(categories) == []

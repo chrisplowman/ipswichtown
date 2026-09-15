@@ -429,7 +429,19 @@ def sample_data(live=None):
                   {"label": "xGA per game", "value": 1.55, "rank": 16, "total": 20, "low_good": True},
                   {"label": "Non-penalty xG", "value": 13.4, "rank": 15, "total": 20, "low_good": False},
                   {"label": "Pressing (PPDA)", "value": 11.8, "rank": 8, "total": 20, "low_good": True},
-                  {"label": "Goal difference", "value": ipr["gd"], "rank": 14, "total": 20, "low_good": False}]
+                  {"label": "Goal difference", "value": ipr["gd"], "rank": 14, "total": 20, "low_good": False},
+                  # FotMob-sourced entries below — same shape, but FotMob's own
+                  # "Rank" already encodes direction so there's no low_good
+                  {"label": "FotMob rating", "value": 6.68, "rank": 13, "total": 20},
+                  {"label": "Average possession", "value": 44.2, "rank": 16, "total": 20},
+                  {"label": "Clean sheets", "value": 2, "rank": 12, "total": 20},
+                  {"label": "Passing accuracy", "value": 78.4, "rank": 15, "total": 20},
+                  {"label": "Big chances created", "value": 9, "rank": 14, "total": 20},
+                  {"label": "Touches in opposition box", "value": 18.2, "rank": 17, "total": 20},
+                  {"label": "Tackles per match", "value": 16.8, "rank": 6, "total": 20},
+                  {"label": "Interceptions per match", "value": 9.4, "rank": 8, "total": 20},
+                  {"label": "Clearances per match", "value": 21.6, "rank": 5, "total": 20},
+                  {"label": "Distance covered per match (km)", "value": 108.4, "rank": 9, "total": 20}]
 
     league_table = []
     for i, (r, ts) in enumerate(zip(table, team_scatter), 1):
@@ -518,6 +530,36 @@ def sample_data(live=None):
         player_profiles.append({"name": nm, "team": tm, "pos": pos, "minutes": 1400,
                                 "per90": {k: round(v / 40, 2) for k, v in pct.items()}, "pct": pct,
                                 "is_ipswich": False})
+
+    # FotMob-sourced leaderboards Understat doesn't carry: defensive actions,
+    # goalkeeping, physical/running data — Ipswich-only, FotMob's own rank/total
+    fotmob_player_stats = {
+        "defensive": [
+            {"key": "total_tackle", "label": "Tackles per 90", "total": 480,
+             "players": [{"name": "Sam Morsy", "value": 3.4, "rank": 22, "minutes": 720, "matches": 8}]},
+            {"key": "interception", "label": "Interceptions per 90", "total": 480,
+             "players": [{"name": "Sam Morsy", "value": 2.1, "rank": 45, "minutes": 720, "matches": 8},
+                        {"name": "Kalvin Phillips", "value": 1.8, "rank": 61, "minutes": 610, "matches": 7}]},
+            {"key": "effective_clearance", "label": "Clearances per 90", "total": 480,
+             "players": [{"name": "Kalvin Phillips", "value": 4.2, "rank": 30, "minutes": 610, "matches": 7}]},
+        ],
+        "goalkeeping": [
+            {"key": "saves", "label": "Saves per 90", "total": 40,
+             "players": [{"name": "Cieran Slicker", "value": 3.1, "rank": 9, "minutes": 720, "matches": 8}]},
+            {"key": "_save_percentage", "label": "Save percentage", "total": 40,
+             "players": [{"name": "Cieran Slicker", "value": 71.4, "rank": 14, "minutes": 720, "matches": 8}]},
+            {"key": "clean_sheet", "label": "Clean sheets", "total": 40,
+             "players": [{"name": "Cieran Slicker", "value": 2, "rank": 18, "minutes": 720, "matches": 8}]},
+        ],
+        "physical": [
+            {"key": "phys_ts", "label": "Top speed", "total": 480,
+             "players": [{"name": "Wes Burns", "value": 33.8, "rank": 12, "minutes": 540, "matches": 6}]},
+            {"key": "phys_tdc_per_90", "label": "Distance per 90", "total": 480,
+             "players": [{"name": "Sam Morsy", "value": 11.2, "rank": 25, "minutes": 720, "matches": 8}]},
+            {"key": "phys_sprints_per_90", "label": "Sprints per 90", "total": 480,
+             "players": [{"name": "Wes Burns", "value": 18.4, "rank": 8, "minutes": 540, "matches": 6}]},
+        ],
+    }
 
     understat_players = [{"name": s["full_name"], "games": 12, "minutes": s["minutes"], "goals": s["goals"],
                           "assists": s["assists"], "shots": s["goals"] * 4 + 3, "xg": s["xg"], "xa": s["xa"],
@@ -717,6 +759,7 @@ def sample_data(live=None):
         "team_scatter": team_scatter, "team_ranks": team_ranks, "league_table": league_table,
         "top_scorers": top_scorers, "top_assists": top_assists,
         "player_profiles": player_profiles,
+        "fotmob_player_stats": fotmob_player_stats,
         "by_gameweek": by_gameweek, "understat_matches": understat_matches, "shot_maps": shot_maps,
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
         "understat_history": understat_history, "match_stats": match_stats,
