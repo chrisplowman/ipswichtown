@@ -589,15 +589,36 @@
           </div>
         </div>
       </div>
+      {% set fotmob_groups = [('defensive', 'Defensive'), ('goalkeeping', 'Goalkeeping'), ('physical', 'Physical')] %}
+      {% set fotmob_categories = [] %}
+      {% for group_key, group_label in fotmob_groups %}
+        {% for cat in (fotmob_player_stats or {}).get(group_key) or [] %}
+          {% set _ = fotmob_categories.append((group_label, cat)) %}
+        {% endfor %}
+      {% endfor %}
       <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Beyond the box score</h3><p class="sub">Ipswich players' league rank on stats Understat doesn't track: defensive actions, goalkeeping and physical output.</p></div><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every Ipswich player who ranks in FotMob's tracked list for that stat this season, with their rank out of every Premier League player tracked. Source: FotMob.</span></button></div>
-        <h4 class="subhead" id="h-ranks-defensive">Defensive</h4>
-        <div class="ranks" id="ranks-defensive"></div>
-        <h4 class="subhead" id="h-ranks-goalkeeping">Goalkeeping</h4>
-        <div class="ranks" id="ranks-goalkeeping"></div>
-        <h4 class="subhead" id="h-ranks-physical">Physical</h4>
-        <div class="ranks" id="ranks-physical"></div>
-        <div class="note" id="n-fotmob-attrs" hidden></div>
+        <div class="cardhead"><div class="htitle"><h3>Beyond the box score</h3><p class="sub">Top 10 in the league on stats Understat doesn't track — defensive actions, goalkeeping and physical output — plus Ipswich's own players.</p></div><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every Premier League player in FotMob's top 10 for that stat this season, plus up to 5 of Ipswich's own players at their real rank if they're outside it. Source: FotMob.</span></button></div>
+        {% if fotmob_categories %}
+        <div class="cols2">
+          {% for group_label, cat in fotmob_categories %}
+          <div>
+            <h4 class="subhead">{{ group_label }} · {{ cat.label }}</h4>
+            <table class="rivaltable">
+              <thead><tr><th>#</th><th>Player</th><th>{{ cat.label }}</th></tr></thead>
+              <tbody>
+                {% for r in cat.rows %}
+                <tr class="{{ 'ips' if r.is_ipswich }}">
+                  <td>{{ r.rank }}</td>
+                  <td class="tm">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.name }} <span class="assist">{{ r.team }}</span></td>
+                  <td><b>{{ r.value }}</b></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<p class="empty-note">No FotMob player-attribute data yet.</p>{% endif %}
       </div>
     </div>
   </section>
@@ -1320,36 +1341,6 @@
             '<div class="rankbar"><span class="'+cls+'" style="width:'+(frac*100).toFixed(0)+'%"></span></div></div>';
         }).join('');
       } else showNote('ranks','League comparison unavailable yet.');
-
-      // FotMob player-attribute leaderboards (defensive/goalkeeping/physical) —
-      // one row per Ipswich player per category they're tracked in, ranked
-      // against every Premier League player FotMob tracks for that stat (so
-      // the good/bad thresholds are percentile-based, not the fixed top-6/
-      // bottom-5 cutoffs tuned for a 20-club table above).
-      function renderPlayerStatGroup(containerId, headingId, categories){
-        var el = document.getElementById(containerId), h = document.getElementById(headingId);
-        var rows = [];
-        (categories||[]).forEach(function(cat){
-          (cat.players||[]).forEach(function(p){
-            rows.push({label: cat.label + ' — ' + p.name, value: p.value, rank: p.rank, total: cat.total});
-          });
-        });
-        if(!rows.length){ if(el) el.hidden = true; if(h) h.hidden = true; return false; }
-        if(el) el.hidden = false; if(h) h.hidden = false;
-        el.innerHTML = rows.map(function(r){
-          var frac=(r.total-r.rank+1)/r.total;
-          var cls = r.rank<=Math.ceil(r.total*0.1) ? 'good' : r.rank>=Math.ceil(r.total*0.75) ? 'bad' : '';
-          return '<div class="rankrow"><div class="top"><span>'+r.label+'</span>'+
-            '<span><b>'+fmtVal(r.value)+'</b> <span class="pos">'+ord(r.rank)+'/'+r.total+'</span></span></div>'+
-            '<div class="rankbar"><span class="'+cls+'" style="width:'+(frac*100).toFixed(0)+'%"></span></div></div>';
-        }).join('');
-        return true;
-      }
-      var fms = DATA.fotmob_player_stats||{};
-      var anyFm = [renderPlayerStatGroup('ranks-defensive','h-ranks-defensive',fms.defensive),
-                   renderPlayerStatGroup('ranks-goalkeeping','h-ranks-goalkeeping',fms.goalkeeping),
-                   renderPlayerStatGroup('ranks-physical','h-ranks-physical',fms.physical)].some(Boolean);
-      if(!anyFm) showNote('fotmob-attrs','No FotMob player-attribute data yet.');
     }
     setupShotMap();
   }

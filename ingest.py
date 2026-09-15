@@ -1195,18 +1195,22 @@ def _teams_with_table_points(teams, table):
             for i, t in teams.items()}
 
 
-def _leaderboard(sorted_players, limit, row_fn):
-    """Top `limit` entries via row_fn(player, rank). If none of those are
-    Ipswich, append the club's own highest-ranked player (their real rank
-    kept, not `limit`+1) so the board always shows where Ipswich stand even
-    when no player cracks the top `limit`."""
+def _leaderboard(sorted_players, limit, row_fn, n_ipswich=5):
+    """Top `limit` entries via row_fn(player, rank), plus as many more of
+    Ipswich's own players as it takes to show `n_ipswich` of them in total
+    (their real rank kept, not squeezed into the top `limit`) — so the board
+    always shows where Ipswich's squad stands even when few or none of them
+    crack the top `limit`, without duplicating one already there."""
     rows = [row_fn(p, i) for i, p in enumerate(sorted_players[:limit], 1)]
-    if not any(r["is_ipswich"] for r in rows):
-        for i, p in enumerate(sorted_players, 1):
+    need = n_ipswich - sum(1 for r in rows if r["is_ipswich"])
+    if need > 0:
+        for i, p in enumerate(sorted_players[limit:], limit + 1):
             row = row_fn(p, i)
             if row["is_ipswich"]:
                 rows.append(row)
-                break
+                need -= 1
+                if need == 0:
+                    break
     return rows
 
 
@@ -1438,32 +1442,37 @@ def _fotmob_stat_list(fetch_all_url):
     return (top_lists[0].get("StatList") or []) if top_lists else []
 
 
+def _fotmob_team_badge(team_id):
+    return f"https://images.fotmob.com/image_resources/logo/teamlogo/{team_id}.png" if team_id else None
+
+
 def parse_fotmob_player_stats(categories):
-    """Ipswich-only leaderboards for the defensive/goalkeeping/physical
-    groups above — {group: [{"key","label","total","players":[...]}]}, one
-    entry per category that actually has an Ipswich player in it (a fringe
-    player can rank outside a category's tracked list entirely). Each
-    player row carries FotMob's own rank/total, so no "is higher better?"
-    judgement call is needed here — FotMob's own ordering already encodes it."""
+    """Leaderboards for the defensive/goalkeeping/physical groups above, in
+    the same "top LEADERS_LIMIT + Ipswich's own" shape as top_scorers/
+    top_assists — {group: [{"key","label","total","rows":[...]}]}, one entry
+    per category that has at least one Ipswich player in FotMob's tracked
+    list at all (a category no Ipswich player is tracked for is dropped
+    rather than shown empty). Each row carries FotMob's own rank, already
+    correctly ordered for that stat (no "is higher better?" call needed)."""
     out = {}
     for group, names in FOTMOB_PLAYER_STAT_GROUPS.items():
-        rows = []
+        cats = []
         for name in names:
             cat = categories.get(name)
             if not cat or not cat.get("fetchAllUrl"):
                 continue
-            stat_list = _fotmob_stat_list(cat["fetchAllUrl"])
-            ipswich = sorted((p for p in stat_list if p.get("TeamId") == FOTMOB_TEAM_ID),
-                              key=lambda p: p.get("Rank") or 9999)
-            if not ipswich:
+            stat_list = sorted(_fotmob_stat_list(cat["fetchAllUrl"]), key=lambda p: p.get("Rank") or 9999)
+            if not stat_list:
                 continue
-            rows.append({
-                "key": name, "label": cat.get("header"), "total": len(stat_list),
-                "players": [{"name": p.get("ParticipantName"), "value": p.get("StatValue"),
-                             "rank": p.get("Rank"), "minutes": p.get("MinutesPlayed"),
-                             "matches": p.get("MatchesPlayed")} for p in ipswich],
-            })
-        out[group] = rows
+            def row_fn(p, rank):
+                return {"rank": rank, "name": p.get("ParticipantName"), "team": p.get("TeamName"),
+                        "badge": _fotmob_team_badge(p.get("TeamId")), "value": p.get("StatValue"),
+                        "is_ipswich": p.get("TeamId") == FOTMOB_TEAM_ID}
+            rows = _leaderboard(stat_list, LEADERS_LIMIT, row_fn)
+            if not any(r["is_ipswich"] for r in rows):
+                continue
+            cats.append({"key": name, "label": cat.get("header"), "total": len(stat_list), "rows": rows})
+        out[group] = cats
     return out
 
 

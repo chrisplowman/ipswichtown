@@ -532,32 +532,64 @@ def sample_data(live=None):
                                 "is_ipswich": False})
 
     # FotMob-sourced leaderboards Understat doesn't carry: defensive actions,
-    # goalkeeping, physical/running data — Ipswich-only, FotMob's own rank/total
+    # goalkeeping, physical/running data — top 10 league-wide plus up to 5 of
+    # Ipswich's own players, same "rows" shape as top_scorers/top_assists.
+    _rival_names = ["Rival " + chr(65 + i) for i in range(10)]
+
+    def _fotmob_rows(total, values, ipswich_at):
+        """`values` are the top-10 league values (highest first); `ipswich_at`
+        maps {name: (value, rank)} for Ipswich players, some inside the top
+        10 (rank <= 10) and some as stragglers (rank > 10)."""
+        rows = []
+        ips_in_top = {r: n for n, (v, r) in ipswich_at.items() if r <= 10}
+        ri = 0
+        for i in range(1, 11):
+            if i in ips_in_top:
+                name, val = ips_in_top[i], ipswich_at[ips_in_top[i]][0]
+                rows.append({"rank": i, "name": name, "team": "Ipswich", "badge": None,
+                            "value": val, "is_ipswich": True})
+            else:
+                rows.append({"rank": i, "name": _rival_names[ri], "team": "Rival FC", "badge": None,
+                            "value": values[ri], "is_ipswich": False})
+                ri += 1
+        for name, (val, rank) in sorted(ipswich_at.items(), key=lambda kv: kv[1][1]):
+            if rank > 10:
+                rows.append({"rank": rank, "name": name, "team": "Ipswich", "badge": None,
+                            "value": val, "is_ipswich": True})
+        return rows
+
     fotmob_player_stats = {
         "defensive": [
             {"key": "total_tackle", "label": "Tackles per 90", "total": 480,
-             "players": [{"name": "Sam Morsy", "value": 3.4, "rank": 22, "minutes": 720, "matches": 8}]},
+             "rows": _fotmob_rows(480, [5.1, 4.8, 4.6, 4.4, 4.2, 4.0, 3.9, 3.7, 3.6, 3.5],
+                                  {"Sam Morsy": (3.4, 14)})},
             {"key": "interception", "label": "Interceptions per 90", "total": 480,
-             "players": [{"name": "Sam Morsy", "value": 2.1, "rank": 45, "minutes": 720, "matches": 8},
-                        {"name": "Kalvin Phillips", "value": 1.8, "rank": 61, "minutes": 610, "matches": 7}]},
+             "rows": _fotmob_rows(480, [3.8, 3.5, 3.3, 3.1, 2.9, 2.8, 2.6, 2.5, 2.4, 2.3],
+                                  {"Sam Morsy": (2.1, 22), "Kalvin Phillips": (1.8, 31)})},
             {"key": "effective_clearance", "label": "Clearances per 90", "total": 480,
-             "players": [{"name": "Kalvin Phillips", "value": 4.2, "rank": 30, "minutes": 610, "matches": 7}]},
+             "rows": _fotmob_rows(480, [6.2, 5.9, 5.6, 5.3, 5.0, 4.8, 4.6, 4.4, 4.2, 4.1],
+                                  {"Kalvin Phillips": (4.2, 9)})},
         ],
         "goalkeeping": [
             {"key": "saves", "label": "Saves per 90", "total": 40,
-             "players": [{"name": "Cieran Slicker", "value": 3.1, "rank": 9, "minutes": 720, "matches": 8}]},
+             "rows": _fotmob_rows(40, [4.8, 4.5, 4.2, 4.0, 3.8, 3.6, 3.4, 3.2, 3.0, 2.9],
+                                  {"Cieran Slicker": (3.4, 7)})},
             {"key": "_save_percentage", "label": "Save percentage", "total": 40,
-             "players": [{"name": "Cieran Slicker", "value": 71.4, "rank": 14, "minutes": 720, "matches": 8}]},
+             "rows": _fotmob_rows(40, [82.1, 79.5, 77.2, 75.8, 74.4, 73.1, 72.0, 70.9, 69.8, 68.7],
+                                  {"Cieran Slicker": (71.4, 16)})},
             {"key": "clean_sheet", "label": "Clean sheets", "total": 40,
-             "players": [{"name": "Cieran Slicker", "value": 2, "rank": 18, "minutes": 720, "matches": 8}]},
+             "rows": _fotmob_rows(40, [6, 5, 5, 4, 4, 4, 3, 3, 3, 3], {"Cieran Slicker": (2, 12)})},
         ],
         "physical": [
             {"key": "phys_ts", "label": "Top speed", "total": 480,
-             "players": [{"name": "Wes Burns", "value": 33.8, "rank": 12, "minutes": 540, "matches": 6}]},
+             "rows": _fotmob_rows(480, [35.6, 35.1, 34.8, 34.5, 34.2, 34.0, 33.8, 33.6, 33.4, 33.2],
+                                  {"Wes Burns": (33.1, 15)})},
             {"key": "phys_tdc_per_90", "label": "Distance per 90", "total": 480,
-             "players": [{"name": "Sam Morsy", "value": 11.2, "rank": 25, "minutes": 720, "matches": 8}]},
+             "rows": _fotmob_rows(480, [12.4, 12.1, 11.9, 11.7, 11.5, 11.3, 11.1, 11.0, 10.9, 10.8],
+                                  {"Sam Morsy": (11.2, 20)})},
             {"key": "phys_sprints_per_90", "label": "Sprints per 90", "total": 480,
-             "players": [{"name": "Wes Burns", "value": 18.4, "rank": 8, "minutes": 540, "matches": 6}]},
+             "rows": _fotmob_rows(480, [22.5, 21.8, 21.0, 20.4, 19.8, 19.2, 18.7, 18.4, 18.0, 17.6],
+                                  {"Wes Burns": (18.4, 8)})},
         ],
     }
 
