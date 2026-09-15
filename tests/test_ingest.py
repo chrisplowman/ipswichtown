@@ -224,6 +224,36 @@ def test_leaderboard_no_ipswich_player_at_all():
     assert len(rows) == 10
 
 
+def test_leaderboard_appends_up_to_five_ipswich_stragglers():
+    # Regression case: a single straggler isn't enough — the board should
+    # show Ipswich's own top 5, not just their single highest-ranked player.
+    from ingest import _leaderboard
+    players = [{"name": chr(65 + i), "is_ipswich": False} for i in range(10)]
+    players += [{"name": f"Ips{i}", "is_ipswich": True} for i in range(7)]  # ranks 11-17
+    row_fn = lambda p, rank: {"rank": rank, "name": p["name"], "is_ipswich": p["is_ipswich"]}
+    rows = _leaderboard(players, 10, row_fn)
+    assert len(rows) == 15  # top 10 + 5 of the 7 Ipswich stragglers
+    ipswich_rows = [r for r in rows if r["is_ipswich"]]
+    assert len(ipswich_rows) == 5
+    assert [r["name"] for r in ipswich_rows] == ["Ips0", "Ips1", "Ips2", "Ips3", "Ips4"]
+    assert [r["rank"] for r in ipswich_rows] == [11, 12, 13, 14, 15]
+
+
+def test_leaderboard_ipswich_in_top_limit_counts_toward_the_five():
+    # An Ipswich player already inside the top limit still counts toward the
+    # 5 — it shouldn't be duplicated, and only the remaining 4 are appended.
+    from ingest import _leaderboard
+    players = [{"name": "TopIpswich", "is_ipswich": True}] + \
+        [{"name": chr(65 + i), "is_ipswich": False} for i in range(9)] + \
+        [{"name": f"Ips{i}", "is_ipswich": True} for i in range(6)]  # ranks 11-16
+    row_fn = lambda p, rank: {"rank": rank, "name": p["name"], "is_ipswich": p["is_ipswich"]}
+    rows = _leaderboard(players, 10, row_fn)
+    ipswich_rows = [r for r in rows if r["is_ipswich"]]
+    assert len(ipswich_rows) == 5
+    assert ipswich_rows[0]["name"] == "TopIpswich" and ipswich_rows[0]["rank"] == 1
+    assert [r["name"] for r in ipswich_rows[1:]] == ["Ips0", "Ips1", "Ips2", "Ips3"]
+
+
 # ---- ESPN roster ages --------------------------------------------------------
 # Real shape (verified against a live response for team 373): "athletes" is a
 # flat list, each entry carrying "position" (an object) and "fullName" — but
@@ -596,41 +626,54 @@ def test_fotmob_stat_categories_skips_entries_without_a_name():
     assert _fotmob_stat_categories(league_json) == {}
 
 
-def _fotmob_participant(name, team_id, rank, value, minutes=270, matches=3):
-    return {"ParticipantName": name, "TeamId": team_id, "Rank": rank, "StatValue": value,
-            "MinutesPlayed": minutes, "MatchesPlayed": matches}
+def _fotmob_participant(name, team_id, rank, value, team_name="Rival FC", minutes=270, matches=3):
+    return {"ParticipantName": name, "TeamId": team_id, "TeamName": team_name, "Rank": rank,
+            "StatValue": value, "MinutesPlayed": minutes, "MatchesPlayed": matches}
 
 
-def test_parse_fotmob_player_stats_filters_to_ipswich_and_sorts_by_rank(monkeypatch):
-    # Two Ipswich players in one category (out of order in the source list —
-    # the real API doesn't guarantee Ipswich's own entries are contiguous or
-    # already sorted relative to each other) plus a category with no Ipswich
-    # player at all, which must be omitted rather than showing an empty row.
+def test_parse_fotmob_player_stats_is_top_10_plus_ipswich_stragglers(monkeypatch):
+    # Mirrors top_scorers/top_assists: top LEADERS_LIMIT (10) league-wide,
+    # plus Ipswich's own players who don't crack that top 10, at their real
+    # (positional) rank rather than squeezed into the top 10.
     import ingest
+    rivals = [_fotmob_participant(f"Rival {i}", 999, i, 10.0 - i * 0.1) for i in range(1, 11)]
+    tackles_list = rivals + [
+        _fotmob_participant("Ipswich Straggler", 9902, 11, 3.4, team_name="Ipswich Town"),
+        _fotmob_participant("Another Rival", 998, 12, 3.1),
+    ]
+    clearances_list = rivals + [
+        _fotmob_participant("Ipswich Clearer One", 9902, 11, 4.2, team_name="Ipswich Town"),
+        _fotmob_participant("Ipswich Clearer Two", 9902, 12, 3.9, team_name="Ipswich Town"),
+    ]
+    no_ipswich_list = [_fotmob_participant(f"Rival {i}", 999, i, 5.0) for i in range(1, 4)]
     stat_lists = {
-        "https://data.fotmob.com/tackles.json": {"TopLists": [{"StatList": [
-            _fotmob_participant("Rival Player", 999, 1, 5.0),
-            _fotmob_participant("Second Ipswich", 9902, 12, 2.1),
-            _fotmob_participant("First Ipswich", 9902, 4, 3.4),
-        ]}]},
-        "https://data.fotmob.com/interceptions.json": {"TopLists": [{"StatList": [
-            _fotmob_participant("Someone Else", 111, 1, 9.0),
-        ]}]},
+        "u-tackle": {"TopLists": [{"StatList": tackles_list}]},
+        "u-clearance": {"TopLists": [{"StatList": clearances_list}]},
+        "u-interception": {"TopLists": [{"StatList": no_ipswich_list}]},
     }
     monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: stat_lists[url])
     categories = {
-        "total_tackle": {"header": "Tackles per 90", "fetchAllUrl": "https://data.fotmob.com/tackles.json"},
-        "interception": {"header": "Interceptions per 90", "fetchAllUrl": "https://data.fotmob.com/interceptions.json"},
+        "total_tackle": {"header": "Tackles per 90", "fetchAllUrl": "u-tackle"},
+        "effective_clearance": {"header": "Clearances per 90", "fetchAllUrl": "u-clearance"},
+        "interception": {"header": "Interceptions per 90", "fetchAllUrl": "u-interception"},
     }
     out = ingest.parse_fotmob_player_stats(categories)
-    assert set(out.keys()) == {"defensive", "goalkeeping", "physical"}
-    defensive = out["defensive"]
-    assert len(defensive) == 1  # interceptions had no Ipswich player -> omitted
-    tackles = defensive[0]
-    assert tackles["key"] == "total_tackle"
-    assert tackles["total"] == 3
-    assert [p["name"] for p in tackles["players"]] == ["First Ipswich", "Second Ipswich"]
-    assert [p["rank"] for p in tackles["players"]] == [4, 12]
+    defensive = {c["key"]: c for c in out["defensive"]}
+    assert set(defensive.keys()) == {"total_tackle", "effective_clearance"}  # interception: no Ipswich -> dropped
+
+    tackles = defensive["total_tackle"]
+    assert len(tackles["rows"]) == 11  # top 10 + the one Ipswich straggler
+    assert [r["is_ipswich"] for r in tackles["rows"]] == [False] * 10 + [True]
+    straggler = tackles["rows"][-1]
+    assert straggler == {"rank": 11, "name": "Ipswich Straggler", "team": "Ipswich Town",
+                         "badge": "https://images.fotmob.com/image_resources/logo/teamlogo/9902.png",
+                         "value": 3.4, "is_ipswich": True}
+    top_row = tackles["rows"][0]
+    assert top_row["name"] == "Rival 1" and top_row["team"] == "Rival FC" and top_row["rank"] == 1
+
+    clearances = defensive["effective_clearance"]
+    assert len(clearances["rows"]) == 12  # top 10 + both Ipswich stragglers
+    assert sum(r["is_ipswich"] for r in clearances["rows"]) == 2
 
 
 def test_parse_fotmob_player_stats_skips_categories_missing_from_league_payload():
