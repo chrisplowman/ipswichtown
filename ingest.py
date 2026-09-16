@@ -1415,6 +1415,18 @@ FOTMOB_TEAM_STAT_NAMES = ["rating_team", "possession_percentage_team", "clean_sh
                           "accurate_pass_team", "big_chance_team", "touches_in_opp_box_team",
                           "total_tackle_team", "interception_team", "effective_clearance_team",
                           "phys_tdc_team"]
+# further team categories, shown as top-10 club tables (like the player
+# leaderboards above) rather than folded into the single-value "How Ipswich
+# compare" widget — excludes anything duplicating xG/xG conceded/xG
+# difference (already shown from Understat) or goals/game (already in
+# league_table), and attendance (not a performance stat).
+FOTMOB_TEAM_TABLE_GROUPS = {
+    "attacking": ["ontarget_scoring_att_team", "big_chance_missed_team",
+                  "accurate_cross_team", "corner_taken_team", "penalty_won_team"],
+    "defending": ["saves_team", "poss_won_att_3rd_team", "fk_foul_lost_team",
+                  "total_yel_card_team", "total_red_card_team", "penalty_conceded_team"],
+    "set_pieces": ["_set_piece_goals_team", "_set_piece_goals_conceded_team"],
+}
 
 
 def fetch_fotmob_league_stats():
@@ -1494,6 +1506,43 @@ def parse_fotmob_team_ranks(categories):
         rows.append({"label": cat.get("header"), "value": mine.get("StatValue"),
                      "rank": mine.get("Rank"), "total": len(stat_list)})
     return rows
+
+
+def parse_fotmob_team_stats(categories):
+    """Top-10 club tables for FOTMOB_TEAM_TABLE_GROUPS, in the same rows
+    shape as parse_fotmob_player_stats — {group: [{"key","label","rows":[...]}]}
+    — but keeping FotMob's own "Rank" on every row rather than a positional
+    1..10 count: with only 20 clubs (vs. hundreds of tracked players),
+    someone can plausibly check a club's rank against fotmob.com's own
+    page, so it needs to read the same there as here even where ties push a
+    club's real rank away from its position in the list. Ipswich is also
+    the only possible straggler (one club, not a squad of players) — either
+    they're already in the top 10, or they get appended once at that real
+    rank when they're not."""
+    out = {}
+    for group, names in FOTMOB_TEAM_TABLE_GROUPS.items():
+        cats = []
+        for name in names:
+            cat = categories.get(name)
+            if not cat or not cat.get("fetchAllUrl"):
+                continue
+            stat_list = sorted(_fotmob_stat_list(cat["fetchAllUrl"]), key=lambda t: t.get("Rank") or 9999)
+            if not stat_list:
+                continue
+            def row(t):
+                return {"rank": t.get("Rank"), "name": t.get("ParticipantName"),
+                        "badge": _fotmob_team_badge(t.get("TeamId")), "value": t.get("StatValue"),
+                        "is_ipswich": t.get("TeamId") == FOTMOB_TEAM_ID}
+            rows = [row(t) for t in stat_list[:LEADERS_LIMIT]]
+            if not any(r["is_ipswich"] for r in rows):
+                mine = next((t for t in stat_list if t.get("TeamId") == FOTMOB_TEAM_ID), None)
+                if mine:
+                    rows.append(row(mine))
+            if not any(r["is_ipswich"] for r in rows):
+                continue
+            cats.append({"key": name, "label": cat.get("header"), "rows": rows})
+        out[group] = cats
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -1764,16 +1813,18 @@ def main():
             team_ranks.append({"label": "Goal difference", "value": ips_row["gd"],
                                "rank": gd_rank, "total": nt, "low_good": False})
 
-    # FotMob — defensive/goalkeeping/physical player leaderboards and a
-    # further batch of team_ranks entries Understat/ClubElo don't carry
-    fotmob_player_stats = {}
+    # FotMob — defensive/goalkeeping/physical player leaderboards, top-10 club
+    # tables for a further batch of team stats, and more team_ranks entries
+    fotmob_player_stats, fotmob_team_stats = {}, {}
     try:
         fotmob_categories = _fotmob_stat_categories(fetch_fotmob_league_stats())
         fotmob_player_stats = parse_fotmob_player_stats(fotmob_categories)
+        fotmob_team_stats = parse_fotmob_team_stats(fotmob_categories)
         team_ranks += parse_fotmob_team_ranks(fotmob_categories)
         n_player_rows = sum(len(v) for v in fotmob_player_stats.values())
+        n_team_rows = sum(len(v) for v in fotmob_team_stats.values())
         print(f"  fotmob: {n_player_rows} player-stat categories with an Ipswich player, "
-              f"{len(team_ranks)} team_ranks total")
+              f"{n_team_rows} team-stat tables, {len(team_ranks)} team_ranks total")
     except Exception as e:
         print(f"  fotmob: skipped ({e})")
 
@@ -2082,7 +2133,8 @@ def main():
         "News": bool(news),
         "ESPN match events": bool(espn_events_by_date),
         "Top scorers/assists": bool(top_scorers),
-        "FotMob stats": bool(fotmob_player_stats) and any(fotmob_player_stats.values()),
+        "FotMob stats": (bool(fotmob_player_stats) and any(fotmob_player_stats.values()))
+                        or (bool(fotmob_team_stats) and any(fotmob_team_stats.values())),
     }
     # Pre-season is expected to have no match-derived data; don't flag those.
     preseason = fpl["summary"]["played"] == 0
@@ -2116,6 +2168,7 @@ def main():
         "league_table": league_table,
         "player_profiles": player_profiles,
         "fotmob_player_stats": fotmob_player_stats,
+        "fotmob_team_stats": fotmob_team_stats,
         "by_gameweek": fpl["by_gameweek"],
         "understat_matches": understat["matches"],
         "understat_history": ips_history,

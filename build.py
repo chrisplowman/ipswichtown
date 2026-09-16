@@ -593,6 +593,58 @@ def sample_data(live=None):
         ],
     }
 
+    # FotMob team-level top-10 club tables — real rank kept throughout (not
+    # positional), since with only 20 clubs it's checkable against fotmob.com
+    def _fotmob_team_rows(values, ipswich_value, ipswich_rank):
+        rows, vi = [], 0
+        for i in range(1, 11):
+            if i == ipswich_rank:
+                rows.append({"rank": i, "name": "Ipswich Town", "badge": None,
+                            "value": ipswich_value, "is_ipswich": True})
+            elif vi < len(values):
+                rows.append({"rank": i, "name": f"Rival {chr(65 + vi)}", "badge": None,
+                            "value": values[vi], "is_ipswich": False})
+                vi += 1
+        if ipswich_rank > 10:
+            rows.append({"rank": ipswich_rank, "name": "Ipswich Town", "badge": None,
+                        "value": ipswich_value, "is_ipswich": True})
+        return rows
+
+    fotmob_team_stats = {
+        "attacking": [
+            {"key": "ontarget_scoring_att_team", "label": "Shots on target per match",
+             "rows": _fotmob_team_rows([6.8, 6.2, 5.9, 5.6, 5.3, 5.1, 4.9, 4.7, 4.5], 4.2, 12)},
+            {"key": "big_chance_missed_team", "label": "Big chances missed",
+             "rows": _fotmob_team_rows([2, 3, 3, 4, 4, 5, 5, 5, 6], 7, 15)},
+            {"key": "accurate_cross_team", "label": "Accurate crosses per match",
+             "rows": _fotmob_team_rows([9.4, 8.7, 8.1, 7.6, 7.2, 6.8, 6.5, 6.2, 5.9], 6.7, 7)},
+            {"key": "corner_taken_team", "label": "Corners",
+             "rows": _fotmob_team_rows([7.5, 7.1, 6.8, 6.4, 6.1, 5.8, 5.5, 5.2, 4.9], 5.9, 9)},
+            {"key": "penalty_won_team", "label": "Penalties awarded",
+             "rows": _fotmob_team_rows([3, 3, 2, 2, 2, 2, 1, 1, 1], 1, 17)},
+        ],
+        "defending": [
+            {"key": "saves_team", "label": "Saves per match",
+             "rows": _fotmob_team_rows([5.2, 4.9, 4.6, 4.3, 4.1, 3.9, 3.7, 3.5, 3.3], 4.4, 4)},
+            {"key": "poss_won_att_3rd_team", "label": "Possession won final 3rd per match",
+             "rows": _fotmob_team_rows([9.8, 9.1, 8.6, 8.2, 7.8, 7.4, 7.1, 6.8, 6.5], 8.9, 5)},
+            {"key": "fk_foul_lost_team", "label": "Fouls per match",
+             "rows": _fotmob_team_rows([15.8, 14.9, 14.2, 13.6, 13.1, 12.6, 12.1, 11.7, 11.3], 11.5, 10)},
+            {"key": "total_yel_card_team", "label": "Yellow cards",
+             "rows": _fotmob_team_rows([13, 12, 11, 10, 10, 9, 9, 8, 8], 7, 11)},
+            {"key": "total_red_card_team", "label": "Red cards",
+             "rows": _fotmob_team_rows([3, 2, 2, 2, 1, 1, 1, 1, 1], 0, 18)},
+            {"key": "penalty_conceded_team", "label": "Penalties conceded",
+             "rows": _fotmob_team_rows([4, 3, 3, 2, 2, 2, 1, 1, 1], 1, 8)},
+        ],
+        "set_pieces": [
+            {"key": "_set_piece_goals_team", "label": "Set piece goals",
+             "rows": _fotmob_team_rows([6, 5, 5, 4, 4, 3, 3, 3, 2], 2, 16)},
+            {"key": "_set_piece_goals_conceded_team", "label": "Set piece goals conceded",
+             "rows": _fotmob_team_rows([1, 2, 2, 2, 3, 3, 3, 4, 4], 3, 6)},
+        ],
+    }
+
     understat_players = [{"name": s["full_name"], "games": 12, "minutes": s["minutes"], "goals": s["goals"],
                           "assists": s["assists"], "shots": s["goals"] * 4 + 3, "xg": s["xg"], "xa": s["xa"],
                           "npg": s["goals"], "npxg": round(s["xg"] * 0.85, 2),
@@ -792,6 +844,7 @@ def sample_data(live=None):
         "top_scorers": top_scorers, "top_assists": top_assists,
         "player_profiles": player_profiles,
         "fotmob_player_stats": fotmob_player_stats,
+        "fotmob_team_stats": fotmob_team_stats,
         "by_gameweek": by_gameweek, "understat_matches": understat_matches, "shot_maps": shot_maps,
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
         "understat_history": understat_history, "match_stats": match_stats,
