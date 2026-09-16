@@ -705,28 +705,25 @@ def test_parse_fotmob_team_ranks_skips_stat_missing_ipswich(monkeypatch):
     assert ingest.parse_fotmob_team_ranks(categories) == []
 
 
-def test_parse_fotmob_team_stats_is_top_10_plus_ipswich_straggler(monkeypatch):
-    # Same top-10 + straggler shape as parse_fotmob_player_stats, but a club
-    # can only ever contribute one row (n_ipswich=1) — unlike a squad of
-    # players, there's only one Ipswich Town to append.
+def test_parse_fotmob_team_stats_shows_all_clubs_sorted_by_real_rank(monkeypatch):
+    # All 20 clubs are shown (no top-N cut, unlike the player leaderboards —
+    # there's no long tail to trim with only 20 teams), sorted into FotMob's
+    # own real rank rather than a positional count, and the source list is
+    # deliberately out of order to prove the sort actually runs.
     import ingest
-    rivals = [_fotmob_participant(f"Rival {i}", 900 + i, i, 20.0 - i) for i in range(1, 11)]
-    fouls_list = rivals + [_fotmob_participant("Ipswich Town", 9902, 14, 8.5)]
-    # Ipswich sits at rank 3 — the "Rival 3" slot is dropped so ranks stay
-    # unique, same as a real 20-club list would never have two entries
-    # sharing a rank in this fixture (ties aren't being tested here).
-    corners_list = [r for r in rivals if r["Rank"] != 3] + \
-        [_fotmob_participant("Ipswich Town", 9902, 3, 6.1)]
+    fouls_list = [
+        _fotmob_participant("Ipswich Town", 9902, 14, 8.5),
+        _fotmob_participant("Rival A", 901, 1, 20.0),
+        _fotmob_participant("Rival B", 902, 2, 19.0),
+    ]
     no_ipswich_list = [_fotmob_participant(f"Rival {i}", 900 + i, i, 5.0) for i in range(1, 4)]
     stat_lists = {
         "u-fouls": {"TopLists": [{"StatList": fouls_list}]},
-        "u-corners": {"TopLists": [{"StatList": corners_list}]},
         "u-yellow": {"TopLists": [{"StatList": no_ipswich_list}]},
     }
     monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: stat_lists[url])
     categories = {
         "fk_foul_lost_team": {"header": "Fouls per match", "fetchAllUrl": "u-fouls"},
-        "corner_taken_team": {"header": "Corners", "fetchAllUrl": "u-corners"},
         "total_yel_card_team": {"header": "Yellow cards", "fetchAllUrl": "u-yellow"},
     }
     out = ingest.parse_fotmob_team_stats(categories)
@@ -734,22 +731,11 @@ def test_parse_fotmob_team_stats_is_top_10_plus_ipswich_straggler(monkeypatch):
     assert "total_yel_card_team" not in defending  # no Ipswich anywhere -> dropped
 
     fouls = defending["fk_foul_lost_team"]
-    assert len(fouls["rows"]) == 11  # top 10 + the one Ipswich straggler
-    assert [r["is_ipswich"] for r in fouls["rows"]] == [False] * 10 + [True]
-    # FotMob's own real rank (14th of 20), not a positional 11th-of-11 —
-    # unlike player stats, a club's rank is checkable against fotmob.com
-    # directly, so it must match what that page shows.
+    assert len(fouls["rows"]) == 3  # every club in the list, none trimmed
+    assert [r["rank"] for r in fouls["rows"]] == [1, 2, 14]  # sorted by real rank
     assert fouls["rows"][-1] == {"rank": 14, "name": "Ipswich Town",
                                  "badge": "https://images.fotmob.com/image_resources/logo/teamlogo/9902.png",
                                  "value": 8.5, "is_ipswich": True}
-
-    corners = {c["key"]: c for c in out["attacking"]}["corner_taken_team"]
-    assert len(corners["rows"]) == 10  # Ipswich already inside the top 10 -> no straggler appended
-    assert [r["is_ipswich"] for r in corners["rows"]] == \
-        [False, False, True] + [False] * 7  # sorted into its real rank-3 slot
-    assert corners["rows"][2] == {"rank": 3, "name": "Ipswich Town",
-                                  "badge": "https://images.fotmob.com/image_resources/logo/teamlogo/9902.png",
-                                  "value": 6.1, "is_ipswich": True}
 
 
 def test_parse_fotmob_team_stats_skips_categories_missing_from_league_payload():
