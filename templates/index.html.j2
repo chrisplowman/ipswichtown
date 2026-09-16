@@ -620,6 +620,37 @@
         </div>
         {% else %}<p class="empty-note">No FotMob player-attribute data yet.</p>{% endif %}
       </div>
+      {% set fotmob_team_groups = [('attacking', 'Attacking'), ('defending', 'Defending & discipline'), ('set_pieces', 'Set pieces')] %}
+      {% set fotmob_team_categories = [] %}
+      {% for group_key, group_label in fotmob_team_groups %}
+        {% for cat in (fotmob_team_stats or {}).get(group_key) or [] %}
+          {% set _ = fotmob_team_categories.append((group_label, cat)) %}
+        {% endfor %}
+      {% endfor %}
+      <div class="chartcard wide">
+        <div class="cardhead"><div class="htitle"><h3>Team stats</h3><p class="sub">Top 10 clubs on measures beyond xG/xGA/points — attacking, defending &amp; discipline and set pieces — plus Ipswich if they're outside it.</p></div><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Every Premier League club in FotMob's top 10 for that stat this season, plus Ipswich at their real rank out of 20 if they're outside it. Source: FotMob.</span></button></div>
+        {% if fotmob_team_categories %}
+        <div class="cols2">
+          {% for group_label, cat in fotmob_team_categories %}
+          <div>
+            <h4 class="subhead">{{ group_label }} · {{ cat.label }}</h4>
+            <table class="rivaltable">
+              <thead><tr><th>#</th><th>Club</th><th>{{ cat.label }}</th></tr></thead>
+              <tbody>
+                {% for r in cat.rows %}
+                <tr class="{{ 'ips' if r.is_ipswich }}">
+                  <td>{{ r.rank }}</td>
+                  <td class="tm">{% if r.badge %}<img class="badge" src="{{ r.badge }}" alt="">{% endif %}{{ r.name }}</td>
+                  <td><b>{{ r.value }}</b></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<p class="empty-note">No FotMob team-stat data yet.</p>{% endif %}
+      </div>
     </div>
   </section>
 
