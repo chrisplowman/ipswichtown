@@ -1536,6 +1536,83 @@ def parse_fotmob_team_stats(categories):
     return out
 
 
+# every FotMob team category the site uses, grouped the same way the Team
+# stats page presents them plus the 10 already in "How Ipswich compare"
+# under their own "style" group — the full set the Compare page draws on.
+FOTMOB_COMPARISON_GROUPS = {"style": FOTMOB_TEAM_STAT_NAMES, **FOTMOB_TEAM_TABLE_GROUPS}
+
+
+def build_team_comparisons(table, league_table, home_table, away_table, meetings,
+                            fotmob_categories, team_meta, teams):
+    """One merged stat sheet per club (keyed by FPL's own short code) for the
+    Compare page: league position/record/form (ESPN's `table`), underlying
+    numbers (Understat/ClubElo's `league_table`), every FotMob team-stat
+    category (grouped as FOTMOB_COMPARISON_GROUPS), home/away splits, and
+    head-to-head history. Cross-referenced through the same team_meta()/
+    canon() matching already relied on everywhere else a name needs to
+    cross from one source to another — not a fresh ad-hoc join, so it
+    inherits the same alias coverage already fixed/tested there."""
+    short_by_canon = {canon(t["name"]): t["short_name"] for t in teams.values()}
+    by_short = {}
+
+    def entry(short):
+        return by_short.setdefault(short, {"short": short,
+                                            "fotmob": {g: [] for g in FOTMOB_COMPARISON_GROUPS}})
+
+    for row in table or []:
+        short = short_by_canon.get(canon(row["team"]))
+        if not short:
+            continue
+        e = entry(short)
+        e.update({"team": row["team"], "badge": row.get("badge"), "rank": row.get("rank"),
+                  "played": row.get("played"), "won": row.get("won"), "drawn": row.get("drawn"),
+                  "lost": row.get("lost"), "gf": row.get("gf"), "ga": row.get("ga"),
+                  "gd": row.get("gd"), "points": row.get("points"), "form": row.get("form") or [],
+                  "is_ipswich": row.get("is_ipswich", False)})
+
+    for row in league_table or []:
+        short = row.get("short")
+        if not short:
+            continue
+        e = entry(short)
+        e.setdefault("team", row.get("team"))
+        e.setdefault("badge", row.get("badge"))
+        e.update({"xg": row.get("xg"), "xga": row.get("xga"), "npxg": row.get("npxg"),
+                  "xg_pg": row.get("xg_pg"), "xga_pg": row.get("xga_pg"), "ppda": row.get("ppda"),
+                  "elo": row.get("elo"), "xpts": row.get("xpts"), "xpts_diff": row.get("xpts_diff")})
+
+    for side, side_table in (("home", home_table), ("away", away_table)):
+        for row in side_table or []:
+            short = row.get("short")
+            if not short:
+                continue
+            entry(short)[f"{side}_record"] = {
+                "played": row.get("played"), "won": row.get("won"), "drawn": row.get("drawn"),
+                "lost": row.get("lost"), "gf": row.get("gf"), "ga": row.get("ga"),
+                "gd": row.get("gd"), "points": row.get("points")}
+
+    for e in by_short.values():
+        e["h2h"] = sorted(meetings.get(canon(e.get("team", "")), []),
+                          key=lambda m: m["date"], reverse=True)[:5]
+
+    for group, names in FOTMOB_COMPARISON_GROUPS.items():
+        for name in names:
+            cat = fotmob_categories.get(name)
+            if not cat or not cat.get("fetchAllUrl"):
+                continue
+            stat_list = _fotmob_stat_list(cat["fetchAllUrl"])
+            total = len(stat_list)
+            for t in stat_list:
+                short, _ = team_meta(t.get("ParticipantName") or "")
+                if short not in by_short:
+                    continue
+                by_short[short]["fotmob"][group].append({
+                    "key": name, "label": cat.get("header"),
+                    "value": t.get("StatValue"), "rank": t.get("Rank"), "total": total})
+
+    return by_short
+
+
 # --------------------------------------------------------------------------- #
 def main():
     fpl = fetch_fpl()
@@ -1806,7 +1883,7 @@ def main():
 
     # FotMob — defensive/goalkeeping/physical player leaderboards, top-10 club
     # tables for a further batch of team stats, and more team_ranks entries
-    fotmob_player_stats, fotmob_team_stats = {}, {}
+    fotmob_player_stats, fotmob_team_stats, fotmob_categories = {}, {}, {}
     try:
         fotmob_categories = _fotmob_stat_categories(fetch_fotmob_league_stats())
         fotmob_player_stats = parse_fotmob_player_stats(fotmob_categories)
@@ -2098,6 +2175,16 @@ def main():
             row["badge"] = badge_for(short)
             row["is_ipswich"] = TEAM_NAME_MATCH in row["team"].lower()
 
+    # Team-vs-team comparison data (Compare page) — built entirely from data
+    # already fetched above, cross-referenced via team_meta()/canon().
+    team_comparisons = {}
+    try:
+        team_comparisons = build_team_comparisons(
+            table, league_table, home_table, away_table, meetings, fotmob_categories, team_meta, teams)
+        print(f"  team comparisons: {len(team_comparisons)} clubs")
+    except Exception as e:
+        print(f"  team comparisons: skipped ({e})")
+
     news = []
     try:
         news = fetch_news()
@@ -2126,6 +2213,7 @@ def main():
         "Top scorers/assists": bool(top_scorers),
         "FotMob stats": (bool(fotmob_player_stats) and any(fotmob_player_stats.values()))
                         or (bool(fotmob_team_stats) and any(fotmob_team_stats.values())),
+        "Team comparisons": bool(team_comparisons),
     }
     # Pre-season is expected to have no match-derived data; don't flag those.
     preseason = fpl["summary"]["played"] == 0
@@ -2160,6 +2248,7 @@ def main():
         "player_profiles": player_profiles,
         "fotmob_player_stats": fotmob_player_stats,
         "fotmob_team_stats": fotmob_team_stats,
+        "team_comparisons": team_comparisons,
         "by_gameweek": fpl["by_gameweek"],
         "understat_matches": understat["matches"],
         "understat_history": ips_history,

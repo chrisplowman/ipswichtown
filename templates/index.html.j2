@@ -741,6 +741,29 @@
     </div>
   </section>
 
+  <!-- COMPARE -->
+  {% endif %}
+  {% if page == 'compare' %}
+  <section class="panel">
+    <div class="block card">
+      <div class="cardhead"><h3>Compare</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Ipswich Town head-to-head against any Premier League club: league record, underlying numbers, FotMob team stats, home/away form and recent meetings. Source: Fantasy Premier League API, ESPN, Understat, ClubElo and FotMob.</span></button></div>
+      {% if team_comparisons %}
+      <p class="sub">Pick a club to compare with Ipswich Town this season.</p>
+      <div class="profile-controls">
+        <label>Compare with
+          <select id="cmp-select" aria-label="Club to compare with Ipswich Town">
+            {% for e in team_comparisons.values()|list|sort(attribute='team') if not e.is_ipswich %}
+            <option value="{{ e.short }}">{{ e.team }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="cmp-head" id="cmp-head"></div>
+      <div id="cmp-body"></div>
+      {% else %}<p class="empty-note">No comparison data yet.</p>{% endif %}
+    </div>
+  </section>
+
   <!-- NEWS -->
   {% endif %}
   {% if page == 'news' %}
@@ -775,8 +798,10 @@
   Raw data: <code>data/itfc.json</code> · A reference page, not affiliated with Ipswich Town FC.
 </footer>
 
-{% if page in ['charts','squad'] %}
+{% if page in ['charts','squad','compare'] %}
 <script id="itfc-data" type="application/json">{{ data_json|safe }}</script>
+{% endif %}
+{% if page in ['charts','squad'] %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 {% endif %}
 <script>
@@ -843,6 +868,7 @@
   // Each section is its own page now — build whatever this page contains.
   if(document.getElementById('c-points')) buildCharts();
   if(document.getElementById('c-radar')) buildProfiles();
+  if(document.getElementById('cmp-select')) setupCompare();
 
   function showNote(id,msg){ var c=document.getElementById('c-'+id); if(c)c.style.display='none';
     var n=document.getElementById('n-'+id); if(n){n.hidden=false;n.textContent=msg;} }
@@ -1465,6 +1491,118 @@
   }
   makeSortable('squad');
   makeSortable('underlying-table');
+
+  // Compare page: Ipswich vs a picked club, entirely from data already in
+  // DATA.team_comparisons — no per-selection fetch, just re-render on change.
+  function setupCompare(){
+    var sel = document.getElementById('cmp-select');
+    var head = document.getElementById('cmp-head');
+    var body = document.getElementById('cmp-body');
+    if(!sel || !body) return;
+    var comps = DATA.team_comparisons || {};
+    var ips = null;
+    for(var k in comps){ if(comps[k].is_ipswich){ ips = comps[k]; break; } }
+    if(!ips){ body.innerHTML=''; return; }
+
+    function cmpRow(label, a, b, noBar){
+      var an = typeof a === 'number', bn = typeof b === 'number';
+      var row = '<div class="cmprow"><div class="top"><span class="v">'+(an?fmtVal(a):(a==null?'–':a))+
+        '</span><span class="lab">'+label+'</span><span class="v">'+(bn?fmtVal(b):(b==null?'–':b))+'</span></div>';
+      if(!noBar && an && bn){
+        var tot = Math.abs(a) + Math.abs(b);
+        var af = tot ? (Math.abs(a)/tot*100) : 50;
+        row += '<div class="cmpbar"><span class="f" style="width:'+af.toFixed(1)+'%"></span>'+
+          '<span class="a" style="width:'+(100-af).toFixed(1)+'%"></span></div>';
+      }
+      return row + '</div>';
+    }
+    function section(title, rows){
+      rows = rows.filter(Boolean);
+      return rows.length ? '<h4 class="subhead">'+title+'</h4>'+rows.join('') : '';
+    }
+    function formDots(form){
+      return '<div class="formdots">'+(form||[]).map(function(f){
+        return '<i class="'+f+'">'+f+'</i>';
+      }).join('')+'</div>';
+    }
+    var GROUP_LABEL = {style:'Style & shape', attacking:'Attacking',
+      defending:'Defending & discipline', set_pieces:'Set pieces'};
+
+    function draw(){
+      var opp = comps[sel.value];
+      if(!opp) return;
+      head.innerHTML =
+        '<div class="cmp-side">'+(ips.badge?'<img src="'+ips.badge+'" alt="">':'')+'<div class="nm">'+ips.team+'</div></div>'+
+        '<div class="cmp-vs">vs</div>'+
+        '<div class="cmp-side">'+(opp.badge?'<img src="'+opp.badge+'" alt="">':'')+'<div class="nm">'+opp.team+'</div></div>';
+
+      var html = '';
+      html += section('League record', [
+        cmpRow('League position', ips.rank!=null?ord(ips.rank):null, opp.rank!=null?ord(opp.rank):null, true),
+        cmpRow('Points', ips.points, opp.points),
+        cmpRow('Played', ips.played, opp.played),
+        cmpRow('Won', ips.won, opp.won),
+        cmpRow('Drawn', ips.drawn, opp.drawn),
+        cmpRow('Lost', ips.lost, opp.lost),
+        cmpRow('Goals for', ips.gf, opp.gf),
+        cmpRow('Goals against', ips.ga, opp.ga),
+        cmpRow('Goal difference', ips.gd, opp.gd),
+      ]);
+      if((ips.form||[]).length || (opp.form||[]).length){
+        html += '<div class="cmprow"><div class="top">'+formDots(ips.form)+
+          '<span class="lab">Recent form</span>'+formDots(opp.form)+'</div></div>';
+      }
+
+      html += section('Underlying numbers', [
+        cmpRow('Expected goals (xG)', ips.xg, opp.xg),
+        cmpRow('Expected goals against (xGA)', ips.xga, opp.xga),
+        cmpRow('Non-penalty xG', ips.npxg, opp.npxg),
+        cmpRow('xG per game', ips.xg_pg, opp.xg_pg),
+        cmpRow('xGA per game', ips.xga_pg, opp.xga_pg),
+        cmpRow('Pressing (PPDA)', ips.ppda, opp.ppda),
+        cmpRow('Elo rating', ips.elo, opp.elo),
+        cmpRow('Expected points (xPts)', ips.xpts, opp.xpts),
+      ]);
+
+      ['style','attacking','defending','set_pieces'].forEach(function(g){
+        var ipsCats = (ips.fotmob && ips.fotmob[g]) || [];
+        var oppByKey = {};
+        ((opp.fotmob && opp.fotmob[g]) || []).forEach(function(c){ oppByKey[c.key]=c; });
+        html += section(GROUP_LABEL[g], ipsCats.map(function(c){
+          var o = oppByKey[c.key];
+          return cmpRow(c.label, c.value, o?o.value:null);
+        }));
+      });
+
+      if(ips.home_record || opp.home_record){
+        html += section('Home form', [
+          cmpRow('Home points', ips.home_record&&ips.home_record.points, opp.home_record&&opp.home_record.points),
+          cmpRow('Home goal difference', ips.home_record&&ips.home_record.gd, opp.home_record&&opp.home_record.gd),
+        ]);
+      }
+      if(ips.away_record || opp.away_record){
+        html += section('Away form', [
+          cmpRow('Away points', ips.away_record&&ips.away_record.points, opp.away_record&&opp.away_record.points),
+          cmpRow('Away goal difference', ips.away_record&&ips.away_record.gd, opp.away_record&&opp.away_record.gd),
+        ]);
+      }
+
+      html += '<h4 class="subhead">Recent meetings</h4>';
+      if(opp.h2h && opp.h2h.length){
+        html += '<ul class="cmp-h2h">' + opp.h2h.map(function(m){
+          return '<li>'+(m.result?'<span class="res '+m.result+'">'+m.result+'</span>':'')+m.opponent+
+            ' <span class="assist">'+(m.home?'(H)':'(A)')+' '+m.score+' · '+m.date+'</span></li>';
+        }).join('') + '</ul>';
+      } else {
+        html += '<p class="empty-note">No recorded meetings between these two clubs.</p>';
+      }
+
+      body.innerHTML = html;
+    }
+    sel.addEventListener('change', draw);
+    draw();
+  }
+
   // per-90 toggle
   var per90=document.getElementById('per90-toggle');
   if(per90){

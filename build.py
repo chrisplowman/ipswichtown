@@ -36,6 +36,7 @@ PAGES = [
     ("charts",   "charts.html", "Charts"),
     ("matches",  "matches.html", "Matches"),
     ("squad",    "squad.html",  "Squad"),
+    ("compare",  "compare.html", "Compare"),
     ("news",     "news.html",   "News"),
 ]
 
@@ -59,6 +60,7 @@ OG = {
     "charts":   ("Ipswich Town: season charts", "xG, expected points, pressing, discipline and more, chart by chart."),
     "matches":  ("Ipswich Town: match results", "Every result this season with xG, and a full report for each match."),
     "squad":    ("Ipswich Town: squad stats", "Per-90 stats and percentile profiles for the Ipswich squad."),
+    "compare":  ("Ipswich Town: club comparison", "Pick any Premier League club and compare it head-to-head with Ipswich Town."),
     "news":     ("Ipswich Town: latest news", "The latest Ipswich Town headlines from across the web."),
 }
 
@@ -800,6 +802,64 @@ def sample_data(live=None):
     releg_odds = {r["team"]: round(max(0.2, (r["rank"] - 12) * 9 + (r["rank"] - 12)**2), 1)
                   if r["rank"] >= 12 else 0.2 for r in table}
 
+    # Compare page: one merged stat sheet per club, keyed by short code —
+    # table/league_table/home_table/away_table are all already keyed by
+    # "short" in this sample data, so no name-matching is needed here (real
+    # ingest.py's build_team_comparisons does that matching for live data).
+    FOTMOB_SAMPLE_CATS = {
+        "style": [("rating_team", "FotMob rating", 7.5, 0.04),
+                  ("possession_percentage_team", "Average possession", 62, 1.0),
+                  ("clean_sheet_team", "Clean sheets", 6, 0.25),
+                  ("accurate_pass_team", "Accurate passes per match", 88, 1.1),
+                  ("big_chance_team", "Big chances", 14, 0.4),
+                  ("touches_in_opp_box_team", "Touches in opposition box", 28, 0.8),
+                  ("total_tackle_team", "Tackles per match", 22, 0.3),
+                  ("interception_team", "Interceptions per match", 12, 0.2),
+                  ("effective_clearance_team", "Clearances per match", 26, 0.4),
+                  ("phys_tdc_team", "Distance per match (km)", 112, 0.3)],
+        "attacking": [("ontarget_scoring_att_team", "Shots on target per match", 6.8, 0.22),
+                      ("big_chance_missed_team", "Big chances missed", 9, 0.35),
+                      ("accurate_cross_team", "Accurate crosses per match", 9.4, 0.28),
+                      ("corner_taken_team", "Corners", 7.5, 0.22),
+                      ("penalty_won_team", "Penalties awarded", 4, 0.15)],
+        "defending": [("saves_team", "Saves per match", 5.2, 0.18),
+                      ("poss_won_att_3rd_team", "Possession won final 3rd per match", 9.8, 0.28),
+                      ("fk_foul_lost_team", "Fouls per match", 15.8, 0.35),
+                      ("total_yel_card_team", "Yellow cards", 13, 0.4),
+                      ("total_red_card_team", "Red cards", 3, 0.12),
+                      ("penalty_conceded_team", "Penalties conceded", 4, 0.14)],
+        "set_pieces": [("_set_piece_goals_team", "Set piece goals", 6, 0.2),
+                       ("_set_piece_goals_conceded_team", "Set piece goals conceded", 5, 0.2)],
+    }
+    lt_by_short = {r["short"]: r for r in league_table}
+    ht_by_short = {r["short"]: r for r in home_table}
+    at_by_short = {r["short"]: r for r in away_table}
+    team_comparisons = {}
+    for r in table:
+        short = r["short"]
+        lt = lt_by_short.get(short, {})
+        c = {"short": short, "team": r["team"], "badge": r["badge"], "rank": r["rank"],
+             "played": r["played"], "won": r["won"], "drawn": r["drawn"], "lost": r["lost"],
+             "gf": r["gf"], "ga": r["ga"], "gd": r["gd"], "points": r["points"],
+             "form": r["form"], "is_ipswich": r["is_ipswich"],
+             "xg": lt.get("xg"), "xga": lt.get("xga"), "npxg": lt.get("npxg"),
+             "xg_pg": lt.get("xg_pg"), "xga_pg": lt.get("xga_pg"), "ppda": lt.get("ppda"),
+             "elo": lt.get("elo"), "xpts": lt.get("xpts"), "xpts_diff": lt.get("xpts_diff"),
+             "h2h": [{"date": "2025-12-21", "opponent": r["team"], "home": False,
+                     "score": "1-2", "result": "L"},
+                    {"date": "2025-04-19", "opponent": r["team"], "home": True,
+                     "score": "2-2", "result": "D"}] if not r["is_ipswich"] else [],
+             "fotmob": {group: [{"key": key, "label": label,
+                                 "value": round(top - (r["rank"] - 1) * step, 2), "total": 20}
+                                for key, label, top, step in cats]
+                       for group, cats in FOTMOB_SAMPLE_CATS.items()}}
+        ht, at = ht_by_short.get(short), at_by_short.get(short)
+        if ht:
+            c["home_record"] = {k: ht[k] for k in ("played", "won", "drawn", "lost", "gf", "ga", "gd", "points")}
+        if at:
+            c["away_record"] = {k: at[k] for k in ("played", "won", "drawn", "lost", "gf", "ga", "gd", "points")}
+        team_comparisons[short] = c
+
     # top scorers / assists — a handful of real-name dummy rows (rest of the league,
     # plus one Ipswich player mid-table) so this section has something to show.
     ips_leader = squad[0] if squad else {"full_name": "Ipswich Striker", "starts": 10,
@@ -844,6 +904,7 @@ def sample_data(live=None):
         "player_profiles": player_profiles,
         "fotmob_player_stats": fotmob_player_stats,
         "fotmob_team_stats": fotmob_team_stats,
+        "team_comparisons": team_comparisons,
         "by_gameweek": by_gameweek, "understat_matches": understat_matches, "shot_maps": shot_maps,
         "understat_players": understat_players, "upcoming": upcoming, "fixtures": fixtures,
         "understat_history": understat_history, "match_stats": match_stats,
