@@ -547,6 +547,26 @@ ul.chancelist li{align-items:flex-start}
 .rankbar span{display:block;height:100%;border-radius:var(--radius-full);background:var(--primary)}
 .rankbar span.good{background:var(--win)}
 .rankbar span.bad{background:var(--loss)}
+/* head-to-head comparison row (Compare page): a label with Ipswich's value
+   and the chosen opponent's value either side, plus a split proportional
+   bar — primary/loss are reused here purely as the established "us vs them"
+   color pair (pitch markers, shot maps, match-stat bars), not a win/loss cue */
+.cmprow{margin-bottom:14px}
+.cmprow .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;gap:8px}
+.cmprow .top .v{font-weight:600;font-size:15px;white-space:nowrap}
+.cmprow .top .lab{color:var(--steel);text-align:center;flex:1}
+.cmpbar{display:flex;height:8px;border-radius:var(--radius-full);overflow:hidden;background:var(--tint-gray)}
+.cmpbar .f{background:var(--primary)}
+.cmpbar .a{background:var(--loss)}
+.cmp-head{display:flex;align-items:center;justify-content:center;gap:20px;padding:20px 16px}
+.cmp-head .cmp-side{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;min-width:0}
+.cmp-head .cmp-side img{width:44px;height:44px;object-fit:contain}
+.cmp-head .cmp-side .nm{font-weight:600;font-size:14px;text-align:center}
+.cmp-head .cmp-vs{color:var(--steel);font-size:13px;font-weight:600}
+.cmp-h2h{list-style:none;margin:0;padding:0}
+.cmp-h2h li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--hairline-soft);font-size:14px}
+.cmp-h2h li:last-child{border-bottom:0}
+.cmp-h2h .assist{color:var(--stone);font-size:12px}
 #squad{min-width:720px}
 #squad thead th{position:sticky;top:0;background:var(--surface);color:var(--charcoal);font-weight:600;font-size:11px;letter-spacing:.5px;text-transform:uppercase;text-align:right;padding:0;white-space:nowrap;border-bottom:1px solid var(--hairline)}
 /* sortable-table header buttons: shared by #squad and any .ltable that opts

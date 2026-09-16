@@ -742,3 +742,73 @@ def test_parse_fotmob_team_stats_skips_categories_missing_from_league_payload():
     from ingest import parse_fotmob_team_stats
     out = parse_fotmob_team_stats({})
     assert out == {"attacking": [], "defending": [], "set_pieces": []}
+
+
+# ---- build_team_comparisons (Compare page) -----------------------------------
+def _compare_fixture_teams():
+    return {1: {"name": "Ipswich Town", "short_name": "IPS"},
+            2: {"name": "Arsenal", "short_name": "ARS"}}
+
+
+def test_build_team_comparisons_merges_table_league_table_and_home_away():
+    from ingest import build_team_comparisons
+    table = [
+        {"team": "Ipswich Town", "badge": "ips.svg", "rank": 14, "played": 4, "won": 2, "drawn": 0,
+         "lost": 2, "gf": 7, "ga": 10, "gd": -3, "points": 6, "form": ["W", "L"], "is_ipswich": True},
+        {"team": "Arsenal", "badge": "ars.svg", "rank": 1, "played": 4, "won": 4, "drawn": 0,
+         "lost": 0, "gf": 12, "ga": 2, "gd": 10, "points": 12, "form": ["W", "W"], "is_ipswich": False},
+    ]
+    league_table = [
+        {"team": "Ipswich Town", "short": "IPS", "badge": "ips.svg", "xg": 6.3, "xga": 9.1,
+         "npxg": 5.8, "xg_pg": 1.58, "xga_pg": 2.28, "ppda": 9.2, "elo": 1480, "xpts": 5.1, "xpts_diff": 0.9},
+        {"team": "Arsenal", "short": "ARS", "badge": "ars.svg", "xg": 11.0, "xga": 2.5,
+         "npxg": 10.1, "xg_pg": 2.75, "xga_pg": 0.63, "ppda": 6.1, "elo": 1920, "xpts": 11.2, "xpts_diff": 0.8},
+    ]
+    home_table = [{"team": "Ipswich Town", "short": "IPS", "played": 2, "won": 1, "drawn": 0,
+                   "lost": 1, "gf": 2, "ga": 3, "gd": -1, "points": 3}]
+    away_table = [{"team": "Arsenal", "short": "ARS", "played": 2, "won": 2, "drawn": 0,
+                   "lost": 0, "gf": 6, "ga": 1, "gd": 5, "points": 6}]
+    meetings = {"arsenal": [{"date": "2025-01-11", "opponent": "Arsenal", "home": True,
+                             "score": "1-3", "result": "L"}]}
+    out = build_team_comparisons(table, league_table, home_table, away_table, meetings,
+                                 {}, lambda title: (None, None), _compare_fixture_teams())
+
+    assert set(out.keys()) == {"IPS", "ARS"}
+    ips = out["IPS"]
+    assert ips["team"] == "Ipswich Town" and ips["points"] == 6 and ips["is_ipswich"] is True
+    assert ips["xg"] == 6.3 and ips["elo"] == 1480
+    assert ips["home_record"] == {"played": 2, "won": 1, "drawn": 0, "lost": 1,
+                                  "gf": 2, "ga": 3, "gd": -1, "points": 3}
+    assert "away_record" not in ips  # Ipswich has no away_table row in this fixture
+
+    ars = out["ARS"]
+    assert ars["away_record"]["points"] == 6
+    assert ars["h2h"] == meetings["arsenal"]
+    assert ips["fotmob"] == {"style": [], "attacking": [], "defending": [], "set_pieces": []}
+
+
+def test_build_team_comparisons_attaches_fotmob_values_via_team_meta(monkeypatch):
+    import ingest
+    stat_lists = {"u-rating": {"TopLists": [{"StatList": [
+        {"ParticipantName": "Ipswich Town", "TeamId": 9902, "Rank": 15, "StatValue": 6.69},
+        {"ParticipantName": "Arsenal", "TeamId": 8455, "Rank": 2, "StatValue": 7.24},
+        {"ParticipantName": "Nobody FC", "TeamId": 1, "Rank": 20, "StatValue": 5.5},
+    ]}]}}
+    monkeypatch.setattr(ingest, "get_json", lambda url, *a, **k: stat_lists[url])
+    meta_by_norm = ingest._build_meta_by_norm(_compare_fixture_teams(), {})
+    team_meta = lambda title: ingest._team_meta(title, meta_by_norm)
+    categories = {"rating_team": {"header": "FotMob rating", "fetchAllUrl": "u-rating"}}
+    table = [{"team": "Ipswich Town", "rank": 14, "played": 4, "won": 2, "drawn": 0, "lost": 2,
+             "gf": 7, "ga": 10, "gd": -3, "points": 6, "is_ipswich": True},
+             {"team": "Arsenal", "rank": 1, "played": 4, "won": 4, "drawn": 0, "lost": 0,
+             "gf": 12, "ga": 2, "gd": 10, "points": 12, "is_ipswich": False}]
+
+    out = ingest.build_team_comparisons(table, [], [], [], {}, categories, team_meta,
+                                        _compare_fixture_teams())
+
+    assert out["ARS"]["fotmob"]["style"] == [{"key": "rating_team", "label": "FotMob rating",
+                                              "value": 7.24, "rank": 2, "total": 3}]
+    assert out["IPS"]["fotmob"]["style"][0]["value"] == 6.69
+    # "Nobody FC" doesn't match any known club -> silently dropped, not a
+    # spurious third entry in the comparison set
+    assert set(out.keys()) == {"IPS", "ARS"}
