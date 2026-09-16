@@ -1509,16 +1509,13 @@ def parse_fotmob_team_ranks(categories):
 
 
 def parse_fotmob_team_stats(categories):
-    """Top-10 club tables for FOTMOB_TEAM_TABLE_GROUPS, in the same rows
+    """Full 20-club tables for FOTMOB_TEAM_TABLE_GROUPS, in the same rows
     shape as parse_fotmob_player_stats — {group: [{"key","label","rows":[...]}]}
-    — but keeping FotMob's own "Rank" on every row rather than a positional
-    1..10 count: with only 20 clubs (vs. hundreds of tracked players),
-    someone can plausibly check a club's rank against fotmob.com's own
-    page, so it needs to read the same there as here even where ties push a
-    club's real rank away from its position in the list. Ipswich is also
-    the only possible straggler (one club, not a squad of players) — either
-    they're already in the top 10, or they get appended once at that real
-    rank when they're not."""
+    — but every club rather than a top-N-plus-Ipswich cut: with only 20
+    clubs total (vs. hundreds of tracked players), there's no long tail to
+    trim. Keeps FotMob's own "Rank" on every row rather than a positional
+    count, so it reads the same as fotmob.com's own page even where a tie
+    pushes a club's real rank away from its position in the list."""
     out = {}
     for group, names in FOTMOB_TEAM_TABLE_GROUPS.items():
         cats = []
@@ -1529,15 +1526,9 @@ def parse_fotmob_team_stats(categories):
             stat_list = sorted(_fotmob_stat_list(cat["fetchAllUrl"]), key=lambda t: t.get("Rank") or 9999)
             if not stat_list:
                 continue
-            def row(t):
-                return {"rank": t.get("Rank"), "name": t.get("ParticipantName"),
-                        "badge": _fotmob_team_badge(t.get("TeamId")), "value": t.get("StatValue"),
-                        "is_ipswich": t.get("TeamId") == FOTMOB_TEAM_ID}
-            rows = [row(t) for t in stat_list[:LEADERS_LIMIT]]
-            if not any(r["is_ipswich"] for r in rows):
-                mine = next((t for t in stat_list if t.get("TeamId") == FOTMOB_TEAM_ID), None)
-                if mine:
-                    rows.append(row(mine))
+            rows = [{"rank": t.get("Rank"), "name": t.get("ParticipantName"),
+                     "badge": _fotmob_team_badge(t.get("TeamId")), "value": t.get("StatValue"),
+                     "is_ipswich": t.get("TeamId") == FOTMOB_TEAM_ID} for t in stat_list]
             if not any(r["is_ipswich"] for r in rows):
                 continue
             cats.append({"key": name, "label": cat.get("header"), "rows": rows})
