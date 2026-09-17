@@ -462,11 +462,11 @@
         <div class="matchreport" id="match-report" hidden></div>
         <div class="pitch-holder" id="pitch"></div>
         <div class="note" id="n-shot" hidden></div>
-        <div class="shotkey">
-          <span><i style="background:#2e9e5b"></i> Goal</span>
-          <span><i style="background:#3f7ddb"></i> Saved</span>
-          <span><i style="background:#e0a53b"></i> Blocked</span>
-          <span><i style="background:#9aa6b8"></i> Off target</span>
+        <div class="shotkey" id="shot-key">
+          <label class="shotkey-item" data-bucket="Goal"><input type="checkbox" checked><i style="background:#2e9e5b"></i> Goal</label>
+          <label class="shotkey-item" data-bucket="Saved"><input type="checkbox" checked><i style="background:#3f7ddb"></i> Saved</label>
+          <label class="shotkey-item" data-bucket="Blocked"><input type="checkbox" checked><i style="background:#e0a53b"></i> Blocked</label>
+          <label class="shotkey-item" data-bucket="Off"><input type="checkbox" checked><i style="background:#9aa6b8"></i> Off target</label>
           <span style="margin-left:auto">Circle size = xG</span>
         </div>
       </div>
@@ -1416,6 +1416,23 @@
     var allShots = [];
     pages.forEach(function(m){ (m.shots_for||[]).forEach(function(s){ allShots.push(s); }); });
 
+    var shotFilters = {Goal:true, Saved:true, Blocked:true, Off:true};
+    function shotBucket(result){
+      if(result==='Goal') return 'Goal';
+      if(result==='SavedShot') return 'Saved';
+      if(result==='BlockedShot') return 'Blocked';
+      return 'Off';
+    }
+    function filterShots(shots){ return shots.filter(function(s){ return shotFilters[shotBucket(s.result)]; }); }
+    [].forEach.call(document.querySelectorAll('#shot-key .shotkey-item'), function(label){
+      var box = label.querySelector('input');
+      box.addEventListener('change', function(){
+        shotFilters[label.getAttribute('data-bucket')] = box.checked;
+        label.classList.toggle('off', !box.checked);
+        draw(sel.value);
+      });
+    });
+
     var seasonOpt = document.createElement('option');
     seasonOpt.value = 'season';
     seasonOpt.textContent = 'All season (' + allShots.length + ' shots)';
@@ -1430,7 +1447,7 @@
       if(v==='season'){
         sel.value='season';
         scoreEl.textContent = pages.length+' match'+(pages.length===1?'':'es');
-        holder.innerHTML = pitchSVG(allShots, true);
+        holder.innerHTML = pitchSVG(filterShots(allShots), true);
         var goals = allShots.filter(function(s){return s.result==='Goal';}).length;
         var totalXg = allShots.reduce(function(a,s){return a+s.xg;},0);
         var top = allShots.slice().sort(function(a,b){return b.xg-a.xg;})[0];
@@ -1442,7 +1459,7 @@
         return;
       }
       var m=pages[+v]; scoreEl.textContent=(m.home?'H ':'A ')+m.score;
-      holder.innerHTML = pitchSVG(m.shots_for||[]);
+      holder.innerHTML = pitchSVG(filterShots(m.shots_for||[]));
       if(m.xg_for!=null){
         var topM=(m.shots_for||[]).slice().sort(function(a,b){return b.xg-a.xg;})[0];
         mr.hidden=false;
@@ -1463,7 +1480,7 @@
     s+='<circle cx="'+(W/2)+'" cy="'+(H/2)+'" r="9.15" fill="none" stroke="'+ln+'" stroke-width="0.4"/>';
     s+=box(0,16.5)+box(W-16.5,16.5);
     var op = dense ? 0.35 : 0.78;
-    var rBase = dense ? 1.4 : 2, rScale = dense ? 4.5 : 7;
+    var rBase = dense ? 0.7 : 1, rScale = dense ? 2.25 : 3.5;
     shots.forEach(function(sh){
       var cx=sh.x*W, cy=sh.y*H, r=rBase+Math.sqrt(sh.xg)*rScale;
       var col=SHOT[sh.result]||'#9aa6b8';
