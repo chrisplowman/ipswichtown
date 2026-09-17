@@ -188,6 +188,7 @@
 :root[data-theme="teletext"] .ltable thead th,
 :root[data-theme="teletext"] .lkey,
 :root[data-theme="teletext"] .chartcard p.sub,
+:root[data-theme="teletext"] .pad p.sub,
 :root[data-theme="teletext"] .chartcard .note,
 :root[data-theme="teletext"] .chartcard .insight,
 :root[data-theme="teletext"] .shotbar select,
@@ -516,7 +517,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 .chartcard{padding:18px 20px 20px;min-width:0}
 .chartcard.wide{grid-column:1 / -1}
 .chartcard .htitle{min-width:0}
-.chartcard p.sub{margin:8px 0 0;font-size:13px;color:var(--steel);text-wrap:pretty;line-height:1.5}
+.chartcard p.sub,.pad p.sub{margin:8px 0 0;font-size:13px;color:var(--steel);text-wrap:pretty;line-height:1.5}
 .canvas-holder{position:relative;height:300px;padding:0px}
 .chartcard .note{color:var(--steel);font-size:14px;padding:40px 0;text-align:center}
 .chartcard .insight{margin-top:14px;padding-top:12px;border-top:1px solid var(--hairline-soft);font-size:12.5px;line-height:1.5;color:var(--slate)}
