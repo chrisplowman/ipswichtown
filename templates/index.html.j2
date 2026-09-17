@@ -748,18 +748,20 @@
     <div class="block card">
       <div class="cardhead"><h3>Compare</h3><button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Ipswich Town head-to-head against any Premier League club: league record, underlying numbers, FotMob team stats, home/away form and recent meetings. Source: Fantasy Premier League API, ESPN, Understat, ClubElo and FotMob.</span></button></div>
       {% if team_comparisons %}
-      <p class="sub">Pick a club to compare with Ipswich Town this season.</p>
-      <div class="profile-controls">
-        <label>Compare with
-          <select id="cmp-select" aria-label="Club to compare with Ipswich Town">
-            {% for e in team_comparisons.values()|list|sort(attribute='team') if not e.is_ipswich %}
-            <option value="{{ e.short }}">{{ e.team }}</option>
-            {% endfor %}
-          </select>
-        </label>
+      <div class="pad">
+        <p class="sub">Pick a club to compare with Ipswich Town this season.</p>
+        <div class="profile-controls">
+          <label>Compare with
+            <select id="cmp-select" aria-label="Club to compare with Ipswich Town">
+              {% for e in team_comparisons.values()|list|sort(attribute='team') if not e.is_ipswich %}
+              <option value="{{ e.short }}">{{ e.team }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <div class="cmp-head" id="cmp-head"></div>
+        <div id="cmp-body"></div>
       </div>
-      <div class="cmp-head" id="cmp-head"></div>
-      <div id="cmp-body"></div>
       {% else %}<p class="empty-note">No comparison data yet.</p>{% endif %}
     </div>
   </section>
