@@ -212,7 +212,7 @@
         {% if table and by_gameweek %}
         <div class="shotkey" id="wpts-teamkeys">
           {% for row in table if not row.is_ipswich %}
-          <label class="shotkey-item off" data-team="{{ row.team }}"><input type="checkbox" data-swatch="{{ loop.index0 }}"><i style="background:{{ ['var(--loss)','var(--brand-orange)','var(--win)','var(--link-blue)','var(--card-yellow)'][loop.index0 % 5] }}"></i> {{ row.team }}</label>
+          <label class="shotkey-item off" data-team="{{ row.team }}"><input type="checkbox" data-swatch="{{ loop.index0 }}"><i style="background:{{ ['var(--loss)','var(--brand-orange)','var(--win)','var(--link-blue)','var(--card-yellow)'][loop.index0 % 5] }}"></i> {{ row.team }} ({{ row.points }})</label>
           {% endfor %}
         </div>
         {% endif %}
@@ -411,9 +411,11 @@
       data:{labels:seasonLabels,datasets:wdsets},
       options:baseOpts({scales:wScales})});
     // "Show any team" overlay: a checkbox per other club adds/removes its own
-    // cumulative-points line (same sequential, match-by-match reading as the
-    // main Points line above — "after this team's Nth match", not a calendar
-    // date), on the same left-hand axis so it's directly comparable.
+    // actual-so-far (solid) + projected-to-end-of-season (dashed) lines, the
+    // same sequential, match-by-match reading and same straight-line
+    // points-per-game extrapolation as the main Points line above — "after
+    // this team's Nth match", not a calendar date — on the same left-hand
+    // axis so it's directly comparable.
     var teamProg = DATA.league_points_progression||{};
     var teamPalette = [cv('--loss'),cv('--brand-orange'),cv('--win'),cv('--link-blue'),cv('--card-yellow')];
     var teamKeyEl = document.getElementById('wpts-teamkeys');
@@ -423,16 +425,27 @@
         var label = box.closest('.shotkey-item'), name = label.getAttribute('data-team');
         var color = teamPalette[(+box.getAttribute('data-swatch'))%teamPalette.length];
         label.classList.toggle('off', !box.checked);
-        var idx = wptsChart.data.datasets.findIndex(function(d){return d.teamKey===name;});
         if(box.checked){
-          if(idx===-1){
+          var already = wptsChart.data.datasets.some(function(d){return d.teamGroup===name;});
+          if(!already){
             var series = teamProg[name]||[];
-            wptsChart.data.datasets.push({label:name, teamKey:name,
-              data:seasonLabels.map(function(_,i){return i<series.length?series[i]:null;}),
-              borderColor:color, backgroundColor:'transparent', tension:.2, pointRadius:0, fill:false, spanGaps:false});
+            var playedT = series.length;
+            var lastPtsT = playedT ? series[playedT-1] : 0;
+            var ppgT = playedT ? lastPtsT/playedT : 0;
+            var actualT = seasonLabels.map(function(_,i){return i < playedT ? series[i] : null;});
+            var projT = seasonLabels.map(function(_,i){var g=i+1;
+              if(g < playedT) return null;
+              if(g === playedT) return lastPtsT;
+              return +(lastPtsT + ppgT*(g-playedT)).toFixed(1);});
+            wptsChart.data.datasets.push(
+              {label:name, teamGroup:name, data:actualT, borderColor:color,
+               backgroundColor:'transparent', tension:.2, pointRadius:0, fill:false, spanGaps:false},
+              {label:name+' (proj. '+Math.round(ppgT*TOTAL_GW)+' pts)', teamGroup:name, data:projT,
+               borderColor:color, borderDash:[6,5], tension:.2, pointRadius:0, fill:false,
+               backgroundColor:'transparent'});
           }
-        } else if(idx!==-1){
-          wptsChart.data.datasets.splice(idx,1);
+        } else {
+          wptsChart.data.datasets = wptsChart.data.datasets.filter(function(d){return d.teamGroup!==name;});
         }
         wptsChart.update();
       });
