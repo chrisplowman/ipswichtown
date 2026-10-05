@@ -1130,6 +1130,27 @@ def by_gameweek_women(results):
     return out
 
 
+def league_points_progression(league_results):
+    """Every league team's own cumulative points, match by match (their own
+    chronological order, sequential position — same semantics as
+    by_gameweek_women's cum_points), for the Points progression chart's
+    "show any team" overlay checkboxes. {team_name: [cum1, cum2, ...]}."""
+    by_team = {}
+    for m in league_results or []:
+        for team, gf, ga in ((m["home"], m["home_score"], m["away_score"]),
+                              (m["away"], m["away_score"], m["home_score"])):
+            pts = 3 if gf > ga else 1 if gf == ga else 0
+            by_team.setdefault(team, []).append(pts)
+    out = {}
+    for team, pts_list in by_team.items():
+        cum, series = 0, []
+        for p in pts_list:
+            cum += p
+            series.append(cum)
+        out[team] = series
+    return out
+
+
 def render_women_site(template, match_template, data, outdir):
     """Renders into outdir (e.g. site/women/), sharing style.css/fonts/share.js
     from outdir's parent (the site root, alongside site/men/) — main() copies
@@ -1139,6 +1160,7 @@ def render_women_site(template, match_template, data, outdir):
     team = data.get("team") or {}
     fguide = form_guide_women(data)
     data["by_gameweek"] = by_gameweek_women(data.get("results"))
+    data["league_points_progression"] = league_points_progression(data.get("league_results"))
 
     # readable match-page URLs (date + opponent + venue), same convention as
     # the men's side's slugs — see render_site. Results are linked to a
@@ -1317,6 +1339,26 @@ def sample_data_women():
         {"rank": 3, "team": "Newcastle United", "points": 49},
     ]
 
+    # Synthetic per-team match results for the Points progression chart's
+    # "show any team" overlay — reproduces each table row's own W/D/L counts
+    # as its own sequence of matches. Opponents are throwaway placeholders
+    # (not round-robin-consistent); only each real team's own cumulative
+    # total, fed through the same league_points_progression() build uses for
+    # live data, needs to be right.
+    league_results = []
+    for row in table:
+        outcomes = ["W"] * row["won"] + ["D"] * row["drawn"] + ["L"] * row["lost"]
+        for i, res in enumerate(outcomes):
+            gf, ga = {"W": (2, 1), "D": (1, 1), "L": (0, 2)}[res]
+            date = f"2026-{9 + i // 4:02d}-{(i % 4) * 7 + 6:02d}"
+            opp = f"{row['team']} sample opponent {i}"
+            if i % 2 == 0:
+                league_results.append({"date": date, "home": row["team"], "away": opp,
+                                        "home_score": gf, "away_score": ga})
+            else:
+                league_results.append({"date": date, "home": opp, "away": row["team"],
+                                        "home_score": ga, "away_score": gf})
+
     ips_table_row = next(r for r in table if r["is_ipswich"])
     team_ranks = [
         {"label": "Points", "value": ips_table_row["points"], "rank": ips_table_row["rank"],
@@ -1349,6 +1391,7 @@ def sample_data_women():
                     {"event": 10, "opponent": "Birmingham City", "home": False,
                      "kickoff": "2026-10-04T14:00:00Z"}],
         "table": table,
+        "league_results": league_results,
         "squad": squad,
         "news": [{"source": "TWTD", "date_display": "2 days ago",
                   "title": "Ipswich Women fall short in narrow defeat at Charlton",

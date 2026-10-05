@@ -209,6 +209,13 @@
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to the end of the season (dashed) at the club's current rate, against the pace needed to match last season's top 3 (right axis).</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to the end of the season at the club's current points-per-game, alongside straight-line pace references for last season's 1st/2nd/3rd-place final points totals. Source: FotMob.</span></button></div>
         <div class="canvas-holder"><canvas id="c-wpoints"></canvas></div><div class="note" id="n-wpoints" hidden></div><p class="insight" id="i-wpoints"></p>
+        {% if table and by_gameweek %}
+        <div class="shotkey" id="wpts-teamkeys">
+          {% for row in table if not row.is_ipswich %}
+          <label class="shotkey-item off" data-team="{{ row.team }}"><input type="checkbox" data-swatch="{{ loop.index0 }}"><i style="background:{{ ['var(--loss)','var(--brand-orange)','var(--win)','var(--link-blue)','var(--card-yellow)'][loop.index0 % 5] }}"></i> {{ row.team }}</label>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
       <div class="chartcard wide">
         <div class="cardhead"><div class="htitle"><h3>Goals by match</h3><p class="sub">Goals scored and conceded in each match: a quick read of the club's best and worst weeks.</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Goals scored and conceded, match by match. Source: FotMob.</span></button></div>
@@ -400,9 +407,36 @@
       wScales.y1 = {position:'right', min:0, max:yMax, grid:{display:false},
         title:{display:true,text:'Points'}};
     }
-    new Chart(document.getElementById('c-wpoints'),{type:'line',
+    var wptsChart = new Chart(document.getElementById('c-wpoints'),{type:'line',
       data:{labels:seasonLabels,datasets:wdsets},
       options:baseOpts({scales:wScales})});
+    // "Show any team" overlay: a checkbox per other club adds/removes its own
+    // cumulative-points line (same sequential, match-by-match reading as the
+    // main Points line above — "after this team's Nth match", not a calendar
+    // date), on the same left-hand axis so it's directly comparable.
+    var teamProg = DATA.league_points_progression||{};
+    var teamPalette = [cv('--loss'),cv('--brand-orange'),cv('--win'),cv('--link-blue'),cv('--card-yellow')];
+    var teamKeyEl = document.getElementById('wpts-teamkeys');
+    if(teamKeyEl){
+      teamKeyEl.addEventListener('change', function(e){
+        var box = e.target; if(box.tagName!=='INPUT') return;
+        var label = box.closest('.shotkey-item'), name = label.getAttribute('data-team');
+        var color = teamPalette[(+box.getAttribute('data-swatch'))%teamPalette.length];
+        label.classList.toggle('off', !box.checked);
+        var idx = wptsChart.data.datasets.findIndex(function(d){return d.teamKey===name;});
+        if(box.checked){
+          if(idx===-1){
+            var series = teamProg[name]||[];
+            wptsChart.data.datasets.push({label:name, teamKey:name,
+              data:seasonLabels.map(function(_,i){return i<series.length?series[i]:null;}),
+              borderColor:color, backgroundColor:'transparent', tension:.2, pointRadius:0, fill:false, spanGaps:false});
+          }
+        } else if(idx!==-1){
+          wptsChart.data.datasets.splice(idx,1);
+        }
+        wptsChart.update();
+      });
+    }
     var recentN = Math.min(3, played);
     var recentPts = cumPts[played-1] - (played > recentN ? cumPts[played-recentN-1] : 0);
     var recentPpg = recentPts/recentN;
