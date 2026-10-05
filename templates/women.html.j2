@@ -207,7 +207,7 @@
   <section class="panel">
     <div class="chartgrid">
       <div class="chartcard wide">
-        <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to the end of the season (dashed) at the club's current rate, against last season's top 3 final totals (right axis).</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to the end of the season at the club's current points-per-game, alongside last season's 1st/2nd/3rd-place final points totals for reference. Source: FotMob.</span></button></div>
+        <div class="cardhead"><div class="htitle"><h3>Points progression</h3><p class="sub">Points so far (solid), projected to the end of the season (dashed) at the club's current rate, against the pace needed to match last season's top 3 (right axis).</p></div><button class="infobtn" type="button" aria-label="About this chart"><span aria-hidden="true">i</span><span class="tip" role="tooltip">Cumulative points from full-time results, projected to the end of the season at the club's current points-per-game, alongside straight-line pace references for last season's 1st/2nd/3rd-place final points totals. Source: FotMob.</span></button></div>
         <div class="canvas-holder"><canvas id="c-wpoints"></canvas></div><div class="note" id="n-wpoints" hidden></div><p class="insight" id="i-wpoints"></p>
       </div>
       <div class="chartcard wide">
@@ -374,17 +374,21 @@
     var wdsets = [
       {label:'Points',data:actualData,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.2,pointRadius:3,spanGaps:false},
       {label:'Projected ('+Math.round(ppg*TOTAL_GW)+' pts)',data:projData,borderColor:C.blue,borderDash:[6,5],tension:.2,pointRadius:0,fill:false}];
-    // Last season's top 3 final points, as flat reference lines mirrored onto
-    // a right-hand axis — but that axis shares the exact same 0..max range
-    // as the left one (explicit min/max on both, not just visually similar),
-    // so a reference line's height is directly comparable to this season's
-    // points line rather than reading at some unrelated scale.
+    // Last season's top 3 final points, as straight-line pace references
+    // (0 at kickoff, ramping to the final total by the last matchweek) rather
+    // than flat lines — so at any point in the season you can read off
+    // whether the club is ahead of or behind that pace, not just where it
+    // ends up. Mirrored onto a right-hand axis that shares the exact same
+    // 0..max range as the left one (explicit min/max on both, not just
+    // visually similar), so the pace line's height is directly comparable
+    // to this season's points line rather than reading at some unrelated
+    // scale.
     var lastTop3 = DATA.last_season_top3||[];
     var rankWord = {1:'1st',2:'2nd',3:'3rd'};
     var top3Dash = {1:[2,2],2:[5,3],3:[8,4]};
     lastTop3.forEach(function(t){
-      wdsets.push({label:(rankWord[t.rank]||t.rank+'th')+' last season ('+t.team+', '+t.points+')',
-        data:seasonLabels.map(function(){return t.points;}), yAxisID:'y1',
+      wdsets.push({label:(rankWord[t.rank]||t.rank+'th')+' last season pace ('+t.team+', '+t.points+')',
+        data:seasonLabels.map(function(_,i){return +(t.points*(i+1)/TOTAL_GW).toFixed(1);}), yAxisID:'y1',
         borderColor:C.muted, borderDash:top3Dash[t.rank]||[4,4], borderWidth:1.5,
         tension:0, pointRadius:0, fill:false});
     });
