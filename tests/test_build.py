@@ -249,6 +249,25 @@ def test_women_data_is_meaningful():
     assert _women_data_is_meaningful({"upcoming": [{"opponent": "X"}]}) is True
 
 
+def test_league_points_progression_builds_each_teams_own_cumulative_series():
+    from build import league_points_progression
+    league_results = [
+        {"date": "2026-08-01", "home": "Ipswich Town", "away": "Rival A", "home_score": 2, "away_score": 1},
+        {"date": "2026-08-08", "home": "Rival B", "away": "Rival A", "home_score": 1, "away_score": 1},
+        {"date": "2026-08-15", "home": "Rival A", "away": "Ipswich Town", "home_score": 0, "away_score": 0},
+    ]
+    out = league_points_progression(league_results)
+    assert out["Ipswich Town"] == [3, 4]          # W (home) then D (away)
+    assert out["Rival A"] == [0, 1, 2]             # L (away) then D (home) then D (away)
+    assert out["Rival B"] == [1]                   # D (home)
+
+
+def test_league_points_progression_empty_without_results():
+    from build import league_points_progression
+    assert league_points_progression([]) == {}
+    assert league_points_progression(None) == {}
+
+
 def test_is_live_now():
     from build import _is_live_now
     from datetime import datetime, timezone

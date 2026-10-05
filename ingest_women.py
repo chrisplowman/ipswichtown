@@ -262,6 +262,32 @@ def parse_fixtures(league_json):
     return results, upcoming
 
 
+def parse_league_results(league_json):
+    """Every finished match in the league this season, for every team (not
+    just Ipswich) — source for the Points progression chart's "show any
+    team" overlay. build.py turns this into each team's own cumulative-
+    points series, chronological, same semantics as by_gameweek_women."""
+    matches = _find_list(league_json, lambda x: "status" in x and "home" in x and "away" in x) or []
+    out = []
+    for m in matches:
+        home, away = m.get("home") or {}, m.get("away") or {}
+        status = m.get("status") or {}
+        if not status.get("finished") or status.get("cancelled"):
+            continue
+        hs, as_ = home.get("score"), away.get("score")
+        if hs is None or as_ is None:
+            parts = (status.get("scoreStr") or "").split("-")
+            hs = int(parts[0]) if len(parts) == 2 and parts[0].strip().lstrip("-").isdigit() else None
+            as_ = int(parts[1]) if len(parts) == 2 and parts[1].strip().isdigit() else None
+        if hs is None or as_ is None:
+            continue
+        out.append({"date": (status.get("utcTime") or "")[:10],
+                     "home": home.get("name") or "", "away": away.get("name") or "",
+                     "home_score": hs, "away_score": as_})
+    out.sort(key=lambda x: x["date"])
+    return out
+
+
 def _pos_from_code(desc):
     """FotMob's positionIdsDesc is a comma list like "CM,CDM,CAM" (multiple
     positions a player covers) — take the first and bucket it the same
@@ -764,6 +790,13 @@ def main():
     if not results and not upcoming:
         missing.append("fixtures & results")
 
+    league_results = []
+    try:
+        league_results = parse_league_results(league_json) if league_json else []
+        print(f"  league results (all teams): {len(league_results)} matches")
+    except Exception as e:
+        print(f"  league results (all teams): skipped ({e})")
+
     venue = None
     try:
         venue = parse_venue(team_json) if team_json else None
@@ -860,7 +893,8 @@ def main():
         "team": {"short_name": "Ipswich", "badge": team_badge},
         "position": position, "summary": summary, "summary_text": summary_text,
         "next_fixture": next_fixture,
-        "results": results, "upcoming": upcoming, "table": table, "squad": squad, "news": news,
+        "results": results, "upcoming": upcoming, "league_results": league_results,
+        "table": table, "squad": squad, "news": news,
         "venue": venue, "coach": coach, "last_match": last_match, "match_pages": match_pages,
         "last_season_top3": last_season_top3, "team_ranks": team_ranks,
         "health": {"missing": missing},

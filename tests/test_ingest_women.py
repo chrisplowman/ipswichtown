@@ -170,6 +170,47 @@ def test_parse_fixtures_skips_cancelled_matches():
     assert results == [] and upcoming == []
 
 
+# ---- parse_league_results --------------------------------------------------
+def test_parse_league_results_includes_every_team_not_just_ipswich():
+    matches = [
+        {"round": 1, "home": {"id": 1, "name": "Ipswich Town", "score": 3},
+         "away": {"id": 2, "name": "Some Rival", "score": 1},
+         "status": {"finished": True, "utcTime": "2026-08-10T14:00:00Z"}},
+        {"round": 1, "home": {"id": 4, "name": "Other Team", "score": 2}, "away": {"id": 5, "name": "Different Team", "score": 2},
+         "status": {"finished": True, "utcTime": "2026-08-11T14:00:00Z"}},
+        {"round": 2, "home": {"id": 3, "name": "Another Club"}, "away": {"id": 1, "name": "Ipswich Town"},
+         "status": {"finished": False, "utcTime": "2026-08-24T14:00:00Z"}},
+    ]
+    out = iw.parse_league_results(_league_json([], matches))
+    assert len(out) == 2   # only the two finished matches — the upcoming one is excluded
+    assert out[0] == {"date": "2026-08-10", "home": "Ipswich Town", "away": "Some Rival",
+                       "home_score": 3, "away_score": 1}
+    assert out[1] == {"date": "2026-08-11", "home": "Other Team", "away": "Different Team",
+                       "home_score": 2, "away_score": 2}
+
+
+def test_parse_league_results_uses_score_str_fallback_and_skips_cancelled():
+    matches = [
+        {"home": {"id": 1, "name": "A"}, "away": {"id": 2, "name": "B"},
+         "status": {"finished": True, "utcTime": "2026-08-10T14:00:00Z", "scoreStr": "2-0"}},
+        {"home": {"id": 3, "name": "C"}, "away": {"id": 4, "name": "D"},
+         "status": {"finished": False, "cancelled": True}},
+    ]
+    out = iw.parse_league_results(_league_json([], matches))
+    assert out == [{"date": "2026-08-10", "home": "A", "away": "B", "home_score": 2, "away_score": 0}]
+
+
+def test_parse_league_results_sorted_chronologically():
+    matches = [
+        {"home": {"id": 1, "name": "A", "score": 1}, "away": {"id": 2, "name": "B", "score": 0},
+         "status": {"finished": True, "utcTime": "2026-09-01T14:00:00Z"}},
+        {"home": {"id": 3, "name": "C", "score": 2}, "away": {"id": 4, "name": "D", "score": 2},
+         "status": {"finished": True, "utcTime": "2026-08-01T14:00:00Z"}},
+    ]
+    out = iw.parse_league_results(_league_json([], matches))
+    assert [r["date"] for r in out] == ["2026-08-01", "2026-09-01"]
+
+
 # ---- parse_squad ------------------------------------------------------------
 # FotMob nests the real list two levels down: team_json["squad"] is a dict
 # ({"squad": [...], "isNationalTeam": ...}), and each entry in that inner
