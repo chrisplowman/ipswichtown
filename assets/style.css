@@ -177,6 +177,7 @@
 :root[data-theme="teletext"] .snapshot-label,
 :root[data-theme="teletext"] .surv-sub,
 :root[data-theme="teletext"] .surv-meta,
+:root[data-theme="teletext"] .progrow .sub,
 :root[data-theme="teletext"] .rivaltable,
 :root[data-theme="teletext"] .rivaltable thead th,
 :root[data-theme="teletext"] .snapshot p,
@@ -346,6 +347,7 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 .stat .v.pos{color:var(--win)}
 .stat .v.neg{color:var(--loss)}
 .cols,.cols2,.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px}
 .card h3,.chartcard h3{font-weight:600;font-size:16px;letter-spacing:-.2px;color:var(--charcoal);text-wrap:balance}
 /* Every card's title lives in its own header div (.cardhead), never bare in the
    card body, so an info icon can sit opposite it without touching the title markup. */
@@ -364,7 +366,7 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 /* the navy hero cards (snapshot/survival) get the same boxed header band as
    every .card/.chartcard, just tinted for a dark background instead of
    var(--surface-soft) */
-.snapshot>.cardhead,.survival>.cardhead{margin:-20px -22px 16px;padding:14px 22px;
+.snapshot>.cardhead,.survival>.cardhead,.progress>.cardhead{margin:-20px -22px 16px;padding:14px 22px;
   background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.14);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0}
 /* the info + share icon buttons: identical circular chrome, expanded tap
@@ -391,9 +393,9 @@ ul.news .tag.doubt{background:var(--tint-yellow);color:var(--brand-orange-deep)}
 :root[data-theme="dark"] .infobtn .tip{background:#050508;color:#ececef}
 @media(max-width:600px){.infobtn .tip{width:180px}}
 /* on the navy hero cards the default steel-on-white icon styling has no contrast */
-.snapshot .infobtn,.survival .infobtn,.snapshot .sharebtn,.survival .sharebtn{color:var(--on-dark-muted);border-color:rgba(255,255,255,.35)}
-.snapshot .infobtn:hover,.snapshot .infobtn:focus-visible,.survival .infobtn:hover,.survival .infobtn:focus-visible,
-.snapshot .sharebtn:hover,.snapshot .sharebtn:focus-visible,.survival .sharebtn:hover,.survival .sharebtn:focus-visible{color:var(--brand-navy);background:#fff;border-color:#fff}
+.snapshot .infobtn,.survival .infobtn,.progress .infobtn,.snapshot .sharebtn,.survival .sharebtn,.progress .sharebtn{color:var(--on-dark-muted);border-color:rgba(255,255,255,.35)}
+.snapshot .infobtn:hover,.snapshot .infobtn:focus-visible,.survival .infobtn:hover,.survival .infobtn:focus-visible,.progress .infobtn:hover,.progress .infobtn:focus-visible,
+.snapshot .sharebtn:hover,.snapshot .sharebtn:focus-visible,.survival .sharebtn:hover,.survival .sharebtn:focus-visible,.progress .sharebtn:hover,.progress .sharebtn:focus-visible{color:var(--brand-navy);background:#fff;border-color:#fff}
 /* groups the share + info icons together at the header's trailing edge;
    injected by share.js so every card gets one without a per-card template edit */
 .cardactions{display:inline-flex;align-items:center;gap:8px;flex:none}
@@ -444,7 +446,7 @@ ul.list li.has-link .opp{color:var(--primary)}
 .formdots i.L,.h2h-dots i.L,.wp-l,.res.L,.fdot.L,.page-match .pill.L{background:var(--loss)}
 .score{font-weight:600;font-size:14px}
 .empty-note{padding:22px 18px;color:var(--steel);font-size:14px;text-wrap:pretty}
-.snapshot,.survival{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
+.snapshot,.survival,.progress{background:var(--brand-navy);color:var(--on-dark);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow-card)}
 .playerlink{color:var(--primary);text-decoration:none;font-weight:500}
 .playerlink:hover{text-decoration:underline}
 /* compact stat-table skeleton shared with .rivaltable and the match-report
@@ -476,6 +478,13 @@ ul.list li.has-link .opp{color:var(--primary)}
 .surv-safe{background:var(--win)}
 .surv-rel{background:var(--loss)}
 .surv-meta{font-size:12.5px;color:var(--on-dark-muted);margin-top:12px;line-height:1.5}
+.progrow{margin-bottom:14px}
+.progrow:last-child{margin-bottom:0}
+.progrow .top{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:6px}
+.progrow .top b{font-size:16px;font-weight:700}
+.progrow .sub{font-size:11.5px;color:var(--on-dark-muted);margin-top:5px}
+.progbar{height:8px;border-radius:var(--radius-full);background:rgba(255,255,255,.15);overflow:hidden}
+.progbar span{display:block;height:100%;border-radius:var(--radius-full);background:var(--link-blue)}
 .rivaltable th,.rivaltable td,.page-match th,.page-match td{padding:7px 8px}
 .rivaltable th:nth-child(2),.rivaltable td.tm{text-align:left}
 .rivaltable td.tm{display:flex;align-items:center;gap:7px}
@@ -607,7 +616,7 @@ footer{padding:32px 0 50px;color:var(--steel);font-size:12.5px;text-align:center
 footer code{background:var(--surface);border:1px solid var(--hairline);padding:1px 6px;border-radius:var(--radius-xs)}
 @media(max-width:760px){
   .stats{grid-template-columns:repeat(4,1fr)}
-  .cols,.cols2,.chartgrid,.ranks{grid-template-columns:1fr}
+  .cols,.cols2,.cols3,.chartgrid,.ranks{grid-template-columns:1fr}
   .tabs .wrap{overflow-x:auto}
 }
 /* Only the first page view of a session gets the rise-in; every tab click after
