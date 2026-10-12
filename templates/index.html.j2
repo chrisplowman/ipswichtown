@@ -48,9 +48,9 @@
   <!-- OVERVIEW -->
   {% if page == 'overview' %}
   <section class="panel">
-    {% if summary_text or survival %}
+    {% if summary_text or survival or season_progress %}
     <div class="block">
-      <div class="cols">
+      <div class="cols3">
         {% if summary_text %}
         <div class="snapshot">
           <div class="cardhead">
@@ -72,6 +72,31 @@
             <span class="surv-safe" style="width:{{ survival.survive_pct }}%"></span><span class="surv-rel" style="width:{{ survival.releg_pct }}%"></span>
           </div>
           <div class="surv-meta">Projected finish ~{{ survival.avg_position }}th on {{ survival.avg_points }} pts (likely {{ survival.pts_lo }}–{{ survival.pts_hi }}). From {{ '{:,}'.format(survival.sims) }} simulations.</div>
+        </div>
+        {% endif %}
+        {% if season_progress %}
+        <div class="progress">
+          <div class="cardhead">
+            <div class="snapshot-label">Season progress</div>
+            <button class="infobtn" type="button" aria-label="About this data"><span aria-hidden="true">i</span><span class="tip" role="tooltip">How far through the 38-game season the club is, and how the current points total compares to a nominal 40-point safety mark and the pace the 17th-placed team — the current safety line — is on course to finish with. Source: FPL API.</span></button>
+          </div>
+          <div class="progrow">
+            <div class="top"><span>Towards 40 points</span><b>{{ season_progress.pct_to_40 }}%</b></div>
+            <div class="progbar"><span style="width:{{ [season_progress.pct_to_40, 100]|min }}%"></span></div>
+            <div class="sub">{{ season_progress.points }} of 40 pts</div>
+          </div>
+          {% if season_progress.pct_to_17th is not none %}
+          <div class="progrow">
+            <div class="top"><span>Towards 17th-place pace</span><b>{{ season_progress.pct_to_17th }}%</b></div>
+            <div class="progbar"><span style="width:{{ [season_progress.pct_to_17th, 100]|min }}%"></span></div>
+            <div class="sub">{{ season_progress.points }} of ~{{ season_progress.survival_pts }} pts</div>
+          </div>
+          {% endif %}
+          <div class="progrow">
+            <div class="top"><span>Season played</span><b>{{ season_progress.pct_season_played }}%</b></div>
+            <div class="progbar"><span style="width:{{ season_progress.pct_season_played }}%"></span></div>
+            <div class="sub">{{ season_progress.played }} of 38 games</div>
+          </div>
         </div>
         {% endif %}
       </div>

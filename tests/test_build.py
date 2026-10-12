@@ -78,6 +78,31 @@ def test_season_summary_relegation_tone():
     assert "18th" in s and "relegation" in s.lower()
 
 
+def test_season_progress_none_preseason():
+    from build import season_progress
+    assert season_progress({"summary": {"played": 0}}) is None
+    assert season_progress({}) is None
+
+
+def test_season_progress_computes_pct_to_40_and_17th_pace_and_season_played():
+    from build import season_progress
+    d = {"summary": {"played": 12, "points": 18},
+         "table": [{"rank": 17, "points": 15, "played": 12}]}
+    sp = season_progress(d)
+    assert sp["points"] == 18 and sp["played"] == 12
+    assert sp["pct_to_40"] == 45          # 18/40
+    assert sp["survival_pts"] == 48       # 15/12*38 rounded
+    assert sp["pct_to_17th"] == 38        # 18/48 rounded
+    assert sp["pct_season_played"] == 32  # 12/38 rounded
+
+
+def test_season_progress_pct_to_17th_none_without_a_17th_placed_row():
+    from build import season_progress
+    sp = season_progress({"summary": {"played": 5, "points": 8}, "table": []})
+    assert sp["survival_pts"] is None and sp["pct_to_17th"] is None
+    assert sp["pct_to_40"] == 20 and sp["pct_season_played"] == round(5 / 38 * 100)
+
+
 def test_projected_table_projection_and_rank():
     from build import projected_table
     pt = projected_table({"table": [

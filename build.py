@@ -373,6 +373,30 @@ def season_summary(data):
     return " ".join(parts)
 
 
+def season_progress(data):
+    """How far through the 38-game season the club is, and how its points
+    total compares to two paces: a nominal 40-point safety mark, and the
+    pace the 17th-placed team (the current safety line) is on course to
+    finish with — same survival-points calc season_summary() uses for its
+    prose. Feeds the "Season progress" pod alongside Season snapshot /
+    Survival forecast on Overview. None pre-season, when there's no points
+    total yet for a percentage-of-pace reading to mean anything."""
+    s = data.get("summary") or {}
+    played, pts = s.get("played", 0), s.get("points", 0)
+    if not played:
+        return None
+    table = data.get("table") or []
+    safe = next((r for r in table if r.get("rank") == 17), None)
+    survival_pts = round(safe["points"] / safe["played"] * 38) if safe and safe.get("played") else None
+    return {
+        "points": pts, "played": played,
+        "pct_to_40": round(pts / 40 * 100),
+        "survival_pts": survival_pts,
+        "pct_to_17th": round(pts / survival_pts * 100) if survival_pts else None,
+        "pct_season_played": round(played / 38 * 100),
+    }
+
+
 # --------------------------------------------------------------------------- #
 #  Synthetic data for tests — plausible mid-season values for every section    #
 # --------------------------------------------------------------------------- #
@@ -1457,6 +1481,7 @@ def render_site(template, match_template, player_template, preview_template, dat
     player_pages = build_player_pages(data)     # stamps slug on each squad entry
     data_json = json.dumps(data).replace("<", "\\u003c")
     summary_text = season_summary(data)
+    data["season_progress"] = season_progress(data)
     predicted = projected_table(data)
     rivals = rival_tracker(data)
     fguide = form_guide(data)
