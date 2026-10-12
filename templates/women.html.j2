@@ -360,6 +360,13 @@
   if(!window.Chart){ ['wpoints','wgoals','whomeaway','wscorers'].forEach(function(id){showNote(id,'Charts library did not load.');}); return; }
   Chart.defaults.font.family="Inter, system-ui, sans-serif"; Chart.defaults.color=C.muted;
 
+  // Opponent + venue instead of a bare matchweek number wherever the x-axis
+  // is "one tick per match" — e.g. "FUL (H)" rather than "M1". Falls back to
+  // the matchweek label when no opponent is known for that tick.
+  function matchLabel(e, fallback){
+    return (e && e.opponent_short) ? e.opponent_short+' ('+(e.home?'H':'A')+')' : fallback;
+  }
+
   var gw = DATA.by_gameweek||[];
 
   // Points progression: actual so far, projected to the end of the season
@@ -369,7 +376,11 @@
   var tbl = DATA.table||[];
   var TOTAL_GW = tbl.length > 1 ? (tbl.length - 1) * 2 : 22;
   if(gw.length){
-    var seasonLabels = []; for(var _g=1;_g<=TOTAL_GW;_g++) seasonLabels.push('M'+_g);
+    // Full season's worth of fixtures (played + upcoming, chronological) so
+    // even not-yet-played matchweeks on this axis can show their opponent.
+    var seasonFixtures = (DATA.results||[]).slice().reverse().concat(DATA.upcoming||[]);
+    var seasonLabels = [];
+    for(var _g=1;_g<=TOTAL_GW;_g++) seasonLabels.push(matchLabel(seasonFixtures[_g-1],'M'+_g));
     var played = gw.length;
     var cumPts = gw.map(function(d){return d.cum_points;});
     var lastPts = cumPts[played-1], ppg = lastPts/played;
@@ -467,7 +478,7 @@
 
   if(gw.length){
     new Chart(document.getElementById('c-wgoals'),{type:'bar',
-      data:{labels:gw.map(function(d){return 'M'+d.gw;}),datasets:[
+      data:{labels:gw.map(function(d){return matchLabel(d,'M'+d.gw);}),datasets:[
         {label:'For',data:gw.map(function(d){return d.gf;}),backgroundColor:C.blue},
         {label:'Against',data:gw.map(function(d){return d.ga;}),backgroundColor:C.red}]},
       options:baseOpts()});

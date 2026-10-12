@@ -146,7 +146,7 @@ def fetch_fpl():
                             "score": f"{our}-{their}", "result": res})
             finished_meta.append({"gw": f["event"], "gf": our, "ga": their,
                                   "pts": 3 if res == "W" else 1 if res == "D" else 0,
-                                  "opp_id": opp["id"]})
+                                  "opp_id": opp["id"], "opponent_short": opp["short_name"], "home": home})
         else:
             upcoming.append({"event": f["event"], "opponent": opp["name"],
                              "opponent_short": opp["short_name"], "home": home,
@@ -178,7 +178,8 @@ def fetch_fpl():
     for m in finished_meta:
         cum += m["pts"]
         rec = {"gw": m["gw"], "gf": m["gf"], "ga": m["ga"], "pts": m["pts"],
-               "cum_points": cum, "team_xg": None, "team_xga": None}
+               "cum_points": cum, "team_xg": None, "team_xga": None,
+               "opponent_short": m["opponent_short"], "home": m["home"]}
         try:
             live = get_json(f"event/{m['gw']}/live/", FPL)
             xf = xa = 0.0
@@ -1779,6 +1780,19 @@ def main():
     # short-name + badge lookup for Understat team titles
     meta_by_norm = _build_meta_by_norm(teams, badges)
     def team_meta(title): return _team_meta(title, meta_by_norm)
+
+    # Backfill short team codes onto Understat's own per-match records
+    # (fetched before team_meta existed above) — used by the Charts page's
+    # "M1, M2…" x-axis labels, which read better as e.g. "FUL (H)" than a
+    # bare matchweek number. ips_history (a different Understat endpoint,
+    # same matches) carries no opponent at all, so it's matched up by date;
+    # its own "home" comes straight from Understat's own h_a field.
+    for m in understat["matches"]:
+        m["opponent_short"], _ = team_meta(m["opponent"])
+    opponent_by_date = {m["date"]: m["opponent_short"] for m in understat["matches"] if m.get("date")}
+    for h in ips_history:
+        h["opponent_short"] = opponent_by_date.get(h["date"])
+        h["home"] = h.get("h_a") == "h"
 
     # league-wide Elo rank, and a few nearby-table rivals' own Elo trajectories
     # so the trend chart can show Ipswich's line against the pack it's actually

@@ -476,7 +476,8 @@ def sample_data(live=None):
             cum += pts
             by_gameweek.append({"gw": gw, "gf": gfg, "ga": gag, "pts": pts, "cum_points": cum,
                                 "team_xg": round(1.0 + (gw % 3) * 0.4, 2),
-                                "team_xga": round(0.8 + (gw % 4) * 0.3, 2)})
+                                "team_xga": round(0.8 + (gw % 4) * 0.3, 2),
+                                "opponent_short": c["short"], "home": home})
         else:
             fx.update({"finished": False,
                        "kickoff": (base + timedelta(days=7 * (gw - 1))).isoformat().replace("+00:00", "Z"),
@@ -660,6 +661,7 @@ def sample_data(live=None):
                             {"x": 0.74, "y": 0.35, "xg": 0.09, "result": "SavedShot", "player": shooters[2 % len(shooters)], "minute": 58, "situation": "OpenPlay"},
                             {"x": 0.83, "y": 0.62, "xg": 0.44, "result": "Goal", "player": shooters[3 % len(shooters)], "minute": 77, "situation": "Penalty"}]}]
     understat_matches = [{"match_id": str(g["gw"]), "opponent": r["opponent"], "home": r["home"],
+                          "opponent_short": r["opponent_short"],
                           "date": "2026-09-01", "gf": g["gf"], "ga": g["ga"],
                           "xg_for": g["team_xg"], "xg_against": g["team_xga"]}
                          for g, r in zip(by_gameweek[-5:], results[:5])]
@@ -667,7 +669,8 @@ def sample_data(live=None):
     understat_history, match_stats = [], []
     for i, g in enumerate(by_gameweek):
         won = g["pts"] == 3
-        understat_history.append({"date": "2026-09-01", "h_a": "h" if i % 2 else "a",
+        understat_history.append({"date": "2026-09-01", "h_a": "h" if g["home"] else "a",
+            "opponent_short": g["opponent_short"], "home": g["home"],
             "xg": g["team_xg"], "xga": g["team_xga"], "npxg": round(g["team_xg"]*0.9, 2),
             "npxga": round(g["team_xga"]*0.9, 2), "deep": 8 + (i % 5), "deep_allowed": 6 + (i % 4),
             "scored": g["gf"], "conceded": g["ga"], "xpts": round(1.0 + (i % 3)*0.6, 2),
@@ -1126,7 +1129,8 @@ def by_gameweek_women(results):
         pts = 3 if r.get("result") == "W" else 1 if r.get("result") == "D" else 0
         cum += pts
         out.append({"gw": r.get("event") or i, "gf": gf, "ga": ga, "pts": pts,
-                     "cum_points": cum, "home": bool(r.get("home"))})
+                     "cum_points": cum, "home": bool(r.get("home")),
+                     "opponent_short": r.get("opponent_short")})
     return out
 
 
@@ -1386,9 +1390,9 @@ def sample_data_women():
         "next_fixture": {"opponent": "Southampton", "opponent_short": "SOU", "home": True,
                          "kickoff": "2026-09-27T14:00:00Z", "event": 9, "badge": None},
         "results": results,
-        "upcoming": [{"event": 9, "opponent": "Southampton", "home": True,
+        "upcoming": [{"event": 9, "opponent": "Southampton", "opponent_short": "SOU", "home": True,
                      "kickoff": "2026-09-27T14:00:00Z"},
-                    {"event": 10, "opponent": "Birmingham City", "home": False,
+                    {"event": 10, "opponent": "Birmingham City", "opponent_short": "BIR", "home": False,
                      "kickoff": "2026-10-04T14:00:00Z"}],
         "table": table,
         "league_results": league_results,

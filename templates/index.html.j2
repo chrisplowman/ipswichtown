@@ -907,13 +907,22 @@
     if(!window.Chart){ ['points','xpts','goals','xg','xga','xgd','xgvs','ppda','deep','homeaway','shots','situation','setpiece','finish','elo','timing','gamestate','discipline','strength'].forEach(function(id){showNote(id,'Charts library did not load.');}); }
     else {
       Chart.defaults.font.family="Inter, system-ui, sans-serif"; Chart.defaults.color=C.muted;
-      var gw = DATA.by_gameweek||[], labels = gw.map(function(d){return 'GW'+d.gw;});
+      // Opponent + venue instead of a bare matchweek number wherever the
+      // x-axis is "one tick per match" — e.g. "FUL (H)" rather than "M1".
+      // Falls back to the matchweek label when no opponent is known for
+      // that tick (older cached data, or a gap between data sources).
+      function matchLabel(e, fallback){
+        return (e && e.opponent_short) ? e.opponent_short+' ('+(e.home?'H':'A')+')' : fallback;
+      }
+      var gw = DATA.by_gameweek||[], labels = gw.map(function(d){return matchLabel(d,'GW'+d.gw);});
 
       // Points progression across the whole season: actual so far, projected to GW38
       // at current points-per-game, vs the pace needed for a "typical survival" 40
       // points and the pace the 18th-placed team (first in the drop zone) is on.
       var TOTAL_GW = 38;
-      var seasonLabels = []; for(var _g=1;_g<=TOTAL_GW;_g++) seasonLabels.push('GW'+_g);
+      var seasonFixtures = DATA.fixtures||[];
+      var seasonLabels = [];
+      for(var _g=1;_g<=TOTAL_GW;_g++) seasonLabels.push(matchLabel(seasonFixtures[_g-1],'GW'+_g));
       if(gw.length){
         var played = gw.length;
         var cumPts = gw.map(function(d){return d.cum_points;});
@@ -981,7 +990,7 @@
       function cumFrom(arr,key){var t=0;return arr.map(function(d){t+=(d[key]||0);return +t.toFixed(2);});}
       var xgLabels, gForCum, xgForCum, gAgCum, xgAgCum;
       if(um.length){
-        xgLabels = um.map(function(m,i){return 'M'+(i+1);});
+        xgLabels = um.map(function(m,i){return matchLabel(m,'M'+(i+1));});
         gForCum=cumFrom(um,'gf'); xgForCum=cumFrom(um,'xg_for');
         gAgCum=cumFrom(um,'ga'); xgAgCum=cumFrom(um,'xg_against');
       } else if(gw.length){
@@ -1019,7 +1028,7 @@
         var roll = diff.map(function(_,i){var s=Math.max(0,i-WIN+1),seg=diff.slice(s,i+1);
           return +(seg.reduce(function(a,b){return a+b;},0)/seg.length).toFixed(2);});
         new Chart(document.getElementById('c-xgd'),{type:'line',
-          data:{labels:um.map(function(m,i){return 'M'+(i+1);}),datasets:[
+          data:{labels:um.map(function(m,i){return matchLabel(m,'M'+(i+1));}),datasets:[
             {label:'Rolling xGD',data:roll,borderColor:C.blue,backgroundColor:'rgba(22,52,107,.12)',
               fill:'origin',tension:.3,pointRadius:2}]},
           options:baseOpts({plugins:{legend:{display:false}},
@@ -1038,7 +1047,7 @@
         var avgXgFor = xgFinished.reduce(function(a,m){return a+m.xg_for;},0)/xgFinished.length;
         var avgXgAgainst = xgFinished.reduce(function(a,m){return a+m.xg_against;},0)/xgFinished.length;
         new Chart(document.getElementById('c-xgvs'),{type:'bar',
-          data:{labels:xgFinished.map(function(m,i){return 'M'+(i+1);}),datasets:[
+          data:{labels:xgFinished.map(function(m,i){return matchLabel(m,'M'+(i+1));}),datasets:[
             {label:'xG for',data:xgFinished.map(function(m){return m.xg_for;}),backgroundColor:C.blue,order:1},
             {label:'xG against',data:xgFinished.map(function(m){return m.xg_against;}),backgroundColor:C.red,order:1},
             {type:'line',label:'Season avg for ('+avgXgFor.toFixed(2)+')',
@@ -1083,7 +1092,7 @@
       if(uh.length){
         var cp=0, cx=0;
         new Chart(document.getElementById('c-xpts'),{type:'line',
-          data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+          data:{labels:uh.map(function(h,i){return matchLabel(h,'M'+(i+1));}),datasets:[
             {label:'Points',data:uh.map(function(h){cp+=(h.pts||0);return cp;}),
               borderColor:C.blue,backgroundColor:'rgba(22,52,107,.10)',fill:true,tension:.25,pointRadius:2},
             {label:'Expected points',data:uh.map(function(h){cx+=(h.xpts||0);return +cx.toFixed(1);}),
@@ -1099,7 +1108,7 @@
       // Pressing intensity — rolling PPDA (lower = press harder)
       if(uh.length){ var ppdaRoll = rollAvg(uh.map(function(h){return h.ppda;}),5);
         new Chart(document.getElementById('c-ppda'),{type:'line',
-        data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+        data:{labels:uh.map(function(h,i){return matchLabel(h,'M'+(i+1));}),datasets:[
           {label:'PPDA (5-game avg)',data:ppdaRoll,
             borderColor:C.blue,tension:.3,pointRadius:2,spanGaps:true}]},
         options:baseOpts({plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},
@@ -1114,7 +1123,7 @@
 
       // Territory — deep completions for vs against
       if(uh.length){ new Chart(document.getElementById('c-deep'),{type:'bar',
-        data:{labels:uh.map(function(_,i){return 'M'+(i+1);}),datasets:[
+        data:{labels:uh.map(function(h,i){return matchLabel(h,'M'+(i+1));}),datasets:[
           {label:'For',data:uh.map(function(h){return h.deep;}),backgroundColor:C.blue},
           {label:'Against',data:uh.map(function(h){return h.deep_allowed;}),backgroundColor:C.red}]},
         options:baseOpts({scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:C.line}}}})});
